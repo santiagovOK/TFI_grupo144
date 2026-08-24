@@ -18,12 +18,11 @@ Sistema de gestión integral de gimnasio: centraliza la administración de usuar
 
 **Tutor**: Sebastián Bruselario
 
-## [Enlace al repositorio](REEMPLAZAR_CON_URL_DEL_REPO)
+## 🔗 Enlaces del Proyecto
 
-## [Enlace a la documentación de la API (Swagger)](REEMPLAZAR_CON_URL_SWAGGER)
-
-## [Enlace al despliegue en la nube](REEMPLAZAR_CON_URL_DESPLIEGUE)
-
+* **Repositorio de GitHub:** [Gym Manager - Grupo 144](https://github.com/santiagovOK/TFI_grupo144.git)
+* **Documentación de la API (Swagger):** *(Próximamente - Fase de Desarrollo)*
+* **Despliegue en la nube:** *(Próximamente - Entrega Final)*
 ---
 
 ## Descripción del Proyecto
@@ -59,7 +58,7 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 | **Documentación de API** | SpringDoc OpenAPI 3.x (Swagger) |
 | **Tests** | JUnit 5 · Mockito · REST Assured |
 | **Build tool (Backend)** | Gradle |
-| **Plataforma de despliegue** | A definir (ej. Render para Backend, Vercel para Frontend, Neon para BD) |
+| **Plataforma de despliegue** | Render (Backend) · Vercel (Frontend) · Neon (PostgreSQL) |
 
 ---
 
@@ -79,9 +78,9 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 |  +-------------------+        +-------------------------+    |
 |  | Gym-Admin         |        | Gym-Access Terminal     |    |
 |  |   (React)         |        |     (React)             |    |
-|  |   :3001           |        |    :3002                |
+|  |   :3001           |        |    :3002                |    |
 |  +--------+----------+        +------------+------------+    |
-|          | HTTP REST                      | HTTP REST       |
+|          | HTTP REST                      | HTTP REST        |
 |          v                                v                  |
 | +-------------------------------------------------------------+
 |              Spring Boot Backend (Java)                      |
@@ -89,10 +88,10 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 |   |  REST API + JWT Auth + Schema manual                |    |
 |   |  :8080                                              |    |
 |   |                                                     |    |
-|   |  Controllers -> Services -> Repositories            |
-|   |  (Patrón Layered / Clean Architecture)              |
+|   |  Controllers -> Services -> Repositories            |    |
+|   |  (Patrón Layered / Clean Architecture)              |    |
 |   +-----------------------------------------------------+    |
-|              PostgreSQL                                       |
+|              PostgreSQL                                      |
 +-------------------------------------------------------------+
 ```
 

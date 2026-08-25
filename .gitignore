@@ -1,1 +1,61 @@
+# --- Variables de entorno y credenciales ---
+# El backend lee la contraseña de PostgreSQL y el secret de JWT desde .env
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Backend: Java ---
+*.class
+*.ctxt
+hs_err_pid*
+replay_pid*
+
+# --- Backend: Gradle ---
+.gradle/
+**/build/
+!**/src/**/build/
+gradle-app.setting
+.gradletasknamecache
+
+# --- Empaquetados ---
+*.jar
+*.war
+*.ear
+# El wrapper de Gradle si se versiona
+!**/gradle/wrapper/gradle-wrapper.jar
+
+# --- Frontend: Node / Vite ---
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.tsbuildinfo
+vite.config.*.timestamp-*
+*.local
+
+# --- Logs ---
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# --- Tests y cobertura ---
+coverage/
+*.lcov
+
+# --- IDEs ---
 .idea/
+*.iml
+*.iws
+.vscode/
+!.vscode/extensions.json
+.project
+.classpath
+.settings/
+
+# --- Sistema operativo ---
+.DS_Store
+Thumbs.db

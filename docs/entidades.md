@@ -29,7 +29,7 @@ Representa a un socio, personal o administrador del gimnasio.
 
 ```java
 @Entity
-@Table(name = "user")
+@Table(name = "users")
 public class User {
 
     @Id
@@ -76,7 +76,7 @@ public class User {
 }
 ```
 
-### Tabla `user`
+### Tabla `users`
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
@@ -150,7 +150,7 @@ public class Enrollment {
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `id` | UUID | No (generado) | — | Clave primaria |
-| `user_id` | VARCHAR | No | Sí | FK a `user.id` |
+| `user_id` | VARCHAR | No | Sí | FK a `users.id` |
 | `modality` | VARCHAR | Sí | — | Valor de `Modality` |
 | `start_date` | TIMESTAMP | Sí | — | |
 | `end_date` | TIMESTAMP | Sí | — | |

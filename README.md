@@ -211,7 +211,7 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 
 | Entidad | Tabla | Descripción |
 |---------|-------|-------------|
-| `User` | `user` | Socio, personal o administrador del gimnasio |
+| `User` | `users` | Socio, personal o administrador del gimnasio |
 | `Enrollment` | `enrollment` | Inscripción con modalidad y vigencia |
 | `Access` | `access` | Registro de cada intento de ingreso validado |
 | `Payment` | `payment` | Pago asociado a una inscripción |

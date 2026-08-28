@@ -285,7 +285,7 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 - Historial detallado de asistencias mensuales por socio.
 
 **4. Comunicaciones:** 
-- Envío automático de notificaciones de vencimiento de cuota (ej. vía Email o WhatsApp).
+- Envío automático de notificaciones de vencimiento de cuota (vía Email).
 - Comunicados masivos (broadcast) por parte del administrador para avisos generales.
 
 **5. Componentes Técnicos y Calidad:**
@@ -294,7 +294,7 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 - Cobertura de tests unitarios y de integración.
 
 **6. Integración Financiera:**
-- Pasarelas de pago automatizadas (Mercado Pago, Stripe) o cobros recurrentes automáticos.
+- Pasarelas de pago automatizadas (Mercado Pago) o cobros recurrentes automáticos.
 
 ### Excluidas (Fuera de alcance para esta iteración)
 
@@ -302,6 +302,7 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 - **Perfil Social:** Perfiles extendidos con fotos, metas de fitness y nivel de experiencia.
 - **Hardware / IoT:** Control automatizado de molinetes físicos o puertas magnéticas.*(la terminal aprueba en pantalla, el pase físico es supervisado)*.
 - **Comunicaciones Transaccionales/Marketing:** Mensajes de bienvenida, comprobantes de pago automáticos, alertas de inactividad para fidelización y recuperación de contraseñas *(no aplica en V1 ya que los socios no poseen credenciales)*.
+- **Integración con WhatsApp:** Envío de notificaciones a través de WhatsApp (se excluye en V1 por la mayor complejidad de su API, dejando solo Email en esta primera iteración).
 
 **Nota sobre escalabilidad:** Aunque estas funcionalidades no se implementan en la primera versión, la base arquitectónica está diseñada para soportarlas a futuro sin reestructuraciones mayores.
 

@@ -293,11 +293,13 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 - Documentación interactiva de la API (SpringDoc OpenAPI 3.x / Swagger).
 - Cobertura de tests unitarios y de integración.
 
+**6. Integración Financiera:**
+- Pasarelas de pago automatizadas (Mercado Pago, Stripe) o cobros recurrentes automáticos.
+
 ### Excluidas (Fuera de alcance para esta iteración)
 
 - **Área Deportiva:** Planes de entrenamiento, rutinas personalizadas o seguimiento de métricas corporales *(el foco es puramente administrativo)*.
 - **Perfil Social:** Perfiles extendidos con fotos, metas de fitness y nivel de experiencia.
-- **Integración Financiera:** Pasarelas de pago automatizadas (Mercado Pago, Stripe) o cobros recurrentes automáticos *(los pagos se rinden e ingresan manualmente en el sistema)*.
 - **Hardware / IoT:** Control automatizado de molinetes físicos o puertas magnéticas.*(la terminal aprueba en pantalla, el pase físico es supervisado)*.
 - **Comunicaciones Transaccionales/Marketing:** Mensajes de bienvenida, comprobantes de pago automáticos, alertas de inactividad para fidelización y recuperación de contraseñas *(no aplica en V1 ya que los socios no poseen credenciales)*.
 

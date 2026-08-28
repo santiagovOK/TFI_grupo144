@@ -59,11 +59,13 @@ Sistema de gestión integral de gimnasio: centraliza la administración de usuar
 * Envío automático de recordatorios de vencimiento de cuota por Email o WhatsApp.
 * Envío de comunicados masivos (broadcast) por parte del administrador para avisos generales.
 
+**6. Integración Financiera:**
+* Pasarelas de pago automatizadas (Mercado Pago, Stripe) o cobros recurrentes.
+
 ### Excluido (Fuera de alcance para esta iteración)
 
 * **Área Deportiva:** Planes de entrenamiento, rutinas personalizadas o seguimiento de métricas corporales *(el foco está en la gestión administrativa)*.
 * **Perfil Social:** Perfiles extendidos con fotos, metas de fitness y nivel de experiencia.
-* **Integración Financiera:** Pasarelas de pago automatizadas (Mercado Pago, Stripe) o cobros recurrentes *(los pagos se rinden e ingresan manualmente en el sistema)*.
 * **Hardware / IoT:** Control automatizado de molinetes físicos o puertas magnéticas vía electrónica *(la terminal aprueba en pantalla, el pase físico es supervisado)*.
 * **Comunicaciones Transaccionales/Marketing:** Mensajes de bienvenida, comprobantes de pago automáticos, alertas de inactividad para fidelización y recuperación de contraseñas *(no aplica en V1 ya que los socios no poseen credenciales)*.
 

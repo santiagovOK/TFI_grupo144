@@ -12,6 +12,8 @@ Sistema de gestión integral de gimnasio: centraliza la administración de usuar
 
 **Tutor**: Sebastián Bruselario
 
+**Link al repositorio en Github:** [https://github.com/santiagovOK/TFI_grupo144](https://github.com/santiagovOK/TFI_grupo144)
+
 # Idea, alcance y objetivos
 
 ## Problema
@@ -69,6 +71,21 @@ Sistema de gestión integral de gimnasio: centraliza la administración de usuar
 * **Hardware / IoT:** Control automatizado de molinetes físicos o puertas magnéticas vía electrónica *(la terminal aprueba en pantalla, el pase físico es supervisado)*.
 * **Comunicaciones Transaccionales/Marketing:** Mensajes de bienvenida, comprobantes de pago automáticos, alertas de inactividad para fidelización y recuperación de contraseñas *(no aplica en V1 ya que los socios no poseen credenciales)*.
 * **Integración con WhatsApp:** Envío de notificaciones a través de WhatsApp (se excluye en V1 por la mayor complejidad de su API, dejando solo Email en esta primera iteración). 
+
+## Stack Tecnológico
+
+| Capa | Tecnología |
+|------|-----------|
+| **Frontend Admin** | React 19+ · TypeScript · Tailwind CSS · Chakra UI |
+| **Frontend Access** | React 19+ · TypeScript · Tailwind CSS |
+| **Backend** | Spring Boot 4.x · Java 25 (LTS) |
+| **ORM** | Hibernate / JPA |
+| **Base de datos** | PostgreSQL (esquema manual) |
+| **Autenticación** | Spring Security + JWT |
+| **Documentación de API** | SpringDoc OpenAPI 3.x (Swagger) |
+| **Tests** | JUnit 5 · Mockito · REST Assured |
+| **Build tool (Backend)** | Gradle |
+| **Plataforma de despliegue** | Render (Backend) · Vercel (Frontend) · Neon (PostgreSQL) |
 
 ## Objetivos
 

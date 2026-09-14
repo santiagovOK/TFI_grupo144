@@ -1,4 +1,4 @@
-# Modelo de Datos — Entidades JPA (En construcción)
+# Modelo de Datos — Entidades JPA
 
 Documentación técnica completa del esquema de la base de datos. Este archivo contiene el detalle de cada entidad, sus atributos, las anotaciones JPA y las relaciones entre ellas. La versión resumida y orientada al uso está en el `README.md`.
 
@@ -150,7 +150,7 @@ public class Enrollment {
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `id` | UUID | No (generado) | — | Clave primaria |
-| `user_id` | VARCHAR | No | Sí | FK a `users.id` |
+| `user_id` | UUID | No | Sí | FK a `users.id` |
 | `modality` | VARCHAR | Sí | — | Valor de `Modality` |
 | `start_date` | TIMESTAMP | Sí | — | |
 | `end_date` | TIMESTAMP | Sí | — | |
@@ -200,7 +200,7 @@ public class Access {
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `id` | UUID | No (generado) | — | Clave primaria |
-| `enrollment_id` | VARCHAR | No | — | FK a `enrollment.id` |
+| `enrollment_id` | UUID | No | — | FK a `enrollment.id` |
 | `access_date` | TIMESTAMP | No | — | Generado automáticamente |
 | `status` | VARCHAR | No | — | Valor por defecto `GRANTED` |
 | `denied_reason` | VARCHAR(500) | Sí | — | |
@@ -265,7 +265,7 @@ public class Payment {
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `id` | UUID | No (generado) | — | Clave primaria |
-| `enrollment_id` | VARCHAR | No | — | FK a `enrollment.id` |
+| `enrollment_id` | UUID | No | — | FK a `enrollment.id` |
 | `modality` | VARCHAR | No | — | Valor de `Modality` |
 | `amount` | DECIMAL(19,2) | No | — | |
 | `currency` | VARCHAR | No | — | Valor por defecto `ARS` |

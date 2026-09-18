@@ -1,7 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-CREATE TABLE IF NOT EXISTS "user" (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE IF NOT EXISTS users (
+    member_number VARCHAR(20) PRIMARY KEY,
     email VARCHAR(255) UNIQUE,
     password VARCHAR(255),
     name VARCHAR(100) NOT NULL,
@@ -12,12 +12,13 @@ CREATE TABLE IF NOT EXISTS "user" (
     role VARCHAR(20) NOT NULL DEFAULT 'USER',
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP
+    updated_at TIMESTAMP,
+    CONSTRAINT chk_user_contact CHECK (email IS NOT NULL OR phone IS NOT NULL)
     );
 
 CREATE TABLE IF NOT EXISTS enrollment (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL UNIQUE REFERENCES "user"(id) ON DELETE CASCADE,
+    member_number VARCHAR(20) NOT NULL REFERENCES users(member_number) ON DELETE CASCADE,
     modality VARCHAR(20),
     start_date TIMESTAMP,
     end_date TIMESTAMP,
@@ -31,11 +32,11 @@ CREATE TABLE IF NOT EXISTS enrollment (
 CREATE TABLE IF NOT EXISTS payment (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     enrollment_id UUID NOT NULL REFERENCES enrollment(id) ON DELETE CASCADE,
-    modality VARCHAR(20) NOT NULL,
     amount DECIMAL(19,2) NOT NULL,
     currency VARCHAR(10) NOT NULL DEFAULT 'ARS',
-    start_date TIMESTAMP NOT NULL,
-    end_date TIMESTAMP,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    payment_method VARCHAR(50),
+    external_reference VARCHAR(100),
     comments VARCHAR(500),
     discount DECIMAL(19,2),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -43,9 +44,10 @@ CREATE TABLE IF NOT EXISTS payment (
     );
 
 CREATE TABLE IF NOT EXISTS access (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    enrollment_id UUID NOT NULL REFERENCES enrollment(id) ON DELETE CASCADE,
+    member_number VARCHAR(20) NOT NULL REFERENCES users(member_number) ON DELETE CASCADE,
+    enrollment_id UUID REFERENCES enrollment(id) ON DELETE CASCADE,
     access_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) NOT NULL DEFAULT 'GRANTED',
-    denied_reason VARCHAR(500)
+    denied_reason VARCHAR(500),
+    PRIMARY KEY (member_number, access_date)
     );

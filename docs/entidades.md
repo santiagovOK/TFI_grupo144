@@ -1,12 +1,6 @@
-# Modelo de Datos — Esquema Relacional
-Documentación técnica completa del esquema de la base de datos. Este archivo contiene el detalle de cada entidad, sus atributos, las anotaciones JPA y las relaciones entre ellas. La versión resumida y orientada al uso está en el `README.md`.
+# Modelo Relacional de Base de Datos
 
-## Stack
-
-- **ORM:** Hibernate / JPA
-- **Base de datos:** PostgreSQL
-- **Creación de esquema:** script manual (archivo `schema.sql`).
-- **Generación de claves:** `GenerationType.UUID`
+Documentación técnica completa del esquema de la base de datos. Este archivo contiene el detalle de cada tabla, sus columnas, tipos de datos, restricciones y las relaciones entre ellas. La versión resumida y orientada al uso está en el `README.md`.
 
 ## Diagrama de entidades
 
@@ -20,6 +14,7 @@ erDiagram
         VARCHAR(255) password "Hash BCrypt"
         VARCHAR name
         VARCHAR last_name
+        DATE birth_date
         VARCHAR role "Enum Role: ADMIN, STAFF, USER"
         BOOLEAN active
         TIMESTAMP created_at
@@ -77,18 +72,20 @@ Para garantizar la solidez del modelo relacional y evitar el abuso de IDs artifi
 
 | Relación | Tipo | Descripción |
 |----------|------|-------------|
-| `users` ↔ `enrollment` | `1:N` (Uno a Muchos) | Un usuario puede tener múltiples inscripciones a lo largo del tiempo (historial). |
+| `users` ↔ `enrollment` | `1:N` (Uno a Muchos) | Un usuario puede tener múltiples inscripciones a lo largo del tiempo (historial por período). |
+| `users` ↔ `access` | `1:N` (Uno a Muchos) | Un usuario puede registrar múltiples intentos de acceso (historial de accesos). |
 | `enrollment` ↔ `payment` | `1:N` (Uno a Muchos) | Una inscripción puede registrar múltiples pagos o intentos de cobro. |
-| `users` ↔ `access` | `1:N` (Uno a Muchos) | Un usuario puede registrar múltiples intentos de acceso en la terminal. |
-| `enrollment` ↔ `access` | `1:N` (Uno a Muchos) | Una inscripción asocia los accesos concedidos durante su vigencia (relación opcional). |
+| `enrollment` ↔ `access` | `1:N` (Uno a Muchos) | Una inscripción asocia los accesos concedidos durante su vigencia (opcional; nulo si el acceso fue denegado sin inscripción activa). |
 
 ---
 
-## Entidad: `User`
+## Tabla: `users`
 
 Representa a un socio, personal o administrador del gimnasio.
 
 **Nota de Privacidad y Contacto:** Se utiliza el número de socio (`member_number`) como identificador principal operativo para proteger el DNI. Para evitar "socios fantasmas", el sistema exige obligatoriamente registrar un email o un teléfono de contacto mediante una restricción de base de datos (`CHECK`).
+
+**Nota de Escalabilidad (Credenciales opcionales):** Para la versión 1, los usuarios con rol `USER` (Socios) son dados de alta exclusivamente por el administrador y no poseen acceso al sistema, por lo que el campo `password` será nulo para ellos. La tabla se diseñó unificada para permitir a futuro habilitarles credenciales sin reestructurar la base de datos (ej. para un portal de autogestión).
 
 ### Tabla `users`
 
@@ -96,11 +93,12 @@ Representa a un socio, personal o administrador del gimnasio.
 |---------|------|-------|-------|-------------|
 | `member_number` | VARCHAR(20) | No | Sí (PK) | Clave primaria natural |
 | `dni` | VARCHAR(15) | No | Sí (UK)| Dato administrativo sensible |
-| `email` | VARCHAR(255)| Sí* | Sí | *Restricción CHECK: email o phone obligatorios |
-| `phone` | VARCHAR(20) | Sí* | — | *Restricción CHECK: email o phone obligatorios |
+| `email` | VARCHAR(255)| Sí | Sí | Restricción CHECK: email o phone obligatorios |
+| `phone` | VARCHAR(20) | Sí | — | Restricción CHECK: email o phone obligatorios |
 | `password` | VARCHAR(255)| Sí | — | Hash BCrypt |
 | `name` | VARCHAR | No | — | |
 | `last_name` | VARCHAR | No | — | |
+| `birth_date` | DATE | Sí | — | |
 | `role` | VARCHAR | No | — | Valor del Enum `Role` (Por defecto `USER`) |
 | `active` | BOOLEAN | No | — | Valor por defecto `true` |
 | `created_at` | TIMESTAMP | No | — | Generado automáticamente |
@@ -108,19 +106,17 @@ Representa a un socio, personal o administrador del gimnasio.
 
 ---
 
-## Entidad: `Enrollment`
+## Tabla: `enrollment`
 
 Representa la inscripción de un usuario a un plan, con su modalidad y vigencia.
 
-### Tabla `enrollment`
-
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
-| `id` | UUID | No (generado) | Sí (PK)| Clave primaria |
+| `id` | UUID | No (generado) | Sí (PK) | Clave primaria |
 | `member_number` | VARCHAR(20) | No | — | FK a `users.member_number` |
-| `modality` | VARCHAR | No | — | Valor del Enum `Modality` |
-| `start_date` | TIMESTAMP | No | — | |
-| `end_date` | TIMESTAMP | No | — | |
+| `modality` | VARCHAR | Sí | — | Valor del Enum `Modality` |
+| `start_date` | TIMESTAMP | Sí | — | |
+| `end_date` | TIMESTAMP | Sí | — | |
 | `comments` | VARCHAR(500) | Sí | — | |
 | `weekly_accesses` | INTEGER | No | — | Tope de ingresos |
 | `last_access_reset` | TIMESTAMP | Sí | — | |
@@ -129,37 +125,33 @@ Representa la inscripción de un usuario a un plan, con su modalidad y vigencia.
 
 ---
 
-## Entidad: `Access`
+## Tabla: `access`
 
 Registra cada intento de ingreso validado en la terminal de acceso.
 
-### Tabla `access`
-
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
-| `member_number` | VARCHAR(20) | No | — | PK Compuesta / FK a `users` |
-| `access_date` | TIMESTAMP | No | — | PK Compuesta (Momento exacto) |
-| `enrollment_id` | UUID | Sí | — | FK opcional a `enrollment.id` (permite denegados sin plan) |
-| `status` | VARCHAR | No | — | Valor del Enum `AccessStatus` |
+| `member_number` | VARCHAR(20) | No | — | Clave primaria compuesta (PK), FK a `users.member_number` |
+| `access_date` | TIMESTAMP | No | — | Clave primaria compuesta (PK). Generado automáticamente |
+| `enrollment_id` | UUID | Sí | — | FK a `enrollment.id`. Opcional (puede ser nulo en accesos denegados) |
+| `status` | VARCHAR | No | — | Valor del Enum `AccessStatus` (Por defecto `GRANTED`) |
 | `denied_reason` | VARCHAR(500) | Sí | — | Motivo si es denegado |
 
 ---
 
-## Entidad: Payment
+## Tabla: `payment`
 
-Registra los cobros asociados a las inscripciones, operando con tokens idempotentes para integraciones externas.
-
-### Tabla `payment`
+Registra un pago asociado a una inscripción.
 
 | Columna | Tipo | Nulos | Único | Observación |
-| :--- | :--- | :--- | :--- | :--- |
-| `id` | UUID | No (generado) | — | Clave primaria (Token idempotente) |
+|---------|------|-------|-------|-------------|
+| `id` | UUID | No (generado) | — | Clave primaria |
 | `enrollment_id` | UUID | No | — | FK a `enrollment.id` |
 | `amount` | DECIMAL(19,2) | No | — | |
-| `currency` | VARCHAR | No | — | Valor del Enum `Currency` (ARS, USD) |
-| `status` | VARCHAR | No | — | Valor del Enum `PaymentStatus` |
-| `payment_method` | VARCHAR | No | — | Método de cobro |
-| `external_reference`| VARCHAR | Sí | — | ID de pasarela (ej. Mercado Pago) |
+| `currency` | VARCHAR | No | — | Valor Enum `Currency` (Por defecto `ARS`) |
+| `status` | VARCHAR(20) | No | — | Valor del Enum `PaymentStatus` (Por defecto `PENDING`) |
+| `payment_method` | VARCHAR(50) | Sí | — | Método de pago (ej. tarjeta, mercadopago) |
+| `external_reference` | VARCHAR(100) | Sí | — | Referencia externa de transacción |
 | `comments` | VARCHAR(500) | Sí | — | |
 | `discount` | DECIMAL(19,2) | Sí | — | |
 | `created_at` | TIMESTAMP | No | — | Generado automáticamente |
@@ -170,12 +162,29 @@ Registra los cobros asociados a las inscripciones, operando con tokens idempoten
 
 Para garantizar la integridad de los datos a nivel conceptual, los siguientes campos operan bajo dominios de valores cerrados:
 
-*   **Role (Tabla `users`):** `ADMIN` (acceso total), `STAFF` (personal operativo), `USER` (socio/reservado).
-*   **Modality (Tabla `enrollment`):** `FREE` (acceso ilimitado), `THREE` (3 accesos por semana), `TWO` (2 accesos por semana).
-*   **Currency (Tabla `payment`):** `ARS` (Peso argentino), `USD` (Dólar estadounidense).
-*   **PaymentStatus (Tabla `payment`):** `PENDING` (pendiente), `PAID` (pagado), `FAILED` (fallido), `CANCELLED` (cancelado para auditoría).
-*   **AccessStatus (Tabla `access`):** `GRANTED` (acceso permitido), `DENIED` (acceso denegado).
+### `Role` (Tabla `users`)
+- `ADMIN`: Personal con acceso total al panel administrativo.
+- `STAFF`: Personal operativo (instructores, recepcionistas).
+- `USER`: Socio / usuario (sin acceso al sistema en V1; reservado para escalabilidad futura).
 
+### `Modality` (Tabla `enrollment`)
+- `FREE`: Acceso ilimitado.
+- `THREE`: 3 accesos por semana.
+- `TWO`: 2 accesos por semana.
+
+### `Currency` (Tabla `payment`)
+- `ARS`: Peso argentino.
+- `USD`: Dólar estadounidense.
+
+### `PaymentStatus` (Tabla `payment`)
+- `PENDING`: Pago pendiente de confirmación.
+- `PAID`: Pago completado y acreditado.
+- `FAILED`: Pago fallido o rechazado.
+- `CANCELLED`: Pago cancelado para auditoría.
+
+### `AccessStatus` (Tabla `access`)
+- `GRANTED`: Acceso permitido.
+- `DENIED`: Acceso denegado.
 
 ## Fundamentos de Diseño Relacional
 
@@ -202,3 +211,4 @@ Su identidad unívoca natural está determinada por quién intentó pasar (`memb
 **5. Uso Justificado de UUID en Entidades Específicas**
 *   **En `enrollment` (Mutabilidad):** Las fechas de inicio y fin de una suscripción son inherentemente mutables (suspensiones, vacaciones, prórrogas). Si usáramos una PK compuesta basada en fechas, cualquier modificación forzaría una cascada de actualizaciones compleja en tablas dependientes. El UUID provee una identidad inmutable que independiza el contrato de sus ajustes temporales.
 *   **En `payment` (Idempotencia externa):** En la integración con pasarelas de pago externas (ej. Mercado Pago), el sistema debe despachar un identificador único atómico previo a la redirección. El UUID funciona como un token idempotente para conciliar la transacción mediante webhooks de forma segura, sin exponer datos sensibles del negocio.
+

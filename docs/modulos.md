@@ -1,6 +1,6 @@
 # Especificación de Módulos del Sistema y Contratos de Interfaz
 
-Este documento define la arquitectura modular del sistema **Gym Manager**, detallando para cada componente sus objetivos específicos, las entidades del modelo de datos involucradas, los contratos formalizados de interfaz REST y sus respectivas reglas de negocio.
+Documentación técnica completa del esquema relacional de la base de datos. Este archivo contiene el detalle de cada entidad, sus atributos, el diseño de claves y las relaciones entre ellas. La versión resumida y orientada al uso está en el `README.md`.
 
 ---
 

@@ -9,8 +9,9 @@ Documentación técnica completa del esquema de la base de datos. Este archivo c
 | Relación | Tipo | Descripción |
 |----------|------|-------------|
 | `users` ↔ `enrollment` | `1:N` | Un usuario puede tener múltiples inscripciones (historial por período). |
+| `users` ↔ `access` | `1:N` | Un usuario registra múltiples intentos de acceso (historial de accesos). |
 | `enrollment` ↔ `payment` | `1:N` | Una inscripción puede tener múltiples pagos asociados. |
-| `enrollment` ↔ `access` | `1:N` | Una inscripción puede tener múltiples accesos registrados. |
+| `enrollment` ↔ `access` | `1:N` | Una inscripción puede asociarse a accesos registrados (opcional; nulo si el acceso fue denegado sin inscripción activa). |
 
 ---
 
@@ -62,9 +63,9 @@ Registra cada intento de ingreso validado en la terminal de acceso.
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
-| `id` | UUID | No (generado) | — | Clave primaria |
-| `enrollment_id` | UUID | No | — | FK a `enrollment.id` |
-| `access_date` | TIMESTAMP | No | — | Generado automáticamente |
+| `member_number` | VARCHAR(20) | No | — | Clave primaria compuesta (PK), FK a `users.member_number` |
+| `access_date` | TIMESTAMP | No | — | Clave primaria compuesta (PK). Generado automáticamente |
+| `enrollment_id` | UUID | Sí | — | FK a `enrollment.id`. Opcional (puede ser nulo en accesos denegados) |
 | `status` | VARCHAR | No | — | Valor por defecto `GRANTED` |
 | `denied_reason` | VARCHAR(500) | Sí | — | |
 

@@ -44,9 +44,10 @@ CREATE TABLE IF NOT EXISTS payment (
     );
 
 CREATE TABLE IF NOT EXISTS access (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    enrollment_id UUID NOT NULL REFERENCES enrollment(id) ON DELETE CASCADE,
+    member_number VARCHAR(20) NOT NULL REFERENCES users(member_number) ON DELETE CASCADE,
+    enrollment_id UUID REFERENCES enrollment(id) ON DELETE CASCADE,
     access_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) NOT NULL DEFAULT 'GRANTED',
-    denied_reason VARCHAR(500)
+    denied_reason VARCHAR(500),
+    PRIMARY KEY (member_number, access_date)
     );

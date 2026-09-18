@@ -29,7 +29,7 @@ Sistema de gestión integral de gimnasio: centraliza la administración de usuar
 
 Los gimnasios gestionan sus operaciones de forma manual o con herramientas no integrales: planillas para usuarios, registros en papel para accesos, libros contables para pagos, sin un sistema centralizado. Esto genera falta de control sobre quién accede y cuándo, dificultad para gestionar inscripciones, pagos manuales sin auditoría e imposibilidad de tomar decisiones basadas en datos de uso.
 
-**Gym Manager** es un proyecto de **inventiva propia** que consiste en una plataforma web full-stack para centralizar la gestión de un gimnasio: incluye un panel de administración para el personal y una terminal de acceso en la puerta principal para validar entradas por DNI (o número de socio).
+**Gym Manager** es un proyecto de **inventiva propia** que consiste en una plataforma web full-stack para centralizar la gestión de un gimnasio: incluye un panel de administración para el personal y una terminal de acceso en la puerta principal para validar entradas por número de socio.
 
 ### Objetivo general
 
@@ -40,7 +40,7 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 - Centralizar la gestión de usuarios (registro, edición, activación/desactivación).
 - Gestionar inscripciones con modalidades diferenciadas (acceso ilimitado, limitado a 2 o 3 veces por semana).
 - Registrar y controlar pagos asociados a cada inscripción.
-- Validar accesos en la puerta principal mediante DNI/número de socio con reglas de negocio.
+- Validar accesos en la puerta principal mediante número de socio (preservando el DNI como dato administrativo por privacidad) con reglas de negocio.
 - Diseñar una arquitectura escalable que permita incorporar funcionalidades futuras sin reestructurar sus módulos estructurales.
 
 ---
@@ -218,9 +218,10 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 
 ### Relaciones
 
-- `User` ↔ `Enrollment`: relación uno a uno (`@OneToOne`).
-- `Enrollment` ↔ `Payment`: relación uno a muchos (`@OneToMany`).
-- `Enrollment` ↔ `Access`: relación uno a muchos (`@OneToMany`).
+- `User` ↔ `Enrollment`: relación uno a muchos (1:N).
+- `User` ↔ `Access`: relación uno a muchos (1:N).
+- `Enrollment` ↔ `Payment`: relación uno a muchos (1:N).
+- `Enrollment` ↔ `Access`: relación uno a muchos (1:N).
 
 ### Enums
 
@@ -235,33 +236,7 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 
 ## Endpoints REST
 
-<details>
-<summary>Ver Endpoints REST</summary>
-
-| Endpoint | Descripción | Método |
-|----------|-------------|--------|
-| `POST /api/auth/login` | Autenticar usuario y obtener JWT | POST |
-| `GET /api/users` | Listar usuarios (con paginación) | GET |
-| `GET /api/users/{id}` | Obtener usuario por ID | GET |
-| `PUT /api/users/{id}` | Actualizar usuario | PUT |
-| `DELETE /api/users/{id}` | Eliminar usuario | DELETE |
-| `POST /api/users/{id}/activate` | Activar/desactivar usuario | POST |
-| `GET /api/enrollments` | Listar inscripciones (con paginación) | GET |
-| `GET /api/enrollments/{id}` | Obtener inscripción por ID | GET |
-| `PUT /api/enrollments/{id}` | Actualizar inscripción | PUT |
-| `DELETE /api/enrollments/{id}` | Eliminar inscripción | DELETE |
-| `GET /api/payments` | Listar pagos (con paginación) | GET |
-| `GET /api/payments/{id}` | Obtener pago por ID | GET |
-| `POST /api/payments` | Registrar nuevo pago | POST |
-| `PUT /api/payments/{id}` | Actualizar pago | PUT |
-| `DELETE /api/payments/{id}` | Eliminar pago | DELETE |
-| `GET /api/access` | Listar accesos (con paginación) | GET |
-| `GET /api/access/{id}` | Obtener acceso por ID | GET |
-| `POST /api/access` | Registrar acceso nuevo | POST |
-| `PUT /api/access/{id}` | Actualizar acceso | PUT |
-| `DELETE /api/access/{id}` | Eliminar acceso | DELETE |
-
-</details>
+El detalle de los endpoints y contratos de interfaz REST se encuentra documentado en [docs/modulos.md](docs/modulos.md).
 
 ---
 
@@ -275,7 +250,7 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 - Registro manual y seguimiento de pagos asociados a cada inscripción.
 
 **2. Control de Accesos (Terminal Frontend):**
-- Validación de ingreso mediante DNI o número de socio en tiempo real.
+- Validación de ingreso mediante número de socio (preservando el DNI como dato administrativo por privacidad) en tiempo real.
 - Aplicación automática de reglas de negocio (verificación de cuota al día y topes de accesos semanales permitidos).
 - Feedback visual claro e inmediato del estado de acceso (Aprobado/Denegado).
 

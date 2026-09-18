@@ -27,9 +27,9 @@ Sistema de gestión integral de gimnasio: centraliza la administración de usuar
 
 * **Tipo de proyecto:** Inventiva propia.
 
-* **Solución:** Plataforma web full-stack que centraliza la gestión del gimnasio: panel de administración para el personal, terminal de acceso en la puerta principal para validar entradas por DNI (o número de socio).
+* **Solución:** Plataforma web full-stack que centraliza la gestión del gimnasio: panel de administración para el personal, terminal de acceso en la puerta principal para validar entradas por número de socio.
 * **Valor:** Automatización completa de procesos operativos (usuarios, inscripciones, pagos, accesos); control de modalidad con reglas de negocio; información consolidada en un dashboard; escalabilidad sin reestructuraciones mayores.
-* **Componente original:** Sistema de validación de accesos por DNI o número de socio con modalidades diferenciadas (acceso ilimitado, 2 o 3 accesos semanales) y conteo automático de uso por período.
+* **Componente original:** Sistema de validación de accesos por número de socio con modalidades diferenciadas (acceso ilimitado, 2 o 3 accesos semanales) y conteo automático de uso por período.
 * **Posibilidad de transferencia:** Arquitectura modular que permite incorporar pasarelas de pago online, rutinas personalizadas y puertas mecánicas en tiempo real sin reestructurar el núcleo.
 
 ## Alcance
@@ -42,7 +42,7 @@ Sistema de gestión integral de gimnasio: centraliza la administración de usuar
 * Registro manual y seguimiento de pagos asociados a cada inscripción.
 
 **2. Control de Accesos (Terminal Frontal):**
-* Validación de ingreso mediante DNI o número de socio en tiempo real.
+* Validación de ingreso mediante número de socio (preservando el DNI como dato administrativo por privacidad) en tiempo real.
 * Aplicación automática de reglas de negocio (verificación de cuota al día y topes de accesos semanales permitidos).
 * Feedback visual claro e inmediato del estado de acceso (Aprobado/Denegado).
 
@@ -94,7 +94,7 @@ Sistema de gestión integral de gimnasio: centraliza la administración de usuar
   * Centralizar la gestión de usuarios (registro, edición, activación/desactivación)
   * Gestionar inscripciones con modalidades diferenciadas (acceso ilimitado, limitado a 2 o 3 veces por semana)
   * Registrar y controlar pagos asociados a cada inscripción
-  * Validar accesos en puerta principal mediante DNI/Nº Socio con reglas de negocio.
+  * Validar accesos en puerta principal mediante número de socio (preservando el DNI como dato administrativo por privacidad) con reglas de negocio.
   * La arquitectura estará pensada para escalar a funcionalidades futuras sin reestructurar sus módulos estructurales.
 
 ## Validación

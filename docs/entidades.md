@@ -1,5 +1,4 @@
-# Modelo de Datos — Entidades JPA (En construcción)
-
+# Modelo de Datos — Esquema Relacional
 Documentación técnica completa del esquema de la base de datos. Este archivo contiene el detalle de cada entidad, sus atributos, las anotaciones JPA y las relaciones entre ellas. La versión resumida y orientada al uso está en el `README.md`.
 
 ## Stack
@@ -63,7 +62,6 @@ erDiagram
     enrollment ||--o{ payment : "tiene pagos (1:N)"
     enrollment |o--o{ access : "asocia accesos concedidos (1:N)"
 ```
-
 ## Justificación de Claves
 
 Para garantizar la solidez del modelo relacional y evitar el abuso de IDs artificiales, se aplicaron los siguientes criterios de selección de claves primarias:
@@ -79,9 +77,10 @@ Para garantizar la solidez del modelo relacional y evitar el abuso de IDs artifi
 
 | Relación | Tipo | Descripción |
 |----------|------|-------------|
-| `User` ↔ `Enrollment` | `@OneToOne` (mapeado en `User`) | Cada usuario tiene como máximo una inscripción activa. `orphanRemoval = true`. |
-| `Enrollment` ↔ `Payment` | `@OneToMany` (mapeado en `Enrollment`) | Una inscripción puede tener múltiples pagos. `orphanRemoval = true`. |
-| `Enrollment` ↔ `Access` | `@OneToMany` (mapeado en `Enrollment`) | Una inscripción puede tener múltiples accesos registrados. `orphanRemoval = true`. |
+| `users` ↔ `enrollment` | `1:N` (Uno a Muchos) | Un usuario puede tener múltiples inscripciones a lo largo del tiempo (historial). |
+| `enrollment` ↔ `payment` | `1:N` (Uno a Muchos) | Una inscripción puede registrar múltiples pagos o intentos de cobro. |
+| `users` ↔ `access` | `1:N` (Uno a Muchos) | Un usuario puede registrar múltiples intentos de acceso en la terminal. |
+| `enrollment` ↔ `access` | `1:N` (Uno a Muchos) | Una inscripción asocia los accesos concedidos durante su vigencia (relación opcional). |
 
 ---
 
@@ -89,70 +88,20 @@ Para garantizar la solidez del modelo relacional y evitar el abuso de IDs artifi
 
 Representa a un socio, personal o administrador del gimnasio.
 
-**Nota de Escalabilidad (Credenciales opcionales):** Para la versión 1, los usuarios con rol `USER` (Socios) son dados de alta exclusivamente por el administrador y no poseen acceso al sistema, por lo que los campos `email` y `password` pueden ser nulos. La tabla se unifica para permitir a futuro habilitar credenciales sin reestructurar la base de datos (ej. un portal de autogestión de clientes).
-
-```java
-@Entity
-@Table(name = "users")
-public class User {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
-
-    @Column(unique = true, length = 255)
-    private String email;
-
-    @Column(length = 255)
-    private String password;
-
-    @Column(nullable = false)
-    private String name;
-
-    @Column(nullable = false)
-    private String lastName;
-
-    @Column(unique = true, nullable = false)
-    private String dni;
-
-    private LocalDateTime birthDate;
-
-    @Column(length = 20)
-    private String phone;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Role role = Role.USER;
-
-    @Column(nullable = false)
-    private boolean active = true;
-
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Enrollment enrollment;
-}
-```
+**Nota de Privacidad y Contacto:** Se utiliza el número de socio (`member_number`) como identificador principal operativo para proteger el DNI. Para evitar "socios fantasmas", el sistema exige obligatoriamente registrar un email o un teléfono de contacto mediante una restricción de base de datos (`CHECK`).
 
 ### Tabla `users`
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
-| `id` | UUID | No (generado) | — | Clave primaria |
-| `email` | VARCHAR(255) | Sí | Sí | |
-| `password` | VARCHAR(255) | Sí | — | Hash BCrypt |
+| `member_number` | VARCHAR(20) | No | Sí (PK) | Clave primaria natural |
+| `dni` | VARCHAR(15) | No | Sí (UK)| Dato administrativo sensible |
+| `email` | VARCHAR(255)| Sí* | Sí | *Restricción CHECK: email o phone obligatorios |
+| `phone` | VARCHAR(20) | Sí* | — | *Restricción CHECK: email o phone obligatorios |
+| `password` | VARCHAR(255)| Sí | — | Hash BCrypt |
 | `name` | VARCHAR | No | — | |
-| `lastName` | VARCHAR | No | — | |
-| `dni` | VARCHAR | No | Sí | |
-| `birth_date` | TIMESTAMP | Sí | — | |
-| `phone` | VARCHAR(20) | Sí | — | |
-| `role` | VARCHAR | No | — | Valor por defecto `USER` |
+| `last_name` | VARCHAR | No | — | |
+| `role` | VARCHAR | No | — | Valor del Enum `Role` (Por defecto `USER`) |
 | `active` | BOOLEAN | No | — | Valor por defecto `true` |
 | `created_at` | TIMESTAMP | No | — | Generado automáticamente |
 | `updated_at` | TIMESTAMP | Sí | — | Actualizado automáticamente |
@@ -163,63 +112,17 @@ public class User {
 
 Representa la inscripción de un usuario a un plan, con su modalidad y vigencia.
 
-```java
-@Entity
-@Table(name = "enrollment")
-public class Enrollment {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
-
-    @Column(unique = true, nullable = false)
-    private String userId;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
-
-    @Enumerated(EnumType.STRING)
-    private Modality modality;
-
-    private LocalDateTime startDate;
-    private LocalDateTime endDate;
-
-    @Column(length = 500)
-    private String comments;
-
-    @Column(nullable = false)
-    private int weeklyAccesses = 0;
-
-    private LocalDateTime lastAccessReset;
-
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
-    @OneToMany(mappedBy = "enrollment", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Payment> payments = new ArrayList<>();
-
-    @OneToMany(mappedBy = "enrollment", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Access> accesses = new ArrayList<>();
-}
-```
-
 ### Tabla `enrollment`
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
-| `id` | UUID | No (generado) | — | Clave primaria |
-| `user_id` | VARCHAR | No | Sí | FK a `users.id` |
-| `modality` | VARCHAR | Sí | — | Valor de `Modality` |
-| `start_date` | TIMESTAMP | Sí | — | |
-| `end_date` | TIMESTAMP | Sí | — | |
+| `id` | UUID | No (generado) | Sí (PK)| Clave primaria |
+| `member_number` | VARCHAR(20) | No | — | FK a `users.member_number` |
+| `modality` | VARCHAR | No | — | Valor del Enum `Modality` |
+| `start_date` | TIMESTAMP | No | — | |
+| `end_date` | TIMESTAMP | No | — | |
 | `comments` | VARCHAR(500) | Sí | — | |
-| `weekly_accesses` | INTEGER | No | — | Valor por defecto `0` |
+| `weekly_accesses` | INTEGER | No | — | Tope de ingresos |
 | `last_access_reset` | TIMESTAMP | Sí | — | |
 | `created_at` | TIMESTAMP | No | — | Generado automáticamente |
 | `updated_at` | TIMESTAMP | Sí | — | Actualizado automáticamente |
@@ -230,157 +133,49 @@ public class Enrollment {
 
 Registra cada intento de ingreso validado en la terminal de acceso.
 
-```java
-@Entity
-@Table(name = "access")
-public class Access {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
-
-    @Column(nullable = false)
-    private String enrollmentId;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "enrollment_id", nullable = false)
-    private Enrollment enrollment;
-
-    @CreationTimestamp
-    @Column(name = "access_date", nullable = false)
-    private LocalDateTime accessDate;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private AccessStatus status = AccessStatus.GRANTED;
-
-    @Column(length = 500)
-    private String deniedReason;
-}
-```
-
 ### Tabla `access`
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
-| `id` | UUID | No (generado) | — | Clave primaria |
-| `enrollment_id` | VARCHAR | No | — | FK a `enrollment.id` |
-| `access_date` | TIMESTAMP | No | — | Generado automáticamente |
-| `status` | VARCHAR | No | — | Valor por defecto `GRANTED` |
-| `denied_reason` | VARCHAR(500) | Sí | — | |
+| `member_number` | VARCHAR(20) | No | — | PK Compuesta / FK a `users` |
+| `access_date` | TIMESTAMP | No | — | PK Compuesta (Momento exacto) |
+| `enrollment_id` | UUID | Sí | — | FK opcional a `enrollment.id` (permite denegados sin plan) |
+| `status` | VARCHAR | No | — | Valor del Enum `AccessStatus` |
+| `denied_reason` | VARCHAR(500) | Sí | — | Motivo si es denegado |
 
 ---
 
-## Entidad: `Payment`
+## Entidad: Payment
 
-Registra un pago asociado a una inscripción.
-
-```java
-@Entity
-@Table(name = "payment")
-public class Payment {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
-
-    @Column(nullable = false)
-    private String enrollmentId;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "enrollment_id", nullable = false)
-    private Enrollment enrollment;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Modality modality = Modality.FREE;
-
-    @Column(nullable = false, precision = 19, scale = 2)
-    private BigDecimal amount;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Currency currency = Currency.ARS;
-
-    @Column(name = "start_date", nullable = false)
-    private LocalDateTime startDate;
-
-    @Column(name = "end_date")
-    private LocalDateTime endDate;
-
-    @Column(length = 500)
-    private String comments;
-
-    @Column(precision = 19, scale = 2)
-    private BigDecimal discount;
-
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-}
-```
+Registra los cobros asociados a las inscripciones, operando con tokens idempotentes para integraciones externas.
 
 ### Tabla `payment`
 
 | Columna | Tipo | Nulos | Único | Observación |
-|---------|------|-------|-------|-------------|
-| `id` | UUID | No (generado) | — | Clave primaria |
-| `enrollment_id` | VARCHAR | No | — | FK a `enrollment.id` |
-| `modality` | VARCHAR | No | — | Valor de `Modality` |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | UUID | No (generado) | — | Clave primaria (Token idempotente) |
+| `enrollment_id` | UUID | No | — | FK a `enrollment.id` |
 | `amount` | DECIMAL(19,2) | No | — | |
-| `currency` | VARCHAR | No | — | Valor por defecto `ARS` |
-| `start_date` | TIMESTAMP | No | — | |
-| `end_date` | TIMESTAMP | Sí | — | |
+| `currency` | VARCHAR | No | — | Valor del Enum `Currency` (ARS, USD) |
+| `status` | VARCHAR | No | — | Valor del Enum `PaymentStatus` |
+| `payment_method` | VARCHAR | No | — | Método de cobro |
+| `external_reference`| VARCHAR | Sí | — | ID de pasarela (ej. Mercado Pago) |
 | `comments` | VARCHAR(500) | Sí | — | |
 | `discount` | DECIMAL(19,2) | Sí | — | |
 | `created_at` | TIMESTAMP | No | — | Generado automáticamente |
 | `updated_at` | TIMESTAMP | Sí | — | Actualizado automáticamente |
-
 ---
 
-## Enums
+## Dominios de Valores (Enums)
 
-### `Role`
+Para garantizar la integridad de los datos a nivel conceptual, los siguientes campos operan bajo dominios de valores cerrados:
 
-```java
-public enum Role {
-    ADMIN,   // Personal con acceso total al panel administrativo
-    STAFF,   // Personal operativo (instructores, recepcionistas)
-    USER     // Socio / usuario (Sin acceso al sistema en V1. Reservado para escalabilidad futura)
-}
-```
+*   **Role (Tabla `users`):** `ADMIN` (acceso total), `STAFF` (personal operativo), `USER` (socio/reservado).
+*   **Modality (Tabla `enrollment`):** `FREE` (acceso ilimitado), `THREE` (3 accesos por semana), `TWO` (2 accesos por semana).
+*   **Currency (Tabla `payment`):** `ARS` (Peso argentino), `USD` (Dólar estadounidense).
+*   **PaymentStatus (Tabla `payment`):** `PENDING` (pendiente), `PAID` (pagado), `FAILED` (fallido), `CANCELLED` (cancelado para auditoría).
+*   **AccessStatus (Tabla `access`):** `GRANTED` (acceso permitido), `DENIED` (acceso denegado).
 
-### `Currency`
-
-```java
-public enum Currency {
-    ARS,   // Peso argentino
-    USD    // Dólar estadounidense
-}
-```
-
-### `Modality`
-
-```java
-public enum Modality {
-    FREE,     // Acceso ilimitado
-    THREE,    // 3 accesos por semana
-    TWO       // 2 accesos por semana
-}
-```
-
-### `AccessStatus`
-
-```java
-public enum AccessStatus {
-    GRANTED,   // Acceso permitido
-    DENIED     // Acceso negado
-}
-```
 
 ## Fundamentos de Diseño Relacional
 

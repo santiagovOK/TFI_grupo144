@@ -11,6 +11,70 @@ Documentación técnica completa del esquema de la base de datos. Este archivo c
 
 ## Diagrama de entidades
 
+```mermaid
+erDiagram
+    users {
+        VARCHAR(20) member_number PK "Clave natural de negocio"
+        VARCHAR(15) dni UK "Dato administrativo sensible"
+        VARCHAR(255) email "Canal contacto (CHECK)"
+        VARCHAR(20) phone "Canal contacto (CHECK)"
+        VARCHAR(255) password "Hash BCrypt"
+        VARCHAR name
+        VARCHAR last_name
+        VARCHAR role "Enum Role: ADMIN, STAFF, USER"
+        BOOLEAN active
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    enrollment {
+        UUID id PK "Identificador de período"
+        VARCHAR(20) member_number FK "Referencia a users"
+        VARCHAR modality "Enum Modality: FREE, THREE, TWO"
+        TIMESTAMP start_date
+        TIMESTAMP end_date
+        VARCHAR(500) comments
+        INTEGER weekly_accesses "Tope de ingresos"
+        TIMESTAMP last_access_reset
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    payment {
+        UUID id PK "Token idempotente para pasarela"
+        UUID enrollment_id FK "Referencia a enrollment(id)"
+        DECIMAL amount
+        VARCHAR currency "Enum Currency: ARS, USD"
+        VARCHAR status "Enum PaymentStatus: PENDING, PAID, FAILED, CANCELLED"
+        VARCHAR payment_method "Metodo de cobro"
+        VARCHAR external_reference "Id de pasarela (MP)"
+        VARCHAR(500) comments
+        DECIMAL discount
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    access {
+        VARCHAR(20) member_number PK,FK "Referencia obligatoria a users"
+        TIMESTAMP access_date PK "Momento exacto del intento"
+        UUID enrollment_id FK "Referencia opcional a enrollment"
+        VARCHAR status "Enum AccessStatus: GRANTED, DENIED"
+        VARCHAR denied_reason "Motivo si es denegado"
+    }
+    users ||--o{ enrollment : "tiene historial (1:N)"
+    users ||--o{ access : "registra intentos (1:N)"
+    enrollment ||--o{ payment : "tiene pagos (1:N)"
+    enrollment |o--o{ access : "asocia accesos concedidos (1:N)"
+```
+
+## Justificación de Claves
+
+Para garantizar la solidez del modelo relacional y evitar el abuso de IDs artificiales, se aplicaron los siguientes criterios de selección de claves primarias:
+
+| Entidad | ¿Posee Clave Natural Estable? | Naturaleza Conceptual | Tipo de PK Seleccionada | Justificación Académica y Operativa |
+|---------|-------------------------------|-----------------------|-------------------------|-------------------------------------|
+| `users` | Sí (`member_number`) | Fuerte / Negocio | Clave Natural (`member_number`) | Identidad real del socio, credencial física y tipeo en terminales. |
+| `access`| Sí (`member_number` + `access_date`) | Evento temporal puntual | Clave Compuesta (`member_number`, `access_date`) | Evento puntual inmutable; evita proliferación de UUIDs por cada intento de acceso en la terminal. |
+| `enrollment` | No (fechas mutables) | Período contractual dependiente | Subrogada (`UUID`) | Evita PKs compuestas mutables y cascadas sobre tablas dependientes. |
+| `payment` | No (transaccional) | Transacción financiera | Subrogada (`UUID`) | Token idempotente para conciliación de webhooks y pasarelas de pago. |
+
 ## Relaciones
 
 | Relación | Tipo | Descripción |
@@ -317,3 +381,29 @@ public enum AccessStatus {
     DENIED     // Acceso negado
 }
 ```
+
+## Fundamentos de Diseño Relacional
+
+Para el modelado de esta base de datos, se aplicaron estrictos criterios de diseño relacional, priorizando el uso de claves naturales y compuestas sobre la asignación automática de identificadores subrogados, salvo en casos donde la mutabilidad o la integración externa lo requieran.
+
+**1. Uso de Clave Natural frente a UUID en Usuarios (`users`)**
+
+El "número de socio" es la identidad unívoca del cliente. Es el dato que el usuario digita en la terminal de acceso. Utilizar `member_number` como PK elimina la sobrecarga de mantener dos identificadores únicos concurrentes (un UUID artificial + el número de socio), simplificando drásticamente las consultas (JOIN) con las tablas dependientes.
+
+**2. Criterio de Privacidad frente al DNI (Privacy by Design)**
+
+Aunque el DNI es natural y único, identifica a la persona ante el Estado. Su exposición indebida en pantallas de terminales de acceso representa un riesgo de privacidad.
+Por lo tanto, el DNI se aisló con una restricción `UNIQUE NOT NULL` como clave alternativa exclusivamente para fines administrativos (legajo, facturación), pero no participa como identificador relacional en las transacciones operativas diarias.
+
+**3. Garantía de Canal de Contacto**
+
+Para evitar el registro de "socios fantasmas" incontactables ante vencimientos, se implementó una restricción a nivel de motor de base de datos: `CONSTRAINT chk_user_contact CHECK (email IS NOT NULL OR phone IS NOT NULL)`. Esto garantiza al menos una vía de comunicación válida sin hacer obligatorias ambas.
+
+**4. Clave Primaria Compuesta en Eventos Temporales (`access`)**
+
+Un intento de acceso en la terminal no es una entidad independiente que requiera una clave artificial (UUID); es un evento temporal.
+Su identidad unívoca natural está determinada por quién intentó pasar (`member_number`) y en qué instante exacto lo hizo (`access_date`). Al usar esta clave compuesta, el evento queda registrado de forma inmutable, permitiendo además auditar accesos denegados sin depender de una inscripción activa.
+
+**5. Uso Justificado de UUID en Entidades Específicas**
+*   **En `enrollment` (Mutabilidad):** Las fechas de inicio y fin de una suscripción son inherentemente mutables (suspensiones, vacaciones, prórrogas). Si usáramos una PK compuesta basada en fechas, cualquier modificación forzaría una cascada de actualizaciones compleja en tablas dependientes. El UUID provee una identidad inmutable que independiza el contrato de sus ajustes temporales.
+*   **En `payment` (Idempotencia externa):** En la integración con pasarelas de pago externas (ej. Mercado Pago), el sistema debe despachar un identificador único atómico previo a la redirección. El UUID funciona como un token idempotente para conciliar la transacción mediante webhooks de forma segura, sin exponer datos sensibles del negocio.

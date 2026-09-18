@@ -8,7 +8,7 @@ Documentación técnica completa del esquema de la base de datos. Este archivo c
 
 | Relación | Tipo | Descripción |
 |----------|------|-------------|
-| `users` ↔ `enrollment` | `1:1` | Cada usuario tiene como máximo una inscripción activa. |
+| `users` ↔ `enrollment` | `1:N` | Un usuario puede tener múltiples inscripciones (historial por período). |
 | `enrollment` ↔ `payment` | `1:N` | Una inscripción puede tener múltiples pagos asociados. |
 | `enrollment` ↔ `access` | `1:N` | Una inscripción puede tener múltiples accesos registrados. |
 
@@ -44,7 +44,7 @@ Representa la inscripción de un usuario a un plan, con su modalidad y vigencia.
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `id` | UUID | No (generado) | — | Clave primaria |
-| `member_number` | VARCHAR(20) | No | Sí | FK a `users.member_number` |
+| `member_number` | VARCHAR(20) | No | — | FK a `users.member_number` |
 | `modality` | VARCHAR | Sí | — | Valor de `Modality` |
 | `start_date` | TIMESTAMP | Sí | — | |
 | `end_date` | TIMESTAMP | Sí | — | |
@@ -78,11 +78,11 @@ Registra un pago asociado a una inscripción.
 |---------|------|-------|-------|-------------|
 | `id` | UUID | No (generado) | — | Clave primaria |
 | `enrollment_id` | UUID | No | — | FK a `enrollment.id` |
-| `modality` | VARCHAR | No | — | Valor de `Modality` |
 | `amount` | DECIMAL(19,2) | No | — | |
 | `currency` | VARCHAR | No | — | Valor por defecto `ARS` |
-| `start_date` | TIMESTAMP | No | — | |
-| `end_date` | TIMESTAMP | Sí | — | |
+| `status` | VARCHAR(20) | No | — | Estado de pago (valor por defecto `PENDING`) |
+| `payment_method` | VARCHAR(50) | Sí | — | Método de pago (ej. tarjeta, mercadopago) |
+| `external_reference` | VARCHAR(100) | Sí | — | Referencia externa de transacción |
 | `comments` | VARCHAR(500) | Sí | — | |
 | `discount` | DECIMAL(19,2) | Sí | — | |
 | `created_at` | TIMESTAMP | No | — | Generado automáticamente |
@@ -113,3 +113,10 @@ Modalidades de inscripción y acceso:
 Estados posibles para el registro de acceso:
 - `GRANTED`: Acceso permitido.
 - `DENIED`: Acceso denegado.
+
+### `PaymentStatus`
+Estados posibles para el registro de pago:
+- `PENDING`: Pago pendiente de confirmación.
+- `PAID`: Pago completado y acreditado.
+- `FAILED`: Pago fallido o rechazado.
+- `CANCELLED`: Pago cancelado.

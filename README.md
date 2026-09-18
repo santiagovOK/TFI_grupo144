@@ -386,7 +386,7 @@ npm run dev          # Development server :3002
 - [ ] Configurar `build.gradle` con dependencias (Spring Boot 4.x, JPA, Lombok, JWT, Validation, OpenAPI 3.x).
 - [ ] Configurar `settings.gradle` con grupo y nombre del proyecto.
 - [ ] Configurar `application.yml` (DB connection, server port, security settings).
-- [ ] Crear entidades JPA (4 entidades + 4 enums).
+- [ ] Crear entidades JPA (4 entidades + 5 enums).
 - [ ] Crear DTOs para request/response.
 - [ ] Crear `schema.sql` manual en PostgreSQL (CREATE TABLES).
 - [ ] Configurar Spring Security: habilitar JWT, deshabilitar HTTP basic auth.
@@ -404,7 +404,7 @@ npm run dev          # Development server :3002
 
 - [ ] Implementar `AuthService` + `AuthController` (login con credenciales + JWT, registro).
 - [ ] Implementar `UserService` + `UserController` (CRUD completo, activar/desactivar).
-- [ ] Implementar `EnrollmentService` + `EnrollmentController` (CRUD, validar relación 1:1).
+- [ ] Implementar `EnrollmentService` + `EnrollmentController` (CRUD, control de historial 1:N y validación de vigencia).
 - [ ] Implementar `PaymentService` + `PaymentController` (pagos con modalidad y moneda, descuentos).
 - [ ] Implementar `AccessService` + `AccessController` (reglas de negocio, conteo semanal).
 

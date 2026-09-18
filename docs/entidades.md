@@ -22,14 +22,14 @@ Representa a un socio, personal o administrador del gimnasio.
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
-| `id` | UUID | No (generado) | — | Clave primaria |
-| `email` | VARCHAR(255) | Sí | Sí | |
+| `member_number` | VARCHAR(20) | No | Sí | Clave primaria natural |
+| `email` | VARCHAR(255) | Sí | Sí | Restricción CHECK: email o phone deben existir |
 | `password` | VARCHAR(255) | Sí | — | Hash BCrypt |
 | `name` | VARCHAR | No | — | |
 | `lastName` | VARCHAR | No | — | |
-| `dni` | VARCHAR | No | Sí | |
+| `dni` | VARCHAR(15) | No | Sí | Dato administrativo (protegiendo la privacidad) |
 | `birth_date` | TIMESTAMP | Sí | — | |
-| `phone` | VARCHAR(20) | Sí | — | |
+| `phone` | VARCHAR(20) | Sí | — | Restricción CHECK: email o phone deben existir |
 | `role` | VARCHAR | No | — | Valor por defecto `USER` |
 | `active` | BOOLEAN | No | — | Valor por defecto `true` |
 | `created_at` | TIMESTAMP | No | — | Generado automáticamente |
@@ -44,7 +44,7 @@ Representa la inscripción de un usuario a un plan, con su modalidad y vigencia.
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `id` | UUID | No (generado) | — | Clave primaria |
-| `user_id` | UUID | No | Sí | FK a `users.id` |
+| `member_number` | VARCHAR(20) | No | Sí | FK a `users.member_number` |
 | `modality` | VARCHAR | Sí | — | Valor de `Modality` |
 | `start_date` | TIMESTAMP | Sí | — | |
 | `end_date` | TIMESTAMP | Sí | — | |

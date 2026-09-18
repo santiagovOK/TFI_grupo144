@@ -1,7 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    member_number VARCHAR(20) PRIMARY KEY,
     email VARCHAR(255) UNIQUE,
     password VARCHAR(255),
     name VARCHAR(100) NOT NULL,
@@ -12,12 +12,13 @@ CREATE TABLE IF NOT EXISTS users (
     role VARCHAR(20) NOT NULL DEFAULT 'USER',
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP
+    updated_at TIMESTAMP,
+    CONSTRAINT chk_user_contact CHECK (email IS NOT NULL OR phone IS NOT NULL)
     );
 
 CREATE TABLE IF NOT EXISTS enrollment (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    member_number VARCHAR(20) NOT NULL UNIQUE REFERENCES users(member_number) ON DELETE CASCADE,
     modality VARCHAR(20),
     start_date TIMESTAMP,
     end_date TIMESTAMP,

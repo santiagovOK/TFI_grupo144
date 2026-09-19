@@ -96,10 +96,10 @@ Representa a un socio, personal o administrador del gimnasio.
 | `email` | VARCHAR(255)| Sí | Sí | Restricción CHECK: email o phone obligatorios |
 | `phone` | VARCHAR(20) | Sí | — | Restricción CHECK: email o phone obligatorios |
 | `password` | VARCHAR(255)| Sí | — | Hash BCrypt |
-| `name` | VARCHAR | No | — | |
-| `last_name` | VARCHAR | No | — | |
+| `name` | VARCHAR(100) | No | — | |
+| `last_name` | VARCHAR(100) | No | — | |
 | `birth_date` | DATE | Sí | — | |
-| `role` | VARCHAR | No | — | Valor del Enum `Role` (Por defecto `USER`) |
+| `role` | VARCHAR(20) | No | — | Valor del Enum `Role` (Por defecto `USER`, restricción CHECK) |
 | `active` | BOOLEAN | No | — | Valor por defecto `true` |
 | `created_at` | TIMESTAMP | No | — | Generado automáticamente |
 | `updated_at` | TIMESTAMP | Sí | — | Actualizado automáticamente |
@@ -114,9 +114,9 @@ Representa la inscripción de un usuario a un plan, con su modalidad y vigencia.
 |---------|------|-------|-------|-------------|
 | `id` | UUID | No (generado) | Sí (PK) | Clave primaria |
 | `member_number` | VARCHAR(20) | No | — | FK a `users.member_number` |
-| `modality` | VARCHAR | Sí | — | Valor del Enum `Modality` |
-| `start_date` | TIMESTAMP | Sí | — | |
-| `end_date` | TIMESTAMP | Sí | — | |
+| `modality` | VARCHAR(20) | No | — | Valor del Enum `Modality` (Restricción CHECK) |
+| `start_date` | TIMESTAMP | No | — | Fecha de inicio obligatoria |
+| `end_date` | TIMESTAMP | Sí | — | Opcional (nulo para planes recurrentes) |
 | `comments` | VARCHAR(500) | Sí | — | |
 | `weekly_accesses` | INTEGER | No | — | Tope de ingresos |
 | `last_access_reset` | TIMESTAMP | Sí | — | |
@@ -134,7 +134,7 @@ Registra cada intento de ingreso validado en la terminal de acceso.
 | `member_number` | VARCHAR(20) | No | — | Clave primaria compuesta (PK), FK a `users.member_number` |
 | `access_date` | TIMESTAMP | No | — | Clave primaria compuesta (PK). Generado automáticamente |
 | `enrollment_id` | UUID | Sí | — | FK a `enrollment.id`. Opcional (puede ser nulo en accesos denegados) |
-| `status` | VARCHAR | No | — | Valor del Enum `AccessStatus` (Por defecto `GRANTED`) |
+| `status` | VARCHAR(20) | No | — | Valor del Enum `AccessStatus` (Por defecto `GRANTED`, restricción CHECK) |
 | `denied_reason` | VARCHAR(500) | Sí | — | Motivo si es denegado |
 
 ---
@@ -148,19 +148,20 @@ Registra un pago asociado a una inscripción.
 | `id` | UUID | No (generado) | — | Clave primaria |
 | `enrollment_id` | UUID | No | — | FK a `enrollment.id` |
 | `amount` | DECIMAL(19,2) | No | — | |
-| `currency` | VARCHAR | No | — | Valor Enum `Currency` (Por defecto `ARS`) |
-| `status` | VARCHAR(20) | No | — | Valor del Enum `PaymentStatus` (Por defecto `PENDING`) |
+| `currency` | VARCHAR(10) | No | — | Valor Enum `Currency` (Por defecto `ARS`, restricción CHECK) |
+| `status` | VARCHAR(20) | No | — | Valor del Enum `PaymentStatus` (Por defecto `PENDING`, restricción CHECK) |
 | `payment_method` | VARCHAR(50) | Sí | — | Método de pago (ej. tarjeta, mercadopago) |
 | `external_reference` | VARCHAR(100) | Sí | — | Referencia externa de transacción |
 | `comments` | VARCHAR(500) | Sí | — | |
 | `discount` | DECIMAL(19,2) | Sí | — | |
 | `created_at` | TIMESTAMP | No | — | Generado automáticamente |
 | `updated_at` | TIMESTAMP | Sí | — | Actualizado automáticamente |
+
 ---
 
 ## Dominios de Valores (Enums)
 
-Para garantizar la integridad de los datos a nivel conceptual, los siguientes campos operan bajo dominios de valores cerrados:
+Para garantizar la integridad de los datos a nivel conceptual, los siguientes campos operan bajo dominios de valores cerrados y están validados a nivel de motor de base de datos (`CHECK`):
 
 ### `Role` (Tabla `users`)
 - `ADMIN`: Personal con acceso total al panel administrativo.

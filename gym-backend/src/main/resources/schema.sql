@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
     name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     dni VARCHAR(15) UNIQUE NOT NULL,
-    birth_date TIMESTAMP,
+    birth_date DATE,
     phone VARCHAR(20),
     role VARCHAR(20) NOT NULL DEFAULT 'USER',
     active BOOLEAN NOT NULL DEFAULT TRUE,

@@ -127,7 +127,7 @@ gym-manager/
 │   │   │   ├── EnrollmentRepository.java
 │   │   │   ├── PaymentRepository.java
 │   │   │   └── AccessRepository.java
-│   │   ├── models/                       # Entidades JPA (@Entity)
+│   │   ├── models/                       # Modelos de dominio / Entidades
 │   │   │   ├── User.java
 │   │   │   ├── Enrollment.java
 │   │   │   ├── Payment.java
@@ -136,6 +136,7 @@ gym-manager/
 │   │   │   ├── Role.java
 │   │   │   ├── Currency.java
 │   │   │   ├── Modality.java
+│   │   │   ├── PaymentStatus.java
 │   │   │   └── AccessStatus.java
 │   │   └── dto/                          # Objetos de request/response
 │   │       ├── LoginRequest.java
@@ -231,6 +232,7 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 | `Currency` | `ARS`, `USD` |
 | `Modality` | `FREE` (ilimitado), `THREE` (3 por semana), `TWO` (2 por semana) |
 | `AccessStatus` | `GRANTED`, `DENIED` |
+| `PaymentStatus` | `PENDING`, `PAID`, `FAILED`, `CANCELLED` |
 
 ---
 
@@ -405,7 +407,7 @@ npm run dev          # Development server :3002
 - [ ] Implementar `AuthService` + `AuthController` (login con credenciales + JWT, registro).
 - [ ] Implementar `UserService` + `UserController` (CRUD completo, activar/desactivar).
 - [ ] Implementar `EnrollmentService` + `EnrollmentController` (CRUD, control de historial 1:N y validación de vigencia).
-- [ ] Implementar `PaymentService` + `PaymentController` (pagos con modalidad y moneda, descuentos).
+- [ ] Implementar `PaymentService` + `PaymentController` (registro de pagos, métodos de cobro, estados transaccionales y moneda).
 - [ ] Implementar `AccessService` + `AccessController` (reglas de negocio, conteo semanal).
 
 </details>

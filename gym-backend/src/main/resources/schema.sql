@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS enrollment (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    member_number VARCHAR(20) NOT NULL REFERENCES users(member_number) ON DELETE CASCADE,
+    member_number VARCHAR(20) NOT NULL REFERENCES users(member_number) ON DELETE RESTRICT,
     modality VARCHAR(20) NOT NULL CHECK (modality IN ('FREE', 'THREE', 'TWO')),
     start_date TIMESTAMP NOT NULL,
     end_date TIMESTAMP,
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS enrollment (
 
 CREATE TABLE IF NOT EXISTS payment (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    enrollment_id UUID NOT NULL REFERENCES enrollment(id) ON DELETE CASCADE,
+    enrollment_id UUID NOT NULL REFERENCES enrollment(id) ON DELETE RESTRICT,
     amount DECIMAL(19,2) NOT NULL,
     currency VARCHAR(10) NOT NULL DEFAULT 'ARS' CHECK (currency IN ('ARS', 'USD')),
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PAID', 'FAILED', 'CANCELLED')),
@@ -44,8 +44,8 @@ CREATE TABLE IF NOT EXISTS payment (
     );
 
 CREATE TABLE IF NOT EXISTS access (
-    member_number VARCHAR(20) NOT NULL REFERENCES users(member_number) ON DELETE CASCADE,
-    enrollment_id UUID REFERENCES enrollment(id) ON DELETE CASCADE,
+    member_number VARCHAR(20) NOT NULL REFERENCES users(member_number) ON DELETE RESTRICT,
+    enrollment_id UUID REFERENCES enrollment(id) ON DELETE RESTRICT,
     access_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) NOT NULL DEFAULT 'GRANTED' CHECK (status IN ('GRANTED', 'DENIED')),
     denied_reason VARCHAR(500),

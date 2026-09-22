@@ -9,13 +9,13 @@ erDiagram
     users {
         VARCHAR(20) member_number PK "Clave natural de negocio"
         VARCHAR(15) dni UK "Dato administrativo sensible"
-        VARCHAR(255) email "Canal contacto (CHECK)"
+        VARCHAR(255) email UK "Canal contacto (CHECK)"
         VARCHAR(20) phone "Canal contacto (CHECK)"
         VARCHAR(255) password "Hash BCrypt"
-        VARCHAR name
-        VARCHAR last_name
+        VARCHAR(100) name
+        VARCHAR(100) last_name
         DATE birth_date
-        VARCHAR role "Enum Role: ADMIN, STAFF, USER"
+        VARCHAR(20) role "Enum Role: ADMIN, STAFF, USER"
         BOOLEAN active
         TIMESTAMP created_at
         TIMESTAMP updated_at
@@ -23,7 +23,7 @@ erDiagram
     enrollment {
         UUID id PK "Identificador de período"
         VARCHAR(20) member_number FK "Referencia a users"
-        VARCHAR modality "Enum Modality: FREE, THREE, TWO"
+        VARCHAR(20) modality "Enum Modality: FREE, THREE, TWO"
         TIMESTAMP start_date
         TIMESTAMP end_date
         VARCHAR(500) comments
@@ -35,13 +35,13 @@ erDiagram
     payment {
         UUID id PK "Token idempotente para pasarela"
         UUID enrollment_id FK "Referencia a enrollment(id)"
-        DECIMAL amount
-        VARCHAR currency "Enum Currency: ARS, USD"
-        VARCHAR status "Enum PaymentStatus: PENDING, PAID, FAILED, CANCELLED"
-        VARCHAR payment_method "Metodo de cobro"
-        VARCHAR external_reference "Id de pasarela (MP)"
+        DECIMAL amount "Precisión 19,2"
+        VARCHAR(10) currency "Enum Currency: ARS, USD"
+        VARCHAR(20) status "Enum PaymentStatus: PENDING, PAID, FAILED, CANCELLED"
+        VARCHAR(50) payment_method "Método de cobro"
+        VARCHAR(100) external_reference "Id de pasarela (MP)"
         VARCHAR(500) comments
-        DECIMAL discount
+        DECIMAL discount "Precisión 19,2"
         TIMESTAMP created_at
         TIMESTAMP updated_at
     }
@@ -49,14 +49,17 @@ erDiagram
         VARCHAR(20) member_number PK,FK "Referencia obligatoria a users"
         TIMESTAMP access_date PK "Momento exacto del intento"
         UUID enrollment_id FK "Referencia opcional a enrollment"
-        VARCHAR status "Enum AccessStatus: GRANTED, DENIED"
-        VARCHAR denied_reason "Motivo si es denegado"
+        VARCHAR(20) status "Enum AccessStatus: GRANTED, DENIED"
+        VARCHAR(500) denied_reason "Motivo si es denegado"
     }
-    users ||--o{ enrollment : "tiene historial (1:N)"
+    users ||..o{ enrollment : "tiene historial (1:N)"
     users ||--o{ access : "registra intentos (1:N)"
-    enrollment ||--o{ payment : "tiene pagos (1:N)"
-    enrollment |o--o{ access : "asocia accesos concedidos (1:N)"
+    enrollment ||..o{ payment : "tiene pagos (1:N)"
+    enrollment |o..o{ access : "asocia accesos concedidos (1:N)"
 ```
+
+**Notación del diagrama:** la línea continua representa una relación identificadora (la clave del padre forma parte de la clave primaria del hijo, como `member_number` en `access`); la línea punteada, una relación no identificadora (el hijo tiene su propia clave primaria y solo referencia al padre).
+
 ## Justificación de Claves
 
 Para garantizar la solidez del modelo relacional y evitar el abuso de IDs artificiales, se aplicaron los siguientes criterios de selección de claves primarias:
@@ -72,10 +75,10 @@ Para garantizar la solidez del modelo relacional y evitar el abuso de IDs artifi
 
 | Relación | Tipo | Descripción |
 |----------|------|-------------|
-| `users` ↔ `enrollment` | `1:N` (Uno a Muchos) | Un usuario puede tener múltiples inscripciones a lo largo del tiempo (historial por período). |
-| `users` ↔ `access` | `1:N` (Uno a Muchos) | Un usuario puede registrar múltiples intentos de acceso (historial de accesos). |
-| `enrollment` ↔ `payment` | `1:N` (Uno a Muchos) | Una inscripción puede registrar múltiples pagos o intentos de cobro. |
-| `enrollment` ↔ `access` | `1:N` (Uno a Muchos) | Una inscripción asocia los accesos concedidos durante su vigencia (opcional; nulo si el acceso fue denegado sin inscripción activa). |
+| `users` ↔ `enrollment` | `1:N` (Uno a Muchos), no identificadora | Un usuario puede tener múltiples inscripciones a lo largo del tiempo (historial por período). |
+| `users` ↔ `access` | `1:N` (Uno a Muchos), identificadora | Un usuario puede registrar múltiples intentos de acceso (historial de accesos). |
+| `enrollment` ↔ `payment` | `1:N` (Uno a Muchos), no identificadora | Una inscripción puede registrar múltiples pagos o intentos de cobro. |
+| `enrollment` ↔ `access` | `1:N` (Uno a Muchos), no identificadora | Una inscripción asocia los accesos concedidos durante su vigencia (opcional; nulo si el acceso fue denegado sin inscripción activa). |
 
 ---
 
@@ -93,7 +96,7 @@ Representa a un socio, personal o administrador del gimnasio.
 |---------|------|-------|-------|-------------|
 | `member_number` | VARCHAR(20) | No | Sí (PK) | Clave primaria natural |
 | `dni` | VARCHAR(15) | No | Sí (UK)| Dato administrativo sensible |
-| `email` | VARCHAR(255)| Sí | Sí | Restricción CHECK: email o phone obligatorios |
+| `email` | VARCHAR(255)| Sí | Sí (UK) | Restricción CHECK: email o phone obligatorios |
 | `phone` | VARCHAR(20) | Sí | — | Restricción CHECK: email o phone obligatorios |
 | `password` | VARCHAR(255)| Sí | — | Hash BCrypt |
 | `name` | VARCHAR(100) | No | — | |
@@ -101,8 +104,8 @@ Representa a un socio, personal o administrador del gimnasio.
 | `birth_date` | DATE | Sí | — | |
 | `role` | VARCHAR(20) | No | — | Valor del Enum `Role` (Por defecto `USER`, restricción CHECK) |
 | `active` | BOOLEAN | No | — | Valor por defecto `true` |
-| `created_at` | TIMESTAMP | No | — | Generado automáticamente |
-| `updated_at` | TIMESTAMP | Sí | — | Actualizado automáticamente |
+| `created_at` | TIMESTAMP | No | — | Por defecto `CURRENT_TIMESTAMP` |
+| `updated_at` | TIMESTAMP | Sí | — | Sin actualización automática en la base. La aplicación deberá asignarlo al modificar el registro |
 
 ---
 
@@ -113,15 +116,15 @@ Representa la inscripción de un usuario a un plan, con su modalidad y vigencia.
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `id` | UUID | No (generado) | Sí (PK) | Clave primaria |
-| `member_number` | VARCHAR(20) | No | — | FK a `users.member_number` |
+| `member_number` | VARCHAR(20) | No | — | FK a `users.member_number` (`ON DELETE RESTRICT`) |
 | `modality` | VARCHAR(20) | No | — | Valor del Enum `Modality` (Restricción CHECK) |
 | `start_date` | TIMESTAMP | No | — | Fecha de inicio obligatoria |
 | `end_date` | TIMESTAMP | Sí | — | Opcional (nulo para planes recurrentes) |
 | `comments` | VARCHAR(500) | Sí | — | |
-| `weekly_accesses` | INTEGER | No | — | Tope de ingresos |
+| `weekly_accesses` | INTEGER | No | — | Tope de ingresos. Por defecto `0` |
 | `last_access_reset` | TIMESTAMP | Sí | — | |
-| `created_at` | TIMESTAMP | No | — | Generado automáticamente |
-| `updated_at` | TIMESTAMP | Sí | — | Actualizado automáticamente |
+| `created_at` | TIMESTAMP | No | — | Por defecto `CURRENT_TIMESTAMP` |
+| `updated_at` | TIMESTAMP | Sí | — | Sin actualización automática en la base. La aplicación deberá asignarlo al modificar el registro |
 
 ---
 
@@ -131,9 +134,9 @@ Registra cada intento de ingreso validado en la terminal de acceso.
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
-| `member_number` | VARCHAR(20) | No | — | Clave primaria compuesta (PK), FK a `users.member_number` |
-| `access_date` | TIMESTAMP | No | — | Clave primaria compuesta (PK). Generado automáticamente |
-| `enrollment_id` | UUID | Sí | — | FK a `enrollment.id`. Opcional (puede ser nulo en accesos denegados) |
+| `member_number` | VARCHAR(20) | No | En conjunto (PK compuesta) | Clave primaria compuesta (PK), FK a `users.member_number` (`ON DELETE RESTRICT`) |
+| `access_date` | TIMESTAMP | No | En conjunto (PK compuesta) | Clave primaria compuesta (PK). Por defecto `CURRENT_TIMESTAMP` |
+| `enrollment_id` | UUID | Sí | — | FK a `enrollment.id` (`ON DELETE RESTRICT`). Opcional (puede ser nulo en accesos denegados) |
 | `status` | VARCHAR(20) | No | — | Valor del Enum `AccessStatus` (Por defecto `GRANTED`, restricción CHECK) |
 | `denied_reason` | VARCHAR(500) | Sí | — | Motivo si es denegado |
 
@@ -145,8 +148,8 @@ Registra un pago asociado a una inscripción.
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
-| `id` | UUID | No (generado) | — | Clave primaria |
-| `enrollment_id` | UUID | No | — | FK a `enrollment.id` |
+| `id` | UUID | No (generado) | Sí (PK) | Clave primaria |
+| `enrollment_id` | UUID | No | — | FK a `enrollment.id` (`ON DELETE RESTRICT`) |
 | `amount` | DECIMAL(19,2) | No | — | |
 | `currency` | VARCHAR(10) | No | — | Valor Enum `Currency` (Por defecto `ARS`, restricción CHECK) |
 | `status` | VARCHAR(20) | No | — | Valor del Enum `PaymentStatus` (Por defecto `PENDING`, restricción CHECK) |
@@ -154,8 +157,8 @@ Registra un pago asociado a una inscripción.
 | `external_reference` | VARCHAR(100) | Sí | — | Referencia externa de transacción |
 | `comments` | VARCHAR(500) | Sí | — | |
 | `discount` | DECIMAL(19,2) | Sí | — | |
-| `created_at` | TIMESTAMP | No | — | Generado automáticamente |
-| `updated_at` | TIMESTAMP | Sí | — | Actualizado automáticamente |
+| `created_at` | TIMESTAMP | No | — | Por defecto `CURRENT_TIMESTAMP` |
+| `updated_at` | TIMESTAMP | Sí | — | Sin actualización automática en la base. La aplicación deberá asignarlo al modificar el registro |
 
 ---
 
@@ -217,4 +220,5 @@ Su identidad unívoca natural está determinada por quién intentó pasar (`memb
 
 Todas las claves foráneas del esquema se declaran con `ON DELETE RESTRICT`: el motor rechaza la eliminación de un socio o de una inscripción mientras existan inscripciones, pagos o accesos que los referencien. De este modo, un borrado accidental no puede arrastrar comprobantes de pago ni eventos de acceso, que las reglas de negocio definen como registros de auditoría. Las bajas de usuarios se resuelven de forma lógica mediante `users.active`, sin eliminación física.
 No se utiliza `ON DELETE SET NULL` en `access`: `member_number` integra la clave primaria compuesta y no admite nulos, y `enrollment_id` es la referencia que permite auditar qué inscripción habilitó cada acceso concedido.
+El alcance de esta restricción es proteger a los registros padre: no impide eliminar directamente una fila de `payment` o de `access`. La aplicación deberá impedir el borrado de pagos y la modificación o eliminación de accesos (Módulo Payment, regla 2; Módulo Access, regla 2). Los pagos acreditados conservarán sus datos financieros y podrán pasar a `CANCELLED` según la regla de negocio definida.
 

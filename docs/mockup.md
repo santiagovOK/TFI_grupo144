@@ -18,10 +18,31 @@
      - `FREE`: Acceso libre e ilimitado.
      - `THREE_DAYS`: Límite de 3 accesos semanales con contador visible de accesos restantes.
      - `TWO_DAYS`: Límite de 2 accesos semanales con contador visible de accesos restantes.
+4. **Diferenciación de Roles y Control de Acceso (RBAC):**
+   - El panel administrativo distingue visualmente en su cabecera y barra lateral entre el personal operativo de recepción (`STAFF`) y la administración general (`ADMIN`).
+   - Las opciones de configuración de tarifas/planes y la emisión de comunicados masivos se reservan visualmente para el rol `ADMIN`.
 
 ---
 
 ## 2. Pantallas del Sistema
+
+### Pantalla 0: Inicio de Sesión / Login (Staff y Administrador)
+
+Puerta de entrada al panel web administrativo (`gym-frontend-admin`), securizada mediante autenticación JWT (RF-01).
+
+- **Estructura y Disposición:** Tarjeta central centrada en pantalla sobre fondo neutro (resolución base 1440 × 900 px).
+- **Identidad:** Logo del gimnasio, título "Gym Manager" y subtítulo "Acceso de Personal".
+- **Formulario de Autenticación:**
+  - Campo "Correo Electrónico" con validación de formato.
+  - Campo "Contraseña" con visibilidad alternable.
+- **Acción Principal:** Botón "Iniciar Sesión" en azul primario de ancho completo.
+- **Manejo de Errores y Feedback:**
+  - Alerta visual en banner rojo ante credenciales incorrectas (*"Credenciales inválidas"*).
+  - Alerta ante cuenta de usuario inactiva (*"Cuenta desactivada. Consulte con administración"*).
+
+
+![Inicio de Sesión - Login](./mockups/img/pantalla_0_login.png)
+---
 
 ### Pantalla 1: Terminal de Acceso (Autogestión / Molinete)
 
@@ -54,22 +75,32 @@ Diseñada para pantalla táctil en tótem o tablet junto al molinete de entrada 
 
 ### Pantalla 2: Panel de Recepción y Gestión de Socios (Staff)
 
-Diseñada para el personal administrativo en puesto de recepción (resolución desktop 1440 × 900 px).
+Diseñada para el personal administrativo y operativo en puesto de recepción (resolución desktop 1440 × 900 px).
 
+- **Barra Superior y Navegación:**
+  - Identificador del operador conectado y badge de rol activo (`STAFF` o `ADMIN`).
+  - Menú lateral con accesos directos: Socios, Caja / Inscripciones, Accesos, Dashboard y Configuración.
 - **Buscador Omnibox:** Búsqueda rápida e incremental por DNI, N.º de Socio, Apellido o Nombre.
-- **Tabla de Socios:**
+- **Tabla General de Socios:**
   - Columnas: N.º Socio, Nombre completo, DNI, Estado de Membresía (badge Activo / Inactivo / Vencido), Modalidad actual, Acciones rápidas.
-  - Paginación y filtros por estado.
+  - Filtros superiores por estado (Todos, Activos, Inactivos, Vencidos) y paginación.
+  - Acciones rápidas por fila:
+    - Botón "Ficha / Historial" (abre el modal de historial de asistencias).
+    - Botón "Cobrar" (atajo directo al módulo de caja con el socio preseleccionado).
+    - Botón de alternancia de activación/desactivación lógica de la cuenta (RF-06).
 - **Modal de Alta / Edición de Socio:**
   - Datos personales: Nombre, Apellido, DNI, Fecha de Nacimiento.
-  - Datos de contacto: Email y Teléfono (con indicador de regla de negocio: al menos uno requerido).
+  - Datos de contacto: Email y Teléfono (con validación visual: al menos un canal es estrictamente obligatorio por RF-04).
   - Selector de plan/modalidad inicial.
+- **Modal de Ficha e Historial de Asistencias (RF-17):**
+  - Encabezado con datos consolidados del socio y resumen de cupo semanal consumido vs disponible.
+  - Tabla cronológica de auditoría de ingresos: Fecha y hora exacta, resultado (`GRANTED` en verde / `DENIED` en rojo) y motivo registrado en caso de rechazo.
 
 ---
 
 ### Pantalla 3: Módulo de Inscripción y Cobro en Mostrador (Caja)
 
-- **Ficha del Socio Seleccionado:** Resumen de estado actual y deuda pendiente si existiera.
+- **Cabecera de Operación:** Indicador del socio seleccionado (N.º Socio, Nombre, DNI) y operador a cargo del cobro.
 - **Selección de Plan y Período:** Dropdown de modalidades disponibles y definición de vigencia (período mensual cerrado).
 - **Desglose de Liquidación:** Monto base del plan, recargos o descuentos si aplicaran, y total a cobrar.
 - **Medios de Cobro:**
@@ -81,6 +112,8 @@ Diseñada para el personal administrativo en puesto de recepción (resolución d
 
 ### Pantalla 4: Dashboard Administrativo y Métricas de Acceso
 
+Diseñada para la supervisión operativa y gerencial (acceso completo para `ADMIN`, vista operativa para `STAFF`).
+
 - **Tarjetas KPI Principales:**
   - Socios activos totales.
   - Ingresos recaudados en el período corriente.
@@ -90,10 +123,16 @@ Diseñada para el personal administrativo en puesto de recepción (resolución d
   - Distribución horaria de accesos (gráfico de barras identificando horas pico).
   - Distribución de socios por modalidad (gráfico circular/dona: Libre, 3 días, 2 días).
 - **Feed de Accesos en Tiempo Real:** Lista con las últimas validaciones del molinete indicando hora, socio, modalidad y resultado.
+- **Modal de Comunicaciones y Avisos Masivos (Exclusivo ADMIN):**
+  - Acceso desde botón de acción en cabecera ("Gestionar Comunicaciones").
+  - Pestaña de Comunicado Masivo (Broadcast): Selección de destinatarios (Todos los socios, Solo activos, Solo cuotas vencidas), campo de Asunto y cuerpo del mensaje para envío por correo electrónico.
+  - Pestaña de Recordatorios Automáticos: Visualización de plantilla de aviso preventivo de vencimiento y monitor de envíos automáticos.
 
 ---
 
-### Pantalla 5: Configuración de Planes y Modalidades
+### Pantalla 5: Configuración de Planes y Modalidades (Exclusivo ADMIN)
+
+Módulo de administración tarifaria con acceso restringido para usuarios con rol `ADMIN`.
 
 - **Listado de Planes del Gimnasio:** Visualización de planes vigentes, precios actualizados y límite semanal de accesos.
 - **Formulario de Alta / Modificación de Planes:**
@@ -101,7 +140,6 @@ Diseñada para el personal administrativo en puesto de recepción (resolución d
   - Modalidad asociada (`FREE`, `THREE_DAYS`, `TWO_DAYS`).
   - Arancel mensual.
   - Estado de vigencia (activo / deshabilitado para nuevas inscripciones).
-
 ---
 
 ## 3. Formato de Entregables y Estructura en el Repositorio

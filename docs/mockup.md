@@ -88,6 +88,8 @@ Diseñada para el personal administrativo y operativo en puesto de recepción (r
     - Botón "Ficha / Historial" (abre el modal de historial de asistencias).
     - Botón "Cobrar" (atajo directo al módulo de caja con el socio preseleccionado).
     - Botón de alternancia de activación/desactivación lógica de la cuenta (RF-06).
+
+![Panel de Recepción y Gestión de Socios](./mockups/img/pantalla_2_socios.png)
 - **Modal de Alta / Edición de Socio:**
   - Datos personales: Nombre, Apellido, DNI, Fecha de Nacimiento.
   - Datos de contacto: Email y Teléfono (con validación visual: al menos un canal es estrictamente obligatorio por RF-04).
@@ -95,6 +97,8 @@ Diseñada para el personal administrativo y operativo en puesto de recepción (r
 - **Modal de Ficha e Historial de Asistencias (RF-17):**
   - Encabezado con datos consolidados del socio y resumen de cupo semanal consumido vs disponible.
   - Tabla cronológica de auditoría de ingresos: Fecha y hora exacta, resultado (`GRANTED` en verde / `DENIED` en rojo) y motivo registrado en caso de rechazo.
+
+![Modal Ficha e Historial de Asistencias](./mockups/img/pantalla_2_1_historial.png)
 
 ---
 
@@ -108,6 +112,8 @@ Diseñada para el personal administrativo y operativo en puesto de recepción (r
   - Integración digital: Contenedor con código QR dinámico de Mercado Pago para escaneo y confirmación de cobro.
 - **Emisión de Comprobante:** Opción de impresión o envío automático de constancia de pago por correo electrónico.
 
+![Módulo de Caja e Inscripciones](./mockups/img/pantalla_3_caja.png)
+
 ---
 
 ### Pantalla 4: Dashboard Administrativo y Métricas de Acceso
@@ -115,18 +121,22 @@ Diseñada para el personal administrativo y operativo en puesto de recepción (r
 Diseñada para la supervisión operativa y gerencial (acceso completo para `ADMIN`, vista operativa para `STAFF`).
 
 - **Tarjetas KPI Principales:**
-  - Socios activos totales.
+  - Socios activos totales (al día).
   - Ingresos recaudados en el período corriente.
-  - Concurrencia diaria actual (accesos registrados en el día).
-  - Tasa de rechazos en molinete (por cuota vencida o exceso de cupo).
+  - Concurrencia diaria actual (accesos registrados en el día y horario pico).
+  - Cuotas vencidas / Morosidad del padrón (socios atrasados y montos pendientes para cobranza preventiva).
 - **Gráficos Operativos:**
   - Distribución horaria de accesos (gráfico de barras identificando horas pico).
   - Distribución de socios por modalidad (gráfico circular/dona: Libre, 3 días, 2 días).
 - **Feed de Accesos en Tiempo Real:** Lista con las últimas validaciones del molinete indicando hora, socio, modalidad y resultado.
+
+![Dashboard Administrativo](./mockups/img/pantalla_4_dashboard.png)
 - **Modal de Comunicaciones y Avisos Masivos (Exclusivo ADMIN):**
   - Acceso desde botón de acción en cabecera ("Gestionar Comunicaciones").
   - Pestaña de Comunicado Masivo (Broadcast): Selección de destinatarios (Todos los socios, Solo activos, Solo cuotas vencidas), campo de Asunto y cuerpo del mensaje para envío por correo electrónico.
   - Pestaña de Recordatorios Automáticos: Visualización de plantilla de aviso preventivo de vencimiento y monitor de envíos automáticos.
+
+![Modal de Comunicaciones y Avisos Masivos](./mockups/img/pantalla_4_1_comunicaciones.png)
 
 ---
 
@@ -137,9 +147,11 @@ Módulo de administración tarifaria con acceso restringido para usuarios con ro
 - **Listado de Planes del Gimnasio:** Visualización de planes vigentes, precios actualizados y límite semanal de accesos.
 - **Formulario de Alta / Modificación de Planes:**
   - Nombre del plan.
-  - Modalidad asociada (`FREE`, `THREE_DAYS`, `TWO_DAYS`).
+  - Modalidad asociada (`FREE`, `THREE`, `TWO`).
   - Arancel mensual.
   - Estado de vigencia (activo / deshabilitado para nuevas inscripciones).
+
+![Configuración de Planes y Tarifas](./mockups/img/pantalla_5_configuracion.png)
 ---
 
 ## 3. Formato de Entregables y Estructura en el Repositorio
@@ -149,9 +161,16 @@ docs/
 ├── mockup.md                <-- Especificación y visualización de bocetos (este documento)
 └── mockups/
     └── img/                 <-- Exportaciones PNG de alta resolución
+        ├── pantalla_0_login.png
         ├── terminal_acceso_reposo.png
         ├── terminal_acceso_concedido.png
-        └── terminal_acceso_denegado.png
+        ├── terminal_acceso_denegado.png
+        ├── pantalla_2_socios.png
+        ├── pantalla_2_1_historial.png
+        ├── pantalla_3_caja.png
+        ├── pantalla_4_dashboard.png
+        ├── pantalla_4_1_comunicaciones.png
+        └── pantalla_5_configuracion.png
 ```
 
 - **Lienzo online (Pen.dev):** Permite navegar, inspeccionar e interactuar con el diseño y sus componentes directamente desde el navegador a través del enlace en [Pen.dev](https://app.pen.dev/s/XTE4g4iJ2m6UI0SEn_EB-jrnqsraz2sCoa6JK_mOk_A).

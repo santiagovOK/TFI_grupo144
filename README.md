@@ -328,14 +328,14 @@ npm run dev          # Development server :3002
 ### Requisitos previos
 
 - Java 25 (LTS)
-- PostgreSQL
+- PostgreSQL 13 o superior
 - Node.js (para los frontend)
 - Gradle (se gestiona vía wrapper `./gradlew`)
 
 ### Pasos
 
 1. Clonar el repositorio.
-2. Inicializar la base de datos PostgreSQL y crear el esquema con `schema.sql`.
+2. Crear una base de datos PostgreSQL vacía y ejecutar `schema.sql` para crear el esquema. El script está pensado para una base nueva: como usa `IF NOT EXISTS`, volver a ejecutarlo sobre una base existente no modifica las tablas ya creadas.
 3. Configurar las variables de entorno del backend (archivo `.env`):
 
    ```yaml

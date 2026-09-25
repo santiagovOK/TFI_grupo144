@@ -31,7 +31,7 @@ erDiagram
         TIMESTAMPTZ updated_at
     }
     payment {
-        UUID id PK "Token idempotente para pasarela (v4)"
+        UUID id PK "Referencia opaca para la pasarela (v4)"
         UUID enrollment_id FK "Referencia a enrollment(id)"
         DECIMAL amount "Precisión 19,2"
         VARCHAR(10) currency "Enum Currency: ARS, USD"
@@ -67,7 +67,7 @@ Para garantizar la solidez del modelo relacional y evitar el abuso de IDs artifi
 | `users` | Sí (`member_number`) | Fuerte / Negocio | Clave Natural (`member_number`) | Identidad real del socio, credencial física y tipeo en terminales. |
 | `access`| Sí (`member_number` + `access_date`) | Evento temporal puntual | Clave Compuesta (`member_number`, `access_date`) | Evento puntual inmutable; evita proliferación de UUIDs por cada intento de acceso en la terminal. |
 | `enrollment` | No (fechas mutables) | Período contractual dependiente | Subrogada (`UUID` v4) | Evita PKs compuestas mutables y cascadas sobre tablas dependientes. |
-| `payment` | No (transaccional) | Transacción financiera | Subrogada (`UUID` v4) | Token idempotente para conciliación de webhooks y pasarelas de pago. |
+| `payment` | No (transaccional) | Transacción financiera | Subrogada (`UUID` v4) | Identificador opaco que se envía a la pasarela para conciliar sus notificaciones (webhooks). |
 
 ## Relaciones
 
@@ -218,16 +218,16 @@ Por lo tanto, el DNI se aisló con una restricción `UNIQUE NOT NULL` como clave
 
 **3. Garantía de Canal de Contacto**
 
-Para evitar el registro de "socios fantasmas" incontactables ante vencimientos, se implementó una restricción a nivel de motor de base de datos: `CONSTRAINT chk_user_contact CHECK (email IS NOT NULL OR phone IS NOT NULL)`. Esto garantiza al menos una vía de comunicación válida sin hacer obligatorias ambas.
+Para evitar el registro de "socios fantasmas" incontactables ante vencimientos, se implementó una restricción a nivel de motor de base de datos: `CONSTRAINT chk_user_contact CHECK (email IS NOT NULL OR phone IS NOT NULL)`. Esto garantiza que se registre al menos un dato de contacto, sin hacer obligatorios ambos. La restricción comprueba que el dato exista, no que sea válido: un valor vacío o mal escrito la cumple igual, por lo que el formato del email y del teléfono lo valida la aplicación al dar de alta al socio.
 
 **4. Clave Primaria Compuesta en Eventos Temporales (`access`)**
 
 Un intento de acceso en la terminal no es una entidad independiente que requiera una clave artificial (UUID); es un evento temporal.
-Su identidad unívoca natural está determinada por quién intentó pasar (`member_number`) y en qué instante exacto lo hizo (`access_date`). Al usar esta clave compuesta, el evento queda registrado de forma inmutable, permitiendo además auditar accesos denegados sin depender de una inscripción activa.
+Su identidad unívoca natural está determinada por quién intentó pasar (`member_number`) y en qué instante exacto lo hizo (`access_date`). Esta clave compuesta identifica cada evento sin depender de una inscripción activa, lo que permite auditar también los accesos denegados. La clave no impide modificar la fila: la inmutabilidad del registro la asegura la aplicación, que no expone operaciones de modificación ni de borrado (Módulo Access, regla 2).
 
 **5. Uso Justificado de UUID en Entidades Específicas**
 *   **En `enrollment` (Mutabilidad):** Las fechas de inicio y fin de una suscripción son inherentemente mutables (suspensiones, vacaciones, prórrogas). Si usáramos una PK compuesta basada en fechas, cualquier modificación forzaría una cascada de actualizaciones compleja en tablas dependientes. El UUID provee una identidad inmutable que independiza el contrato de sus ajustes temporales.
-*   **En `payment` (Idempotencia externa):** En la integración con pasarelas de pago externas (ej. Mercado Pago), el sistema debe despachar un identificador único atómico previo a la redirección. El UUID funciona como un token idempotente para conciliar la transacción mediante webhooks de forma segura, sin exponer datos sensibles del negocio.
+*   **En `payment` (Conciliación externa):** En la integración con pasarelas de pago externas (ej. Mercado Pago), el sistema debe generar un identificador único previo a la redirección. El UUID se envía como referencia a la pasarela y permite asociar cada notificación (webhook) con su pago sin exponer datos del negocio. El identificador por sí solo no evita que una misma notificación se procese dos veces: esa idempotencia la resuelve la aplicación al procesar las notificaciones.
 *   **Versión (UUID v4):** Los identificadores son UUID de versión 4 (RFC 9562), formados por 122 bits aleatorios. Los genera la propia base mediante `DEFAULT gen_random_uuid()`, función nativa de PostgreSQL desde la versión 13, por lo que el esquema no necesita extensiones. Se eligió la versión 4 y no la 7 (basada en la hora de creación) porque no revela cuándo se creó el registro ni permite deducir otros identificadores: el identificador de un pago que se envía a Mercado Pago no expone información interna. La versión 7 ordena mejor los índices en tablas de gran volumen, una ventaja que no es relevante para la cantidad de inscripciones y pagos de un gimnasio.
 
 **6. Conservación del Historial (`ON DELETE RESTRICT`)**

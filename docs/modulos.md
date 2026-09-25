@@ -42,7 +42,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 
 ### 1.3. Módulo Enrollment (`com.gym.project.enrollment`)
 
-- **Objetivos:** Gestionar los períodos de suscripción e inscripción de los socios, asignando la modalidad de asistencia (`FREE`, `THREE`, `TWO`), estableciendo la vigencia temporal (`start_date`, `end_date`) y controlando los cupos semanales de acceso (`weekly_accesses`).
+- **Objetivos:** Gestionar los períodos de suscripción e inscripción de los socios, asignando la modalidad de asistencia (`FREE`, `THREE`, `TWO`), estableciendo la vigencia temporal (`start_date`, `end_date`) y definiendo, a través de la modalidad, el tope semanal de accesos.
 - **Entidades involucradas:** `Enrollment` (`enrollment`), `User` (`users`).
 - **Contratos de Interfaz REST:**
 
@@ -56,7 +56,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 
 **Reglas de Negocio Formales:**
 1. **Historial y Vigencia:** Un socio puede poseer múltiples registros de inscripción (1:N) a modo de historial, pero el sistema debe garantizar que no existan dos inscripciones activas con fechas superpuestas.
-2. Los topes de acceso semanal (`weekly_accesses`) de la modalidad asignada se reinician sistemáticamente al inicio de cada semana (lunes).
+2. **Cupo Semanal:** El tope de accesos semanales surge de la modalidad (`THREE`: 3, `TWO`: 2, `FREE`: sin tope). No se almacena un contador: los accesos usados se obtienen contando los accesos `GRANTED` del socio desde el lunes a las 00:00 de la semana en curso, sin necesidad de reinicios periódicos.
 ---
 
 ### 1.4. Módulo Payment (`com.gym.project.payment`)
@@ -86,7 +86,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 
 | RF | Método | Endpoint | Descripción | Request Body / Parámetros | Códigos de Respuesta |
 |---|---|---|---|---|---|
-| **RF-16** | `POST` | `/api/access/validate` | **Operación central de negocio.** Recibe la identificación del socio (`member_number`), evalúa reglas de negocio (existencia y activación del usuario, cuota al día, vigencia del plan y límite semanal de accesos según la modalidad), persiste el intento como registro inmutable en `access` e incrementa el contador semanal si el pase es otorgado. | `{"member_number": "SOC-1001"}` | `200 OK` (`{"status": "GRANTED", "message": "Acceso permitido", "userName": "..."}` o `{"status": "DENIED", "reason": "Cuota vencida / Límite semanal alcanzado"}`). |
+| **RF-16** | `POST` | `/api/access/validate` | **Operación central de negocio.** Recibe la identificación del socio (`member_number`), evalúa reglas de negocio (existencia y activación del usuario, cuota al día, vigencia del plan y límite semanal de accesos según la modalidad) y persiste el intento como registro inmutable en `access`. El límite semanal se verifica contando los accesos `GRANTED` del socio en la semana en curso. | `{"member_number": "SOC-1001"}` | `200 OK` (`{"status": "GRANTED", "message": "Acceso permitido", "userName": "..."}` o `{"status": "DENIED", "reason": "Cuota vencida / Límite semanal alcanzado"}`). |
 | **RF-17** | `GET` | `/api/access` | Consulta el registro histórico de accesos para reportes, auditoría y análisis de afluencia. Permite filtrar por rango de fechas, socio (`member_number`) y resultado (`GRANTED` / `DENIED`). | Query params: `page`, `size`, `member_number`, `status`, `from`, `to` | `200 OK` (listado paginado). |
 
 **Reglas de Negocio Formales:**

@@ -24,11 +24,9 @@ erDiagram
         UUID id PK "Identificador de período"
         VARCHAR(20) member_number FK "Referencia a users"
         VARCHAR(20) modality "Enum Modality: FREE, THREE, TWO"
-        TIMESTAMP start_date
-        TIMESTAMP end_date
+        TIMESTAMP start_date "Inicio del período (CHECK)"
+        TIMESTAMP end_date "Fin del período (CHECK)"
         VARCHAR(500) comments
-        INTEGER weekly_accesses "Tope de ingresos"
-        TIMESTAMP last_access_reset
         TIMESTAMP created_at
         TIMESTAMP updated_at
     }
@@ -113,16 +111,18 @@ Representa a un socio, personal o administrador del gimnasio.
 
 Representa la inscripción de un usuario a un plan, con su modalidad y vigencia.
 
+**Nota de Vigencia:** cada inscripción es un período cerrado: siempre tiene fecha de inicio y de fin, y cada renovación genera una inscripción nueva. Una inscripción está vigente cuando `start_date <= momento < end_date`: el inicio se incluye y el fin no. Así, una renovación puede empezar en el mismo instante en que termina la anterior sin que se superpongan. La restricción `chk_enrollment_dates` exige que el fin sea posterior al inicio.
+
+**Nota de Cupo Semanal:** la tabla no guarda un contador de accesos. El tope surge de la modalidad (`THREE`: 3, `TWO`: 2, `FREE`: sin tope) y los accesos ya usados se cuentan en la tabla `access` (ver Fundamentos de Diseño Relacional, punto 7).
+
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `id` | UUID | No (generado) | Sí (PK) | Clave primaria |
 | `member_number` | VARCHAR(20) | No | — | FK a `users.member_number` (`ON DELETE RESTRICT`) |
 | `modality` | VARCHAR(20) | No | — | Valor del Enum `Modality` (Restricción CHECK) |
-| `start_date` | TIMESTAMP | No | — | Fecha de inicio obligatoria |
-| `end_date` | TIMESTAMP | Sí | — | Opcional (nulo para planes recurrentes) |
+| `start_date` | TIMESTAMP | No | — | Inicio del período (incluido). Restricción CHECK: anterior a `end_date` |
+| `end_date` | TIMESTAMP | No | — | Fin del período (excluido). Restricción CHECK: posterior a `start_date` |
 | `comments` | VARCHAR(500) | Sí | — | |
-| `weekly_accesses` | INTEGER | No | — | Tope de ingresos. Por defecto `0` |
-| `last_access_reset` | TIMESTAMP | Sí | — | |
 | `created_at` | TIMESTAMP | No | — | Por defecto `CURRENT_TIMESTAMP` |
 | `updated_at` | TIMESTAMP | Sí | — | Sin actualización automática en la base. La aplicación deberá asignarlo al modificar el registro |
 
@@ -221,4 +221,10 @@ Su identidad unívoca natural está determinada por quién intentó pasar (`memb
 Todas las claves foráneas del esquema se declaran con `ON DELETE RESTRICT`: el motor rechaza la eliminación de un socio o de una inscripción mientras existan inscripciones, pagos o accesos que los referencien. De este modo, un borrado accidental no puede arrastrar comprobantes de pago ni eventos de acceso, que las reglas de negocio definen como registros de auditoría. Las bajas de usuarios se resuelven de forma lógica mediante `users.active`, sin eliminación física.
 No se utiliza `ON DELETE SET NULL` en `access`: `member_number` integra la clave primaria compuesta y no admite nulos, y `enrollment_id` es la referencia que permite auditar qué inscripción habilitó cada acceso concedido.
 El alcance de esta restricción es proteger a los registros padre: no impide eliminar directamente una fila de `payment` o de `access`. La aplicación deberá impedir el borrado de pagos y la modificación o eliminación de accesos (Módulo Payment, regla 2; Módulo Access, regla 2). Los pagos acreditados conservarán sus datos financieros y podrán pasar a `CANCELLED` según la regla de negocio definida.
+
+**7. Cupo Semanal Calculado, no Almacenado**
+
+Los accesos que un socio ya usó en la semana no se guardan en una columna: se obtienen contando sus accesos `GRANTED` en la tabla `access` desde el lunes a las 00:00 de la semana en curso. El tope se deduce de la modalidad de la inscripción vigente (`THREE`: 3, `TWO`: 2, `FREE`: sin tope).
+Guardar un contador en `enrollment` implicaba repetir un dato que ya existe en `access`, con el riesgo de que ambos dejen de coincidir si falla la actualización de uno de ellos. También exigía una columna con la fecha del último reinicio, nula hasta el primer lunes, y un proceso que reiniciara el contador cada semana. Con el conteo, `access` es la única fuente del dato y no queda ningún campo que mantener.
+El conteo se hace por socio y no por inscripción: si un socio renueva a mitad de semana, los accesos que ya usó esa semana siguen contando. La consulta no necesita un índice adicional, porque la clave primaria de `access` (`member_number`, `access_date`) ya ordena los accesos por socio y por fecha.
 

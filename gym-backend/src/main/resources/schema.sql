@@ -21,12 +21,11 @@ CREATE TABLE IF NOT EXISTS enrollment (
     member_number VARCHAR(20) NOT NULL REFERENCES users(member_number) ON DELETE RESTRICT,
     modality VARCHAR(20) NOT NULL CHECK (modality IN ('FREE', 'THREE', 'TWO')),
     start_date TIMESTAMP NOT NULL,
-    end_date TIMESTAMP,
+    end_date TIMESTAMP NOT NULL,
     comments VARCHAR(500),
-    weekly_accesses INTEGER NOT NULL DEFAULT 0,
-    last_access_reset TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP
+    updated_at TIMESTAMP,
+    CONSTRAINT chk_enrollment_dates CHECK (end_date > start_date)
     );
 
 CREATE TABLE IF NOT EXISTS payment (

@@ -190,6 +190,19 @@ Para garantizar la integridad de los datos a nivel conceptual, los siguientes ca
 - `GRANTED`: Acceso permitido.
 - `DENIED`: Acceso denegado.
 
+## Índices
+
+PostgreSQL crea automáticamente un índice por cada clave primaria y por cada restricción `UNIQUE` (`users.member_number`, `users.dni`, `users.email`, `enrollment.id`, `payment.id` y la clave compuesta de `access`), pero no indexa las claves foráneas. Por eso el esquema define los siguientes índices B-Tree:
+
+| Índice | Tabla (columna) | Consultas que acelera |
+|--------|-----------------|-----------------------|
+| `ix_enrollment_member_number` | `enrollment` (`member_number`) | Historial de inscripciones en la ficha del socio y búsqueda de la inscripción vigente en cada validación de acceso. También el control de `ON DELETE RESTRICT` al intentar borrar un socio. |
+| `ix_payment_enrollment_id` | `payment` (`enrollment_id`) | Pagos de una inscripción al cobrar en caja y al controlar la cuota. También el control de `RESTRICT` al intentar borrar una inscripción. |
+| `ix_access_enrollment_id` | `access` (`enrollment_id`) | Accesos habilitados por una inscripción (auditoría). También el control de `RESTRICT` al intentar borrar una inscripción. |
+| `ix_access_access_date` | `access` (`access_date`) | Consultas por fecha sobre todos los socios: accesos del día, horarios pico del dashboard y filtros `from` / `to` de RF-17. |
+
+`access.member_number` no tiene un índice propio: es la primera columna de la clave primaria (`member_number`, `access_date`), cuyo índice ya sirve para buscar los accesos de un socio y para calcular el cupo semanal.
+
 ## Fundamentos de Diseño Relacional
 
 Para el modelado de esta base de datos, se aplicaron estrictos criterios de diseño relacional, priorizando el uso de claves naturales y compuestas sobre la asignación automática de identificadores subrogados, salvo en casos donde la mutabilidad o la integración externa lo requieran.

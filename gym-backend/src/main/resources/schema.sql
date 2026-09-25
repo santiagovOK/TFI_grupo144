@@ -48,3 +48,8 @@ CREATE TABLE IF NOT EXISTS access (
     denied_reason VARCHAR(500),
     PRIMARY KEY (member_number, access_date)
     );
+
+CREATE INDEX IF NOT EXISTS ix_enrollment_member_number ON enrollment (member_number);
+CREATE INDEX IF NOT EXISTS ix_payment_enrollment_id ON payment (enrollment_id);
+CREATE INDEX IF NOT EXISTS ix_access_enrollment_id ON access (enrollment_id);
+CREATE INDEX IF NOT EXISTS ix_access_access_date ON access (access_date);

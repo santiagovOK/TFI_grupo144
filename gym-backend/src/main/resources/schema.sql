@@ -9,8 +9,8 @@ CREATE TABLE IF NOT EXISTS users (
     phone VARCHAR(20),
     role VARCHAR(20) NOT NULL DEFAULT 'USER' CHECK (role IN ('ADMIN', 'STAFF', 'USER')),
     active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ,
     CONSTRAINT chk_user_contact CHECK (email IS NOT NULL OR phone IS NOT NULL)
     );
 
@@ -18,11 +18,11 @@ CREATE TABLE IF NOT EXISTS enrollment (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     member_number VARCHAR(20) NOT NULL REFERENCES users(member_number) ON DELETE RESTRICT,
     modality VARCHAR(20) NOT NULL CHECK (modality IN ('FREE', 'THREE', 'TWO')),
-    start_date TIMESTAMP NOT NULL,
-    end_date TIMESTAMP NOT NULL,
+    start_date TIMESTAMPTZ NOT NULL,
+    end_date TIMESTAMPTZ NOT NULL,
     comments VARCHAR(500),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ,
     CONSTRAINT chk_enrollment_dates CHECK (end_date > start_date)
     );
 
@@ -36,14 +36,14 @@ CREATE TABLE IF NOT EXISTS payment (
     external_reference VARCHAR(100),
     comments VARCHAR(500),
     discount DECIMAL(19,2),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ
     );
 
 CREATE TABLE IF NOT EXISTS access (
     member_number VARCHAR(20) NOT NULL REFERENCES users(member_number) ON DELETE RESTRICT,
     enrollment_id UUID REFERENCES enrollment(id) ON DELETE RESTRICT,
-    access_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    access_date TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) NOT NULL DEFAULT 'GRANTED' CHECK (status IN ('GRANTED', 'DENIED')),
     denied_reason VARCHAR(500),
     PRIMARY KEY (member_number, access_date)

@@ -17,18 +17,18 @@ erDiagram
         DATE birth_date
         VARCHAR(20) role "Enum Role: ADMIN, STAFF, USER"
         BOOLEAN active
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
     }
     enrollment {
         UUID id PK "Identificador de período (v4)"
         VARCHAR(20) member_number FK "Referencia a users"
         VARCHAR(20) modality "Enum Modality: FREE, THREE, TWO"
-        TIMESTAMP start_date "Inicio del período (CHECK)"
-        TIMESTAMP end_date "Fin del período (CHECK)"
+        TIMESTAMPTZ start_date "Inicio del período (CHECK)"
+        TIMESTAMPTZ end_date "Fin del período (CHECK)"
         VARCHAR(500) comments
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
     }
     payment {
         UUID id PK "Token idempotente para pasarela (v4)"
@@ -40,12 +40,12 @@ erDiagram
         VARCHAR(100) external_reference "Id de pasarela (MP)"
         VARCHAR(500) comments
         DECIMAL discount "Precisión 19,2"
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
     }
     access {
         VARCHAR(20) member_number PK,FK "Referencia obligatoria a users"
-        TIMESTAMP access_date PK "Momento exacto del intento"
+        TIMESTAMPTZ access_date PK "Momento exacto del intento"
         UUID enrollment_id FK "Referencia opcional a enrollment"
         VARCHAR(20) status "Enum AccessStatus: GRANTED, DENIED"
         VARCHAR(500) denied_reason "Motivo si es denegado"
@@ -102,8 +102,8 @@ Representa a un socio, personal o administrador del gimnasio.
 | `birth_date` | DATE | Sí | — | |
 | `role` | VARCHAR(20) | No | — | Valor del Enum `Role` (Por defecto `USER`, restricción CHECK) |
 | `active` | BOOLEAN | No | — | Valor por defecto `true` |
-| `created_at` | TIMESTAMP | No | — | Por defecto `CURRENT_TIMESTAMP` |
-| `updated_at` | TIMESTAMP | Sí | — | Sin actualización automática en la base. La aplicación deberá asignarlo al modificar el registro |
+| `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |
+| `updated_at` | TIMESTAMPTZ | Sí | — | Sin actualización automática en la base. La aplicación deberá asignarlo al modificar el registro |
 
 ---
 
@@ -120,11 +120,11 @@ Representa la inscripción de un usuario a un plan, con su modalidad y vigencia.
 | `id` | UUID | No (generado) | Sí (PK) | Clave primaria. UUID v4 generado por la base con `gen_random_uuid()` |
 | `member_number` | VARCHAR(20) | No | — | FK a `users.member_number` (`ON DELETE RESTRICT`) |
 | `modality` | VARCHAR(20) | No | — | Valor del Enum `Modality` (Restricción CHECK) |
-| `start_date` | TIMESTAMP | No | — | Inicio del período (incluido). Restricción CHECK: anterior a `end_date` |
-| `end_date` | TIMESTAMP | No | — | Fin del período (excluido). Restricción CHECK: posterior a `start_date` |
+| `start_date` | TIMESTAMPTZ | No | — | Inicio del período (incluido). Restricción CHECK: anterior a `end_date` |
+| `end_date` | TIMESTAMPTZ | No | — | Fin del período (excluido). Restricción CHECK: posterior a `start_date` |
 | `comments` | VARCHAR(500) | Sí | — | |
-| `created_at` | TIMESTAMP | No | — | Por defecto `CURRENT_TIMESTAMP` |
-| `updated_at` | TIMESTAMP | Sí | — | Sin actualización automática en la base. La aplicación deberá asignarlo al modificar el registro |
+| `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |
+| `updated_at` | TIMESTAMPTZ | Sí | — | Sin actualización automática en la base. La aplicación deberá asignarlo al modificar el registro |
 
 ---
 
@@ -135,7 +135,7 @@ Registra cada intento de ingreso validado en la terminal de acceso.
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `member_number` | VARCHAR(20) | No | En conjunto (PK compuesta) | Clave primaria compuesta (PK), FK a `users.member_number` (`ON DELETE RESTRICT`) |
-| `access_date` | TIMESTAMP | No | En conjunto (PK compuesta) | Clave primaria compuesta (PK). Por defecto `CURRENT_TIMESTAMP` |
+| `access_date` | TIMESTAMPTZ | No | En conjunto (PK compuesta) | Clave primaria compuesta (PK). Por defecto `CURRENT_TIMESTAMP` |
 | `enrollment_id` | UUID | Sí | — | FK a `enrollment.id` (`ON DELETE RESTRICT`). Opcional (puede ser nulo en accesos denegados) |
 | `status` | VARCHAR(20) | No | — | Valor del Enum `AccessStatus` (Por defecto `GRANTED`, restricción CHECK) |
 | `denied_reason` | VARCHAR(500) | Sí | — | Motivo si es denegado |
@@ -157,8 +157,8 @@ Registra un pago asociado a una inscripción.
 | `external_reference` | VARCHAR(100) | Sí | — | Referencia externa de transacción |
 | `comments` | VARCHAR(500) | Sí | — | |
 | `discount` | DECIMAL(19,2) | Sí | — | |
-| `created_at` | TIMESTAMP | No | — | Por defecto `CURRENT_TIMESTAMP` |
-| `updated_at` | TIMESTAMP | Sí | — | Sin actualización automática en la base. La aplicación deberá asignarlo al modificar el registro |
+| `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |
+| `updated_at` | TIMESTAMPTZ | Sí | — | Sin actualización automática en la base. La aplicación deberá asignarlo al modificar el registro |
 
 ---
 
@@ -241,4 +241,10 @@ El alcance de esta restricción es proteger a los registros padre: no impide eli
 Los accesos que un socio ya usó en la semana no se guardan en una columna: se obtienen contando sus accesos `GRANTED` en la tabla `access` desde el lunes a las 00:00 de la semana en curso. El tope se deduce de la modalidad de la inscripción vigente (`THREE`: 3, `TWO`: 2, `FREE`: sin tope).
 Guardar un contador en `enrollment` implicaba repetir un dato que ya existe en `access`, con el riesgo de que ambos dejen de coincidir si falla la actualización de uno de ellos. También exigía una columna con la fecha del último reinicio, nula hasta el primer lunes, y un proceso que reiniciara el contador cada semana. Con el conteo, `access` es la única fuente del dato y no queda ningún campo que mantener.
 El conteo se hace por socio y no por inscripción: si un socio renueva a mitad de semana, los accesos que ya usó esa semana siguen contando. La consulta no necesita un índice adicional, porque la clave primaria de `access` (`member_number`, `access_date`) ya ordena los accesos por socio y por fecha.
+
+**8. Fechas con Zona Horaria (`TIMESTAMPTZ`)**
+
+Todas las columnas de fecha y hora se declaran `TIMESTAMPTZ` (`timestamp with time zone`). PostgreSQL guarda cada valor como un instante absoluto (en UTC) y lo muestra convertido a la zona horaria de la sesión, de modo que un acceso representa el mismo momento sin importar desde dónde se consulte. `birth_date` se mantiene como `DATE`, porque una fecha de nacimiento no es un instante.
+Con `TIMESTAMP` (sin zona), la base guarda la fecha y la hora tal como llegan, sin saber a qué zona corresponden. El backend se desplegará en Render y la base en Neon, que por defecto trabajan en UTC, mientras que el gimnasio opera en hora de Argentina (UTC−3). Un acceso del domingo a las 22:30 en el gimnasio es el lunes a la 01:30 en UTC: guardado sin zona, el mismo registro podría interpretarse en un día distinto según quién lo lea, y los horarios pico del dashboard aparecerían corridos tres horas.
+Las reglas que dependen del día o de la semana se evalúan en la zona horaria del gimnasio. Para el cupo semanal (punto 7), el inicio de la semana se calcula como `date_trunc('week', now(), 'America/Argentina/Buenos_Aires')`: calculado en UTC, el acceso del domingo a las 22:30 se contaría en la semana siguiente.
 

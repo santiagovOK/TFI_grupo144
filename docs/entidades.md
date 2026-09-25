@@ -21,7 +21,7 @@ erDiagram
         TIMESTAMP updated_at
     }
     enrollment {
-        UUID id PK "Identificador de período"
+        UUID id PK "Identificador de período (v4)"
         VARCHAR(20) member_number FK "Referencia a users"
         VARCHAR(20) modality "Enum Modality: FREE, THREE, TWO"
         TIMESTAMP start_date "Inicio del período (CHECK)"
@@ -31,7 +31,7 @@ erDiagram
         TIMESTAMP updated_at
     }
     payment {
-        UUID id PK "Token idempotente para pasarela"
+        UUID id PK "Token idempotente para pasarela (v4)"
         UUID enrollment_id FK "Referencia a enrollment(id)"
         DECIMAL amount "Precisión 19,2"
         VARCHAR(10) currency "Enum Currency: ARS, USD"
@@ -66,8 +66,8 @@ Para garantizar la solidez del modelo relacional y evitar el abuso de IDs artifi
 |---------|-------------------------------|-----------------------|-------------------------|-------------------------------------|
 | `users` | Sí (`member_number`) | Fuerte / Negocio | Clave Natural (`member_number`) | Identidad real del socio, credencial física y tipeo en terminales. |
 | `access`| Sí (`member_number` + `access_date`) | Evento temporal puntual | Clave Compuesta (`member_number`, `access_date`) | Evento puntual inmutable; evita proliferación de UUIDs por cada intento de acceso en la terminal. |
-| `enrollment` | No (fechas mutables) | Período contractual dependiente | Subrogada (`UUID`) | Evita PKs compuestas mutables y cascadas sobre tablas dependientes. |
-| `payment` | No (transaccional) | Transacción financiera | Subrogada (`UUID`) | Token idempotente para conciliación de webhooks y pasarelas de pago. |
+| `enrollment` | No (fechas mutables) | Período contractual dependiente | Subrogada (`UUID` v4) | Evita PKs compuestas mutables y cascadas sobre tablas dependientes. |
+| `payment` | No (transaccional) | Transacción financiera | Subrogada (`UUID` v4) | Token idempotente para conciliación de webhooks y pasarelas de pago. |
 
 ## Relaciones
 
@@ -117,7 +117,7 @@ Representa la inscripción de un usuario a un plan, con su modalidad y vigencia.
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
-| `id` | UUID | No (generado) | Sí (PK) | Clave primaria |
+| `id` | UUID | No (generado) | Sí (PK) | Clave primaria. UUID v4 generado por la base con `gen_random_uuid()` |
 | `member_number` | VARCHAR(20) | No | — | FK a `users.member_number` (`ON DELETE RESTRICT`) |
 | `modality` | VARCHAR(20) | No | — | Valor del Enum `Modality` (Restricción CHECK) |
 | `start_date` | TIMESTAMP | No | — | Inicio del período (incluido). Restricción CHECK: anterior a `end_date` |
@@ -148,7 +148,7 @@ Registra un pago asociado a una inscripción.
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
-| `id` | UUID | No (generado) | Sí (PK) | Clave primaria |
+| `id` | UUID | No (generado) | Sí (PK) | Clave primaria. UUID v4 generado por la base con `gen_random_uuid()` |
 | `enrollment_id` | UUID | No | — | FK a `enrollment.id` (`ON DELETE RESTRICT`) |
 | `amount` | DECIMAL(19,2) | No | — | |
 | `currency` | VARCHAR(10) | No | — | Valor Enum `Currency` (Por defecto `ARS`, restricción CHECK) |
@@ -215,6 +215,7 @@ Su identidad unívoca natural está determinada por quién intentó pasar (`memb
 **5. Uso Justificado de UUID en Entidades Específicas**
 *   **En `enrollment` (Mutabilidad):** Las fechas de inicio y fin de una suscripción son inherentemente mutables (suspensiones, vacaciones, prórrogas). Si usáramos una PK compuesta basada en fechas, cualquier modificación forzaría una cascada de actualizaciones compleja en tablas dependientes. El UUID provee una identidad inmutable que independiza el contrato de sus ajustes temporales.
 *   **En `payment` (Idempotencia externa):** En la integración con pasarelas de pago externas (ej. Mercado Pago), el sistema debe despachar un identificador único atómico previo a la redirección. El UUID funciona como un token idempotente para conciliar la transacción mediante webhooks de forma segura, sin exponer datos sensibles del negocio.
+*   **Versión (UUID v4):** Los identificadores son UUID de versión 4 (RFC 9562), formados por 122 bits aleatorios. Los genera la propia base mediante `DEFAULT gen_random_uuid()`, función nativa de PostgreSQL desde la versión 13, por lo que el esquema no necesita extensiones. Se eligió la versión 4 y no la 7 (basada en la hora de creación) porque no revela cuándo se creó el registro ni permite deducir otros identificadores: el identificador de un pago que se envía a Mercado Pago no expone información interna. La versión 7 ordena mejor los índices en tablas de gran volumen, una ventaja que no es relevante para la cantidad de inscripciones y pagos de un gimnasio.
 
 **6. Conservación del Historial (`ON DELETE RESTRICT`)**
 

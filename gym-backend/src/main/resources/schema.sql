@@ -1,5 +1,3 @@
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
 CREATE TABLE IF NOT EXISTS users (
     member_number VARCHAR(20) PRIMARY KEY,
     email VARCHAR(255) UNIQUE,

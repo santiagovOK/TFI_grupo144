@@ -338,7 +338,7 @@ npm run dev          # Development server :3002
 
 1. Clonar el repositorio.
 2. Crear una base de datos PostgreSQL vacía y ejecutar `schema.sql` para crear el esquema. El script está pensado para una base nueva: como usa `IF NOT EXISTS`, volver a ejecutarlo sobre una base existente no modifica las tablas ya creadas.
-3. Configurar las variables de entorno del backend (archivo `.env`):
+3. Configurar el backend en `gym-backend/src/main/resources/application.yml`:
 
    ```yaml
    server:
@@ -351,13 +351,13 @@ npm run dev          # Development server :3002
        password: [PASSWORD_DE_POSTGRESQL]
        driver-class-name: org.postgresql.Driver
      jpa:
+       open-in-view: false
        hibernate:
          ddl-auto: validate
        properties:
          hibernate:
            format_sql: true
            show_sql: false
-         open-in-view: false
 
    default-auth:
      jwt:

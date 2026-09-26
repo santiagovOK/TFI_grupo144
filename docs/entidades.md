@@ -9,7 +9,7 @@ erDiagram
     users {
         VARCHAR(20) member_number PK "Clave natural de negocio"
         VARCHAR(15) dni UK "Dato administrativo sensible"
-        VARCHAR(255) email UK "Canal contacto (CHECK)"
+        VARCHAR(255) email "Canal contacto (CHECK), único en ADMIN y STAFF"
         VARCHAR(20) phone "Canal contacto (CHECK)"
         VARCHAR(255) password "Hash BCrypt"
         VARCHAR(100) name
@@ -86,6 +86,8 @@ Representa a un socio, personal o administrador del gimnasio.
 
 **Nota de Privacidad y Contacto:** Se utiliza el número de socio (`member_number`) como identificador principal operativo para proteger el DNI. Para evitar "socios fantasmas", el sistema exige obligatoriamente registrar un email o un teléfono de contacto mediante una restricción de base de datos (`CHECK`).
 
+**Nota sobre el email:** Un mismo email puede repetirse entre socios, por ejemplo cuando una madre o un padre anota a sus hijos con su propio correo. En `ADMIN` y `STAFF` no se puede repetir, porque es el dato con el que inician sesión. Esto lo controla el índice único parcial `ux_users_email_staff`.
+
 **Nota de Escalabilidad (Credenciales opcionales):** Para la versión 1, los usuarios con rol `USER` (Socios) son dados de alta exclusivamente por el administrador y no poseen acceso al sistema, por lo que el campo `password` será nulo para ellos. La tabla se diseñó unificada para permitir a futuro habilitarles credenciales sin reestructurar la base de datos (ej. para un portal de autogestión).
 
 ### Tabla `users`
@@ -94,7 +96,7 @@ Representa a un socio, personal o administrador del gimnasio.
 |---------|------|-------|-------|-------------|
 | `member_number` | VARCHAR(20) | No | Sí (PK) | Clave primaria natural |
 | `dni` | VARCHAR(15) | No | Sí (UK)| Dato administrativo sensible |
-| `email` | VARCHAR(255)| Sí | Sí (UK) | Restricción CHECK: email o phone obligatorios |
+| `email` | VARCHAR(255)| Sí | Solo ADMIN y STAFF | Restricción CHECK: email o phone obligatorios |
 | `phone` | VARCHAR(20) | Sí | — | Restricción CHECK: email o phone obligatorios |
 | `password` | VARCHAR(255)| Sí | — | Hash BCrypt |
 | `name` | VARCHAR(100) | No | — | |
@@ -192,10 +194,11 @@ Para garantizar la integridad de los datos a nivel conceptual, los siguientes ca
 
 ## Índices
 
-PostgreSQL crea automáticamente un índice por cada clave primaria y por cada restricción `UNIQUE` (`users.member_number`, `users.dni`, `users.email`, `enrollment.id`, `payment.id` y la clave compuesta de `access`), pero no indexa las claves foráneas. Por eso el esquema define los siguientes índices B-Tree:
+PostgreSQL crea automáticamente un índice por cada clave primaria y por cada restricción `UNIQUE` (`users.member_number`, `users.dni`, `enrollment.id`, `payment.id` y la clave compuesta de `access`), pero no indexa las claves foráneas. Por eso el esquema define los siguientes índices B-Tree:
 
 | Índice | Tabla (columna) | Consultas que acelera |
 |--------|-----------------|-----------------------|
+| `ux_users_email_staff` | `users` (`email`), solo filas `ADMIN` y `STAFF` | Búsqueda del usuario por email al iniciar sesión (RF-01). Además es único: dos cuentas del personal no pueden tener el mismo email. |
 | `ix_enrollment_member_number` | `enrollment` (`member_number`) | Historial de inscripciones en la ficha del socio y búsqueda de la inscripción vigente en cada validación de acceso. También el control de `ON DELETE RESTRICT` al intentar borrar un socio. |
 | `ix_payment_enrollment_id` | `payment` (`enrollment_id`) | Pagos de una inscripción al cobrar en caja y al controlar la cuota. También el control de `RESTRICT` al intentar borrar una inscripción. |
 | `ix_access_enrollment_id` | `access` (`enrollment_id`) | Accesos habilitados por una inscripción (auditoría). También el control de `RESTRICT` al intentar borrar una inscripción. |

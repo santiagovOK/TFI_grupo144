@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS users (
     member_number VARCHAR(20) PRIMARY KEY,
-    email VARCHAR(255) UNIQUE,
+    email VARCHAR(255),
     password VARCHAR(255),
     name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS access (
     PRIMARY KEY (member_number, access_date)
     );
 
+CREATE UNIQUE INDEX IF NOT EXISTS ux_users_email_staff ON users (email) WHERE role IN ('ADMIN', 'STAFF');
 CREATE INDEX IF NOT EXISTS ix_enrollment_member_number ON enrollment (member_number);
 CREATE INDEX IF NOT EXISTS ix_payment_enrollment_id ON payment (enrollment_id);
 CREATE INDEX IF NOT EXISTS ix_access_enrollment_id ON access (enrollment_id);

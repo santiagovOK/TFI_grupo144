@@ -406,7 +406,7 @@ npm run dev          # Development server :3002
 <details>
 <summary>Ver Fase 2: Backend — Business Logic</summary>
 
-- [ ] Implementar `AuthService` + `AuthController` (login con credenciales + JWT, registro).
+- [ ] Implementar `AuthService` + `AuthController` (login con credenciales + JWT).
 - [ ] Implementar `UserService` + `UserController` (CRUD completo, activar/desactivar).
 - [ ] Implementar `EnrollmentService` + `EnrollmentController` (CRUD, control de historial 1:N y validación de vigencia).
 - [ ] Implementar `PaymentService` + `PaymentController` (registro de pagos, métodos de cobro, estados transaccionales y moneda).

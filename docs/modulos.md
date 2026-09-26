@@ -31,8 +31,8 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 |---|---|---|---|---|---|
 | **RF-02** | `GET` | `/api/users` | Listado paginado de usuarios con soporte de filtros por rol y estado (`active`). | Query params: `page`, `size`, `role`, `active` | `200 OK` (lista paginada). |
 | **RF-03** | `GET` | `/api/users/{member_number}` | Obtiene el detalle administrativo de un usuario a partir de su clave primaria natural (`member_number`). | Path param: `member_number` | `200 OK` (objeto UserDTO), `404 Not Found`. |
-| **RF-04** | `POST` | `/api/users` | Registra un nuevo usuario en el sistema con su `member_number` único y validación de contacto (email o teléfono requerido). | `{"member_number": "1001", "name": "...", "lastName": "...", "dni": "...", "email": "...", "role": "USER"}` | `201 Created` (UserDTO creado), `400 Bad Request` (validación fallida), `409 Conflict` (número de socio o DNI duplicado). |
-| **RF-05** | `PUT` | `/api/users/{member_number}` | Actualiza datos de contacto o personales de un usuario existente. | Path param: `member_number`. Body con campos actualizables. | `200 OK`, `400 Bad Request`, `404 Not Found`. |
+| **RF-04** | `POST` | `/api/users` | Registra un nuevo usuario en el sistema con su `member_number` único y validación de contacto (email o teléfono requerido). | `{"member_number": "1001", "name": "...", "lastName": "...", "dni": "...", "email": "...", "role": "USER"}` | `201 Created` (UserDTO creado), `400 Bad Request` (validación fallida), `409 Conflict` (número de socio o DNI duplicado, o email repetido de ADMIN o STAFF). |
+| **RF-05** | `PUT` | `/api/users/{member_number}` | Actualiza datos de contacto o personales de un usuario existente. | Path param: `member_number`. Body con campos actualizables. | `200 OK`, `400 Bad Request`, `404 Not Found`, `409 Conflict` (email repetido de ADMIN o STAFF). |
 | **RF-06** | `POST` | `/api/users/{member_number}/activate` | Cambia el estado de activación lógica del usuario (`active = true / false`). | Path param: `member_number`. Body: `{"active": true/false}` | `200 OK`, `404 Not Found`. |
 
 **Reglas de Negocio Formales:**

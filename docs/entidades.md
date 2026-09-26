@@ -86,7 +86,7 @@ Representa a un socio, personal o administrador del gimnasio.
 
 **Nota de Privacidad y Contacto:** Se utiliza el número de socio (`member_number`) como identificador principal operativo para proteger el DNI. Para evitar "socios fantasmas", el sistema exige obligatoriamente registrar un email o un teléfono de contacto mediante una restricción de base de datos (`CHECK`).
 
-**Nota sobre el email:** Un mismo email puede repetirse entre socios, por ejemplo cuando una madre o un padre anota a sus hijos con su propio correo. En `ADMIN` y `STAFF` no se puede repetir, porque es el dato con el que inician sesión. Esto lo controla el índice único parcial `ux_users_email_staff`. Además, `ADMIN` y `STAFF` tienen que tener email y contraseña (`chk_user_staff_login`), porque sin alguno de los dos no podrían iniciar sesión.
+**Nota sobre el email:** Un mismo email puede repetirse entre socios, por ejemplo cuando una madre o un padre anota a sus hijos con su propio correo. En `ADMIN` y `STAFF` no se puede repetir, sin distinguir mayúsculas de minúsculas, porque es el dato con el que inician sesión. Esto lo controla el índice único parcial `ux_users_email_staff`. Además, `ADMIN` y `STAFF` tienen que tener email y contraseña (`chk_user_staff_login`), porque sin alguno de los dos no podrían iniciar sesión.
 
 **Nota de Escalabilidad (Credenciales opcionales):** Para la versión 1, los usuarios con rol `USER` (Socios) son dados de alta exclusivamente por el administrador y no poseen acceso al sistema, por lo que el campo `password` será nulo para ellos. La tabla se diseñó unificada para permitir a futuro habilitarles credenciales sin reestructurar la base de datos (ej. para un portal de autogestión).
 
@@ -198,7 +198,7 @@ PostgreSQL crea automáticamente un índice por cada clave primaria y por cada r
 
 | Índice | Tabla (columna) | Consultas que acelera |
 |--------|-----------------|-----------------------|
-| `ux_users_email_staff` | `users` (`email`), solo filas `ADMIN` y `STAFF` | Búsqueda del usuario por email al iniciar sesión (RF-01). Además es único: dos cuentas del personal no pueden tener el mismo email. |
+| `ux_users_email_staff` | `users` (`LOWER(email)`), solo filas `ADMIN` y `STAFF` | Búsqueda del usuario por email al iniciar sesión (RF-01); para usar el índice, el login tiene que comparar con `LOWER(email)`. Además es único sin distinguir mayúsculas: dos cuentas del personal no pueden tener el mismo email. |
 | `ix_enrollment_member_number` | `enrollment` (`member_number`) | Historial de inscripciones en la ficha del socio y búsqueda de la inscripción vigente en cada validación de acceso. También el control de `ON DELETE RESTRICT` al intentar borrar un socio. |
 | `ix_payment_enrollment_id` | `payment` (`enrollment_id`) | Pagos de una inscripción al cobrar en caja y al controlar la cuota. También el control de `RESTRICT` al intentar borrar una inscripción. |
 | `ix_access_enrollment_id` | `access` (`enrollment_id`) | Accesos habilitados por una inscripción (auditoría). También el control de `RESTRICT` al intentar borrar una inscripción. |

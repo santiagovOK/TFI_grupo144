@@ -38,7 +38,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 **Reglas de Negocio Formales:**
 1. **Canal de contacto mínimo (Privacy & Contact):** Es estrictamente obligatorio registrar al menos un canal de contacto válido (email o teléfono) al dar de alta un usuario, garantizando la viabilidad de envío de notificaciones.
 2. El Número de Socio (`member_number`) es la clave primaria unívoca y no puede ser modificado una vez asignado, protegiendo el DNI como un dato netamente administrativo.
-3. **Email compartido:** Varios socios (`USER`) pueden registrar el mismo email, por ejemplo hijos anotados con el correo de su madre o su padre. `ADMIN` y `STAFF` necesitan email y contraseña, y su email no puede repetirse entre ellos porque lo usan para iniciar sesión; si se repite, el alta o la modificación responde `409 Conflict`.
+3. **Email compartido:** Varios socios (`USER`) pueden registrar el mismo email, por ejemplo hijos anotados con el correo de su madre o su padre. `ADMIN` y `STAFF` necesitan email y contraseña, y su email no puede repetirse entre ellos, sin distinguir mayúsculas, porque lo usan para iniciar sesión; si se repite, el alta o la modificación responde `409 Conflict`.
 ---
 
 ### 1.3. Módulo Enrollment (`EnrollmentController`, `EnrollmentService`)

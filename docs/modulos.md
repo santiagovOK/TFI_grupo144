@@ -6,7 +6,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 
 ## 1. Módulos de Backend (Spring Boot)
 
-### 1.1. Módulo Auth (`com.gym.project.auth`)
+### 1.1. Módulo Auth (`AuthController`, `AuthService`)
 
 - **Objetivos:** Proveer el mecanismo centralizado de autenticación y autorización para el personal administrativo y operativo (roles `ADMIN` y `STAFF`), emitiendo y validando tokens JWT para securizar el resto de los endpoints de la API.
 - **Entidades involucradas:** `User` (`users`).
@@ -21,7 +21,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 2. Los tokens JWT emitidos son inmutables; cualquier alteración de roles o permisos requerirá un nuevo inicio de sesión.
 ---
 
-### 1.2. Módulo User (`com.gym.project.user`)
+### 1.2. Módulo User (`UserController`, `UserService`)
 
 - **Objetivos:** Administrar el ciclo de vida de los usuarios del sistema (socios, instructores/staff y administradores). Permite el alta, modificación de datos de contacto, consulta de perfiles y activación/desactivación lógica de cuentas.
 - **Entidades involucradas:** `User` (`users`).
@@ -40,7 +40,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 2. El Número de Socio (`member_number`) es la clave primaria unívoca y no puede ser modificado una vez asignado, protegiendo el DNI como un dato netamente administrativo.
 ---
 
-### 1.3. Módulo Enrollment (`com.gym.project.enrollment`)
+### 1.3. Módulo Enrollment (`EnrollmentController`, `EnrollmentService`)
 
 - **Objetivos:** Gestionar los períodos de suscripción e inscripción de los socios, asignando la modalidad de asistencia (`FREE`, `THREE`, `TWO`), estableciendo la vigencia temporal (`start_date`, `end_date`) y definiendo, a través de la modalidad, el tope semanal de accesos.
 - **Entidades involucradas:** `Enrollment` (`enrollment`), `User` (`users`).
@@ -59,7 +59,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 2. **Cupo Semanal:** El tope de accesos semanales surge de la modalidad (`THREE`: 3, `TWO`: 2, `FREE`: sin tope). No se almacena un contador: los accesos usados se obtienen contando los accesos `GRANTED` del socio desde el lunes a las 00:00 (hora del gimnasio) de la semana en curso, sin necesidad de reinicios periódicos.
 ---
 
-### 1.4. Módulo Payment (`com.gym.project.payment`)
+### 1.4. Módulo Payment (`PaymentController`, `PaymentService`)
 
 - **Objetivos:** Registrar y supervisar los pagos efectuados por los socios para cancelar sus inscripciones. Soporta múltiples transacciones por inscripción (abonos parciales o renovaciones), distintos métodos de pago y estados transaccionales (`PENDING`, `PAID`, `FAILED`, `CANCELLED`), preparando la arquitectura para la integración de pasarelas como Mercado Pago.
 - **Entidades involucradas:** `Payment` (`payment`), `Enrollment` (`enrollment`).
@@ -77,7 +77,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 2. **Idempotencia y Auditoría:** Los pagos registrados con estado `PAID` son inmutables. Ante un error, el pago se marca como `CANCELLED` para preservar la auditoría financiera, sin eliminarlo (DELETE) de la base de datos.
 ---
 
-### 1.5. Módulo Access (`com.gym.project.access`)
+### 1.5. Módulo Access (`AccessController`, `AccessService`)
 
 - **Objetivos:** Servir como motor transaccional de validación de ingresos en tiempo real en la entrada del gimnasio y mantener el registro histórico inmutable de auditoría de cada intento de acceso.
 - **Criterio de diseño:** Dado que cada acceso constituye un evento de auditoría en una serie temporal (identificado por la clave compuesta `member_number` + `access_date`), **no se exponen operaciones CRUD planas** (`PUT` o `DELETE`). Los registros de acceso son inmutables y no se editan ni eliminan manualmente.

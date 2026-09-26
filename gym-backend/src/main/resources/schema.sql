@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS users (
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ,
-    CONSTRAINT chk_user_contact CHECK (email IS NOT NULL OR phone IS NOT NULL)
+    CONSTRAINT chk_user_contact CHECK (email IS NOT NULL OR phone IS NOT NULL),
+    CONSTRAINT chk_user_staff_login CHECK (role = 'USER' OR (email IS NOT NULL AND password IS NOT NULL))
     );
 
 CREATE TABLE IF NOT EXISTS enrollment (

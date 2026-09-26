@@ -9,8 +9,8 @@ erDiagram
     users {
         VARCHAR(20) member_number PK "Clave natural de negocio"
         VARCHAR(15) dni UK "Dato administrativo sensible, no vacío (CHECK)"
-        VARCHAR(255) email "Canal contacto (CHECK), obligatorio y único en ADMIN y STAFF"
-        VARCHAR(20) phone "Canal contacto (CHECK)"
+        VARCHAR(255) email "Canal contacto (CHECK), no vacío, obligatorio y único en ADMIN y STAFF"
+        VARCHAR(20) phone "Canal contacto (CHECK), no vacío"
         VARCHAR(255) password "Hash BCrypt, obligatorio en ADMIN y STAFF"
         VARCHAR(100) name "No vacío (CHECK)"
         VARCHAR(100) last_name "No vacío (CHECK)"
@@ -96,8 +96,8 @@ Representa a un socio, personal o administrador del gimnasio.
 |---------|------|-------|-------|-------------|
 | `member_number` | VARCHAR(20) | No | Sí (PK) | Clave primaria natural |
 | `dni` | VARCHAR(15) | No | Sí (UK)| Dato administrativo sensible. No puede quedar vacío (CHECK) |
-| `email` | VARCHAR(255)| Sí | Solo ADMIN y STAFF | Restricción CHECK: email o phone obligatorios. Obligatorio en ADMIN y STAFF |
-| `phone` | VARCHAR(20) | Sí | — | Restricción CHECK: email o phone obligatorios |
+| `email` | VARCHAR(255)| Sí | Solo ADMIN y STAFF | Restricción CHECK: email o phone obligatorios. Obligatorio en ADMIN y STAFF. Si se carga, no puede quedar vacío |
+| `phone` | VARCHAR(20) | Sí | — | Restricción CHECK: email o phone obligatorios. Si se carga, no puede quedar vacío |
 | `password` | VARCHAR(255)| Sí | — | Hash BCrypt. Obligatorio en ADMIN y STAFF (CHECK) |
 | `name` | VARCHAR(100) | No | — | No puede quedar vacío (CHECK) |
 | `last_name` | VARCHAR(100) | No | — | No puede quedar vacío (CHECK) |
@@ -221,7 +221,7 @@ Por lo tanto, el DNI se aisló con una restricción `UNIQUE NOT NULL` como clave
 
 **3. Garantía de Canal de Contacto**
 
-Para evitar el registro de "socios fantasmas" incontactables ante vencimientos, se implementó una restricción a nivel de motor de base de datos: `CONSTRAINT chk_user_contact CHECK (email IS NOT NULL OR phone IS NOT NULL)`. Esto garantiza que se registre al menos un dato de contacto, sin hacer obligatorios ambos. La restricción comprueba que el dato exista, no que sea válido: un valor vacío o mal escrito la cumple igual, por lo que el formato del email y del teléfono lo valida la aplicación al dar de alta al socio.
+Para evitar el registro de "socios fantasmas" incontactables ante vencimientos, se implementó una restricción a nivel de motor de base de datos: `CONSTRAINT chk_user_contact CHECK (email IS NOT NULL OR phone IS NOT NULL)`. Esto garantiza que se registre al menos un dato de contacto, sin hacer obligatorios ambos. La restricción comprueba que el dato exista, no que sea válido: un valor mal escrito la cumple igual (los vacíos los rechazan `chk_user_email` y `chk_user_phone`), por lo que el formato del email y del teléfono lo valida la aplicación al dar de alta al socio.
 
 **4. Clave Primaria Compuesta en Eventos Temporales (`access`)**
 

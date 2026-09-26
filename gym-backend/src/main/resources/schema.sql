@@ -15,7 +15,9 @@ CREATE TABLE IF NOT EXISTS users (
     CONSTRAINT chk_user_staff_login CHECK (role = 'USER' OR (email IS NOT NULL AND password IS NOT NULL)),
     CONSTRAINT chk_user_name CHECK (TRIM(name) <> ''),
     CONSTRAINT chk_user_last_name CHECK (TRIM(last_name) <> ''),
-    CONSTRAINT chk_user_dni CHECK (TRIM(dni) <> '')
+    CONSTRAINT chk_user_dni CHECK (TRIM(dni) <> ''),
+    CONSTRAINT chk_user_email CHECK (TRIM(email) <> ''),
+    CONSTRAINT chk_user_phone CHECK (TRIM(phone) <> '')
     );
 
 CREATE TABLE IF NOT EXISTS enrollment (

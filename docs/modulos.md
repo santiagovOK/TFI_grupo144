@@ -38,6 +38,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 **Reglas de Negocio Formales:**
 1. **Canal de contacto mínimo (Privacy & Contact):** Es estrictamente obligatorio registrar al menos un canal de contacto válido (email o teléfono) al dar de alta un usuario, garantizando la viabilidad de envío de notificaciones.
 2. El Número de Socio (`member_number`) es la clave primaria unívoca y no puede ser modificado una vez asignado, protegiendo el DNI como un dato netamente administrativo.
+3. **Email compartido:** Varios socios (`USER`) pueden registrar el mismo email, por ejemplo hijos anotados con el correo de su madre o su padre. `ADMIN` y `STAFF` necesitan email y contraseña, y su email no puede repetirse entre ellos porque lo usan para iniciar sesión; si se repite, el alta o la modificación responde `409 Conflict`.
 ---
 
 ### 1.3. Módulo Enrollment (`com.gym.project.enrollment`)
@@ -136,7 +137,7 @@ Esta matriz vincula de forma directa los Requerimientos Funcionales (RF) detalla
 | **RF-01** | Autenticación y generación de sesión | `POST /api/auth/login` | Solo para `ADMIN` o `STAFF` con cuenta activa. Genera JWT inmutable. |
 | **RF-02** | Consulta general de usuarios | `GET /api/users` | Exclusivo para roles administrativos. Soporta paginación. |
 | **RF-03** | Consulta individual de perfil de usuario | `GET /api/users/{member_number}` | - |
-| **RF-04** | Registro de nuevos socios/staff | `POST /api/users` | DNI protegido operativamente. Email o teléfono obligatorios. |
+| **RF-04** | Registro de nuevos socios/staff | `POST /api/users` | DNI protegido operativamente. Email o teléfono obligatorios. Email único solo para ADMIN y STAFF. |
 | **RF-05** | Modificación de datos personales | `PUT /api/users/{member_number}` | Clave natural `member_number` inmutable. |
 | **RF-06** | Baja/Alta lógica de usuarios | `POST /api/users/.../activate` | Desactiva accesos futuros sin alterar historial inmutable. |
 | **RF-07** | Listado histórico de inscripciones | `GET /api/enrollments` | Soporta filtros de vigencia. |

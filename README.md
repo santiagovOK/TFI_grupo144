@@ -392,7 +392,7 @@ npm run dev          # Development server :3002
 - [ ] Configurar `application.yml` (DB connection, server port, security settings).
 - [ ] Crear entidades JPA (4 entidades + 5 enums).
 - [ ] Crear DTOs para request/response.
-- [ ] Crear `schema.sql` manual en PostgreSQL (CREATE TABLES).
+- [x] Crear `schema.sql` manual en PostgreSQL (CREATE TABLES).
 - [ ] Configurar Spring Security: habilitar JWT, deshabilitar HTTP basic auth.
 - [ ] Crear `JwtTokenProvider` (generar/validar tokens).
 - [ ] Crear `JwtAuthenticationFilter` (interceptar requests y validar JWT).

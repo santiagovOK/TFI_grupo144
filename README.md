@@ -458,7 +458,7 @@ npm run dev          # Development server :3002
 <summary>Ver Fase 5: Frontend Access (React)</summary>
 
 - [ ] Setup proyecto Vite + React (más simple que el admin).
-- [ ] Componente de validación de DNI/tarjeta.
+- [ ] Componente de ingreso del número de socio (teclado numérico).
 - [ ] Lógica de acceso con reglas de negocio del backend.
 - [ ] Feedback visual claro (acceso permitido / negado).
 - [ ] Consumo de API para verificar acceso.

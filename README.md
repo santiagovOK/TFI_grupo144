@@ -469,7 +469,7 @@ npm run dev          # Development server :3002
 
 ## Seguridad
 
-La autenticación y autorización se gestionan con **Spring Security + JWT**, reemplazando completamente el uso manual de Passport y bcrypt.
+La autenticación y autorización se gestionan con **Spring Security + JWT**.
 
 - **`JwtTokenProvider`**: genera y valida los tokens de acceso.
 - **`JwtAuthenticationFilter`**: intercepta las peticiones HTTP y valida el JWT.

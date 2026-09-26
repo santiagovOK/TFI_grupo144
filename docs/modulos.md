@@ -6,7 +6,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 
 ## 1. Módulos de Backend (Spring Boot)
 
-### 1.1. Módulo Auth (`com.gym.project.auth`)
+### 1.1. Módulo Auth (`AuthController`, `AuthService`)
 
 - **Objetivos:** Proveer el mecanismo centralizado de autenticación y autorización para el personal administrativo y operativo (roles `ADMIN` y `STAFF`), emitiendo y validando tokens JWT para securizar el resto de los endpoints de la API.
 - **Entidades involucradas:** `User` (`users`).
@@ -21,7 +21,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 2. Los tokens JWT emitidos son inmutables; cualquier alteración de roles o permisos requerirá un nuevo inicio de sesión.
 ---
 
-### 1.2. Módulo User (`com.gym.project.user`)
+### 1.2. Módulo User (`UserController`, `UserService`)
 
 - **Objetivos:** Administrar el ciclo de vida de los usuarios del sistema (socios, instructores/staff y administradores). Permite el alta, modificación de datos de contacto, consulta de perfiles y activación/desactivación lógica de cuentas.
 - **Entidades involucradas:** `User` (`users`).
@@ -31,7 +31,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 |---|---|---|---|---|---|
 | **RF-02** | `GET` | `/api/users` | Listado paginado de usuarios con soporte de filtros por rol y estado (`active`). | Query params: `page`, `size`, `role`, `active` | `200 OK` (lista paginada). |
 | **RF-03** | `GET` | `/api/users/{member_number}` | Obtiene el detalle administrativo de un usuario a partir de su clave primaria natural (`member_number`). | Path param: `member_number` | `200 OK` (objeto UserDTO), `404 Not Found`. |
-| **RF-04** | `POST` | `/api/users` | Registra un nuevo usuario en el sistema con su `member_number` único y validación de contacto (email o teléfono requerido). | `{"member_number": "SOC-1001", "name": "...", "lastName": "...", "dni": "...", "email": "...", "role": "USER"}` | `201 Created` (UserDTO creado), `400 Bad Request` (validación fallida), `409 Conflict` (número de socio o DNI duplicado). |
+| **RF-04** | `POST` | `/api/users` | Registra un nuevo usuario en el sistema con su `member_number` único y validación de contacto (email o teléfono requerido). | `{"member_number": "1001", "name": "...", "lastName": "...", "dni": "...", "email": "...", "role": "USER"}` | `201 Created` (UserDTO creado), `400 Bad Request` (validación fallida), `409 Conflict` (número de socio o DNI duplicado). |
 | **RF-05** | `PUT` | `/api/users/{member_number}` | Actualiza datos de contacto o personales de un usuario existente. | Path param: `member_number`. Body con campos actualizables. | `200 OK`, `400 Bad Request`, `404 Not Found`. |
 | **RF-06** | `POST` | `/api/users/{member_number}/activate` | Cambia el estado de activación lógica del usuario (`active = true / false`). | Path param: `member_number`. Body: `{"active": true/false}` | `200 OK`, `404 Not Found`. |
 
@@ -41,7 +41,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 3. **Email compartido:** Varios socios (`USER`) pueden registrar el mismo email, por ejemplo hijos anotados con el correo de su madre o su padre. `ADMIN` y `STAFF` necesitan email y contraseña, y su email no puede repetirse entre ellos porque lo usan para iniciar sesión; si se repite, el alta o la modificación responde `409 Conflict`.
 ---
 
-### 1.3. Módulo Enrollment (`com.gym.project.enrollment`)
+### 1.3. Módulo Enrollment (`EnrollmentController`, `EnrollmentService`)
 
 - **Objetivos:** Gestionar los períodos de suscripción e inscripción de los socios, asignando la modalidad de asistencia (`FREE`, `THREE`, `TWO`), estableciendo la vigencia temporal (`start_date`, `end_date`) y definiendo, a través de la modalidad, el tope semanal de accesos.
 - **Entidades involucradas:** `Enrollment` (`enrollment`), `User` (`users`).
@@ -51,8 +51,8 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 |---|---|---|---|---|---|
 | **RF-07** | `GET` | `/api/enrollments` | Lista inscripciones paginadas, permitiendo filtrar por socio (`member_number`) o estado de vigencia. | Query params: `page`, `size`, `member_number`, `active` | `200 OK`. |
 | **RF-08** | `GET` | `/api/enrollments/{id}` | Recupera la información detallada de una inscripción específica por su UUID. | Path param: `id` (UUID) | `200 OK`, `404 Not Found`. |
-| **RF-09** | `POST` | `/api/enrollments` | Da de alta una nueva inscripción para un socio activo, fijando modalidad y rango de fechas. | `{"member_number": "SOC-1001", "modality": "THREE", "start_date": "...", "end_date": "..."}` | `201 Created`, `400 Bad Request` (fechas incoherentes o socio inexistente/inactivo). |
-| **RF-10** | `PUT` | `/api/enrollments/{id}` | Modifica parámetros de la inscripción (ej. extensión de vigencia o cambio de modalidad). | Path param: `id`. Body con atributos modificables. | `200 OK`, `400 Bad Request`, `404 Not Found`. |
+| **RF-09** | `POST` | `/api/enrollments` | Da de alta una nueva inscripción para un socio activo, fijando modalidad y rango de fechas. | `{"member_number": "1001", "modality": "THREE", "start_date": "...", "end_date": "..."}` | `201 Created`, `400 Bad Request` (fechas incoherentes o socio inexistente/inactivo), `409 Conflict` (se superpone con otra inscripción del socio). |
+| **RF-10** | `PUT` | `/api/enrollments/{id}` | Modifica parámetros de la inscripción (ej. extensión de vigencia o cambio de modalidad). | Path param: `id`. Body con atributos modificables. | `200 OK`, `400 Bad Request`, `404 Not Found`, `409 Conflict` (se superpone con otra inscripción del socio). |
 | **RF-11** | `DELETE` | `/api/enrollments/{id}` | Cancela o da de baja una inscripción. | Path param: `id` | `204 No Content`, `404 Not Found`. |
 
 **Reglas de Negocio Formales:**
@@ -60,7 +60,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 2. **Cupo Semanal:** El tope de accesos semanales surge de la modalidad (`THREE`: 3, `TWO`: 2, `FREE`: sin tope). No se almacena un contador: los accesos usados se obtienen contando los accesos `GRANTED` del socio desde el lunes a las 00:00 (hora del gimnasio) de la semana en curso, sin necesidad de reinicios periódicos.
 ---
 
-### 1.4. Módulo Payment (`com.gym.project.payment`)
+### 1.4. Módulo Payment (`PaymentController`, `PaymentService`)
 
 - **Objetivos:** Registrar y supervisar los pagos efectuados por los socios para cancelar sus inscripciones. Soporta múltiples transacciones por inscripción (abonos parciales o renovaciones), distintos métodos de pago y estados transaccionales (`PENDING`, `PAID`, `FAILED`, `CANCELLED`), preparando la arquitectura para la integración de pasarelas como Mercado Pago.
 - **Entidades involucradas:** `Payment` (`payment`), `Enrollment` (`enrollment`).
@@ -78,7 +78,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 2. **Idempotencia y Auditoría:** Los pagos registrados con estado `PAID` son inmutables. Ante un error, el pago se marca como `CANCELLED` para preservar la auditoría financiera, sin eliminarlo (DELETE) de la base de datos.
 ---
 
-### 1.5. Módulo Access (`com.gym.project.access`)
+### 1.5. Módulo Access (`AccessController`, `AccessService`)
 
 - **Objetivos:** Servir como motor transaccional de validación de ingresos en tiempo real en la entrada del gimnasio y mantener el registro histórico inmutable de auditoría de cada intento de acceso.
 - **Criterio de diseño:** Dado que cada acceso constituye un evento de auditoría en una serie temporal (identificado por la clave compuesta `member_number` + `access_date`), **no se exponen operaciones CRUD planas** (`PUT` o `DELETE`). Los registros de acceso son inmutables y no se editan ni eliminan manualmente.
@@ -87,7 +87,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 
 | RF | Método | Endpoint | Descripción | Request Body / Parámetros | Códigos de Respuesta |
 |---|---|---|---|---|---|
-| **RF-16** | `POST` | `/api/access/validate` | **Operación central de negocio.** Recibe la identificación del socio (`member_number`), evalúa reglas de negocio (existencia y activación del usuario, cuota al día, vigencia del plan y límite semanal de accesos según la modalidad) y persiste el intento como registro inmutable en `access`. El límite semanal se verifica contando los accesos `GRANTED` del socio en la semana en curso. | `{"member_number": "SOC-1001"}` | `200 OK` (`{"status": "GRANTED", "message": "Acceso permitido", "userName": "..."}` o `{"status": "DENIED", "reason": "Cuota vencida / Límite semanal alcanzado"}`). |
+| **RF-16** | `POST` | `/api/access/validate` | **Operación central de negocio.** Recibe la identificación del socio (`member_number`), evalúa reglas de negocio (existencia y activación del usuario, cuota al día, vigencia del plan y límite semanal de accesos según la modalidad) y persiste el intento como registro inmutable en `access`. El límite semanal se verifica contando los accesos `GRANTED` del socio en la semana en curso. Si concede el acceso, `remainingAccesses` indica los accesos que le quedan en la semana, ya descontado este ingreso (`null` para `FREE`). | `{"member_number": "1001"}` | `200 OK` (`{"status": "GRANTED", "message": "Acceso permitido", "userName": "...", "modality": "THREE", "remainingAccesses": 2}` o `{"status": "DENIED", "reason": "Cuota vencida / Límite semanal alcanzado"}`). |
 | **RF-17** | `GET` | `/api/access` | Consulta el registro histórico de accesos para reportes, auditoría y análisis de afluencia. Permite filtrar por rango de fechas, socio (`member_number`) y resultado (`GRANTED` / `DENIED`). | Query params: `page`, `size`, `member_number`, `status`, `from`, `to` | `200 OK` (listado paginado). |
 
 **Reglas de Negocio Formales:**
@@ -123,7 +123,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
   - Interfaz de entrada para ingresar el número de socio (`member_number`) mediante teclado numérico o lector de credenciales (preservando el DNI como dato administrativo por privacidad).
   - Consumo del endpoint de negocio `POST /api/access/validate`.
   - Despliegue visual inmediato (código de colores verde/rojo, tipografía de alta visibilidad) que comunique claramente el resultado:
-    - **GRANTED (Aprobado):** Nombre del socio, modalidad activa y mensaje de bienvenida.
+    - **GRANTED (Aprobado):** Nombre del socio, modalidad activa, accesos que le quedan en la semana y mensaje de bienvenida.
     - **DENIED (Rechazado):** Mensaje explicativo claro (ej. "Inscripción vencida", "Límite semanal alcanzado", "Socio inactivo") solicitando acercarse al mostrador administrativo.
 
 ---

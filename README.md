@@ -338,7 +338,7 @@ npm run dev          # Development server :3002
 
 1. Clonar el repositorio.
 2. Crear una base de datos PostgreSQL vacía y ejecutar `schema.sql` para crear el esquema. El script está pensado para una base nueva: como usa `IF NOT EXISTS`, volver a ejecutarlo sobre una base existente no modifica las tablas ya creadas.
-3. Configurar las variables de entorno del backend (archivo `.env`):
+3. Configurar el backend en `gym-backend/src/main/resources/application.yml`:
 
    ```yaml
    server:
@@ -351,13 +351,13 @@ npm run dev          # Development server :3002
        password: [PASSWORD_DE_POSTGRESQL]
        driver-class-name: org.postgresql.Driver
      jpa:
+       open-in-view: false
        hibernate:
          ddl-auto: validate
        properties:
          hibernate:
            format_sql: true
            show_sql: false
-         open-in-view: false
 
    default-auth:
      jwt:
@@ -392,7 +392,7 @@ npm run dev          # Development server :3002
 - [ ] Configurar `application.yml` (DB connection, server port, security settings).
 - [ ] Crear entidades JPA (4 entidades + 5 enums).
 - [ ] Crear DTOs para request/response.
-- [ ] Crear `schema.sql` manual en PostgreSQL (CREATE TABLES).
+- [x] Crear `schema.sql` manual en PostgreSQL (CREATE TABLES).
 - [ ] Configurar Spring Security: habilitar JWT, deshabilitar HTTP basic auth.
 - [ ] Crear `JwtTokenProvider` (generar/validar tokens).
 - [ ] Crear `JwtAuthenticationFilter` (interceptar requests y validar JWT).
@@ -406,7 +406,7 @@ npm run dev          # Development server :3002
 <details>
 <summary>Ver Fase 2: Backend — Business Logic</summary>
 
-- [ ] Implementar `AuthService` + `AuthController` (login con credenciales + JWT, registro).
+- [ ] Implementar `AuthService` + `AuthController` (login con credenciales + JWT).
 - [ ] Implementar `UserService` + `UserController` (CRUD completo, activar/desactivar).
 - [ ] Implementar `EnrollmentService` + `EnrollmentController` (CRUD, control de historial 1:N y validación de vigencia).
 - [ ] Implementar `PaymentService` + `PaymentController` (registro de pagos, métodos de cobro, estados transaccionales y moneda).
@@ -458,7 +458,7 @@ npm run dev          # Development server :3002
 <summary>Ver Fase 5: Frontend Access (React)</summary>
 
 - [ ] Setup proyecto Vite + React (más simple que el admin).
-- [ ] Componente de validación de DNI/tarjeta.
+- [ ] Componente de ingreso del número de socio (teclado numérico).
 - [ ] Lógica de acceso con reglas de negocio del backend.
 - [ ] Feedback visual claro (acceso permitido / negado).
 - [ ] Consumo de API para verificar acceso.
@@ -469,7 +469,7 @@ npm run dev          # Development server :3002
 
 ## Seguridad
 
-La autenticación y autorización se gestionan con **Spring Security + JWT**, reemplazando completamente el uso manual de Passport y bcrypt.
+La autenticación y autorización se gestionan con **Spring Security + JWT**.
 
 - **`JwtTokenProvider`**: genera y valida los tokens de acceso.
 - **`JwtAuthenticationFilter`**: intercepta las peticiones HTTP y valida el JWT.

@@ -86,7 +86,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 
 | RF | Método | Endpoint | Descripción | Request Body / Parámetros | Códigos de Respuesta |
 |---|---|---|---|---|---|
-| **RF-16** | `POST` | `/api/access/validate` | **Operación central de negocio.** Recibe la identificación del socio (`member_number`), evalúa reglas de negocio (existencia y activación del usuario, cuota al día, vigencia del plan y límite semanal de accesos según la modalidad) y persiste el intento como registro inmutable en `access`. El límite semanal se verifica contando los accesos `GRANTED` del socio en la semana en curso. | `{"member_number": "1001"}` | `200 OK` (`{"status": "GRANTED", "message": "Acceso permitido", "userName": "..."}` o `{"status": "DENIED", "reason": "Cuota vencida / Límite semanal alcanzado"}`). |
+| **RF-16** | `POST` | `/api/access/validate` | **Operación central de negocio.** Recibe la identificación del socio (`member_number`), evalúa reglas de negocio (existencia y activación del usuario, cuota al día, vigencia del plan y límite semanal de accesos según la modalidad) y persiste el intento como registro inmutable en `access`. El límite semanal se verifica contando los accesos `GRANTED` del socio en la semana en curso. Si concede el acceso, `remainingAccesses` indica los accesos que le quedan en la semana, ya descontado este ingreso (`null` para `FREE`). | `{"member_number": "1001"}` | `200 OK` (`{"status": "GRANTED", "message": "Acceso permitido", "userName": "...", "modality": "THREE", "remainingAccesses": 2}` o `{"status": "DENIED", "reason": "Cuota vencida / Límite semanal alcanzado"}`). |
 | **RF-17** | `GET` | `/api/access` | Consulta el registro histórico de accesos para reportes, auditoría y análisis de afluencia. Permite filtrar por rango de fechas, socio (`member_number`) y resultado (`GRANTED` / `DENIED`). | Query params: `page`, `size`, `member_number`, `status`, `from`, `to` | `200 OK` (listado paginado). |
 
 **Reglas de Negocio Formales:**
@@ -122,7 +122,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
   - Interfaz de entrada para ingresar el número de socio (`member_number`) mediante teclado numérico o lector de credenciales (preservando el DNI como dato administrativo por privacidad).
   - Consumo del endpoint de negocio `POST /api/access/validate`.
   - Despliegue visual inmediato (código de colores verde/rojo, tipografía de alta visibilidad) que comunique claramente el resultado:
-    - **GRANTED (Aprobado):** Nombre del socio, modalidad activa y mensaje de bienvenida.
+    - **GRANTED (Aprobado):** Nombre del socio, modalidad activa, accesos que le quedan en la semana y mensaje de bienvenida.
     - **DENIED (Rechazado):** Mensaje explicativo claro (ej. "Inscripción vencida", "Límite semanal alcanzado", "Socio inactivo") solicitando acercarse al mostrador administrativo.
 
 ---

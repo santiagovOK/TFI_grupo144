@@ -8,12 +8,12 @@ Documentación técnica completa del esquema de la base de datos. Este archivo c
 erDiagram
     users {
         VARCHAR(20) member_number PK "Clave natural de negocio"
-        VARCHAR(15) dni UK "Dato administrativo sensible"
+        VARCHAR(15) dni UK "Dato administrativo sensible, no vacío (CHECK)"
         VARCHAR(255) email "Canal contacto (CHECK), obligatorio y único en ADMIN y STAFF"
         VARCHAR(20) phone "Canal contacto (CHECK)"
         VARCHAR(255) password "Hash BCrypt, obligatorio en ADMIN y STAFF"
-        VARCHAR(100) name
-        VARCHAR(100) last_name
+        VARCHAR(100) name "No vacío (CHECK)"
+        VARCHAR(100) last_name "No vacío (CHECK)"
         DATE birth_date
         VARCHAR(20) role "Enum Role: ADMIN, STAFF, USER"
         BOOLEAN active
@@ -95,12 +95,12 @@ Representa a un socio, personal o administrador del gimnasio.
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `member_number` | VARCHAR(20) | No | Sí (PK) | Clave primaria natural |
-| `dni` | VARCHAR(15) | No | Sí (UK)| Dato administrativo sensible |
+| `dni` | VARCHAR(15) | No | Sí (UK)| Dato administrativo sensible. No puede quedar vacío (CHECK) |
 | `email` | VARCHAR(255)| Sí | Solo ADMIN y STAFF | Restricción CHECK: email o phone obligatorios. Obligatorio en ADMIN y STAFF |
 | `phone` | VARCHAR(20) | Sí | — | Restricción CHECK: email o phone obligatorios |
 | `password` | VARCHAR(255)| Sí | — | Hash BCrypt. Obligatorio en ADMIN y STAFF (CHECK) |
-| `name` | VARCHAR(100) | No | — | |
-| `last_name` | VARCHAR(100) | No | — | |
+| `name` | VARCHAR(100) | No | — | No puede quedar vacío (CHECK) |
+| `last_name` | VARCHAR(100) | No | — | No puede quedar vacío (CHECK) |
 | `birth_date` | DATE | Sí | — | |
 | `role` | VARCHAR(20) | No | — | Valor del Enum `Role` (Por defecto `USER`, restricción CHECK) |
 | `active` | BOOLEAN | No | — | Valor por defecto `true` |

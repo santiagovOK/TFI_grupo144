@@ -40,7 +40,7 @@ erDiagram
         VARCHAR(10) currency "Enum Currency: ARS, USD"
         VARCHAR(20) status "Enum PaymentStatus: PENDING, PAID, FAILED, CANCELLED"
         VARCHAR(50) payment_method "Método de cobro"
-        VARCHAR(100) external_reference "Id de pasarela (MP)"
+        VARCHAR(100) gateway_payment_id UK "Id de pasarela (MP)"
         VARCHAR(500) comments
         DECIMAL discount "Precisión 19,2"
         TIMESTAMPTZ created_at
@@ -166,7 +166,7 @@ Registra un pago asociado a una inscripción.
 | `currency` | VARCHAR(10) | No | — | Valor Enum `Currency` (Por defecto `ARS`, restricción CHECK) |
 | `status` | VARCHAR(20) | No | — | Valor del Enum `PaymentStatus` (Por defecto `PENDING`, restricción CHECK) |
 | `payment_method` | VARCHAR(50) | Sí | — | Método de pago (ej. tarjeta, mercadopago) |
-| `external_reference` | VARCHAR(100) | Sí | — | Referencia externa de transacción |
+| `gateway_payment_id` | VARCHAR(100) | Sí | Sí (UK) | Id devuelto por la pasarela de pagos |
 | `comments` | VARCHAR(500) | Sí | — | |
 | `discount` | DECIMAL(19,2) | Sí | — | Descuento aplicado en el pago. Restricción CHECK: `discount IS NULL OR (discount >= 0 AND discount <= amount)` |
 | `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |

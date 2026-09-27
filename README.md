@@ -233,6 +233,7 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 | `Role` | `ADMIN`, `STAFF`, `USER` |
 | `Currency` | `ARS`, `USD` |
 | `Modality` | `FREE` (ilimitado), `THREE` (3 por semana), `TWO` (2 por semana) |
+| `EnrollmentStatus` | `ACTIVE`, `CANCELLED`, `EXPIRED` |
 | `AccessStatus` | `GRANTED`, `DENIED` |
 | `PaymentStatus` | `PENDING`, `PAID`, `FAILED`, `CANCELLED` |
 

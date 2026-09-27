@@ -60,7 +60,7 @@ Diseñada para pantalla táctil en tótem o tablet junto al molinete de entrada 
 - Círculo de confirmación con tilde (`✓`) sobre fondo verde claro.
 - Mensaje de bienvenida personalizado con nombre del socio.
 - Resumen de modalidad y cupo semanal restante (ej. *"Modalidad: 3 días/sem — Te quedan 2 accesos esta semana"*).
-- Notificación de molinete desbloqueado por tiempo acotado (10 segundos).
+- Mensaje de ingreso habilitado en pantalla (ej. *"Pase habilitado por 10 segundos"*) para supervisión visual del recepcionista (preparado para integración con relé/apertura física a futuro).
 
 ![Terminal de Acceso - Concedido](./mockups/img/terminal_acceso_concedido.png)
 

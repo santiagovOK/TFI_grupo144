@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
 CREATE TABLE IF NOT EXISTS users (
     member_number VARCHAR(20) PRIMARY KEY,
     email VARCHAR(255),
@@ -24,12 +26,18 @@ CREATE TABLE IF NOT EXISTS enrollment (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     member_number VARCHAR(20) NOT NULL REFERENCES users(member_number) ON DELETE RESTRICT,
     modality VARCHAR(20) NOT NULL CHECK (modality IN ('FREE', 'THREE', 'TWO')),
+    price DECIMAL(19,2) NOT NULL,
+    discount DECIMAL(19,2),
     start_date TIMESTAMPTZ NOT NULL,
     end_date TIMESTAMPTZ NOT NULL,
     comments VARCHAR(500),
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'CANCELLED', 'EXPIRED')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ,
-    CONSTRAINT chk_enrollment_dates CHECK (end_date > start_date)
+    CONSTRAINT chk_enrollment_dates CHECK (end_date > start_date),
+    CONSTRAINT chk_enrollment_price CHECK (price >= 0),
+    CONSTRAINT chk_enrollment_discount CHECK (discount IS NULL OR (discount >= 0 AND discount <= price)),
+    CONSTRAINT no_overlap_enrollment EXCLUDE USING gist (member_number WITH =, tstzrange(start_date, end_date, '[)') WITH &&) WHERE (status != 'CANCELLED')
     );
 
 CREATE TABLE IF NOT EXISTS payment (
@@ -43,7 +51,9 @@ CREATE TABLE IF NOT EXISTS payment (
     comments VARCHAR(500),
     discount DECIMAL(19,2),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ
+    updated_at TIMESTAMPTZ,
+    CONSTRAINT chk_payment_amount CHECK (amount > 0),
+    CONSTRAINT chk_payment_discount CHECK (discount IS NULL OR (discount >= 0 AND discount <= amount))
     );
 
 CREATE TABLE IF NOT EXISTS access (

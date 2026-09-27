@@ -24,9 +24,12 @@ erDiagram
         UUID id PK "Identificador de período (v4)"
         VARCHAR(20) member_number FK "Referencia a users"
         VARCHAR(20) modality "Enum Modality: FREE, THREE, TWO"
+        DECIMAL price "Precio pactado (CHECK >= 0)"
+        DECIMAL discount "Descuento pactado (CHECK <= price)"
         TIMESTAMPTZ start_date "Inicio del período (CHECK)"
         TIMESTAMPTZ end_date "Fin del período (CHECK)"
         VARCHAR(500) comments
+        VARCHAR(20) status "Enum EnrollmentStatus: ACTIVE, CANCELLED, EXPIRED"
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
     }
@@ -117,14 +120,21 @@ Representa la inscripción de un usuario a un plan, con su modalidad y vigencia.
 
 **Nota de Cupo Semanal:** la tabla no guarda un contador de accesos. El tope surge de la modalidad (`THREE`: 3, `TWO`: 2, `FREE`: sin tope) y los accesos ya usados se cuentan en la tabla `access` (ver Fundamentos de Diseño Relacional, punto 7).
 
+**Nota de Condiciones Financieras:** cada inscripción congela el precio pactado (`price`) y el descuento concedido (`discount`) al momento del alta, asegurando la inmutabilidad histórica frente a futuros aumentos de tarifas. Las restricciones `chk_enrollment_price` y `chk_enrollment_discount` exigen que el precio sea no negativo y que el descuento no supere dicho precio.
+
+**Nota de Baja Lógica y Solapamiento:** la tabla implementa baja lógica mediante la columna `status` (`ACTIVE`, `CANCELLED`, `EXPIRED`). Para evitar inconsistencias operativas sin delegar la integridad exclusivamente a la aplicación, el motor de base de datos prohíbe el solapamiento de períodos vigentes para un mismo socio mediante una restricción de exclusión (`no_overlap_enrollment` vía `EXCLUDE USING gist`). Dicha restricción se aplica únicamente sobre inscripciones no canceladas (`WHERE status != 'CANCELLED'`), permitiendo registrar nuevas inscripciones sin conflictos si un período anterior fue dado de baja.
+
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `id` | UUID | No (generado) | Sí (PK) | Clave primaria. UUID v4 generado por la base con `gen_random_uuid()` |
 | `member_number` | VARCHAR(20) | No | — | FK a `users.member_number` (`ON DELETE RESTRICT`) |
 | `modality` | VARCHAR(20) | No | — | Valor del Enum `Modality` (Restricción CHECK) |
+| `price` | DECIMAL(19,2) | No | — | Precio pactado al suscribirse. Restricción CHECK: `price >= 0` |
+| `discount` | DECIMAL(19,2) | Sí | — | Descuento aplicado al suscribirse. Restricción CHECK: `discount IS NULL OR (discount >= 0 AND discount <= price)` |
 | `start_date` | TIMESTAMPTZ | No | — | Inicio del período (incluido). Restricción CHECK: anterior a `end_date` |
 | `end_date` | TIMESTAMPTZ | No | — | Fin del período (excluido). Restricción CHECK: posterior a `start_date` |
 | `comments` | VARCHAR(500) | Sí | — | |
+| `status` | VARCHAR(20) | No | — | Valor del Enum `EnrollmentStatus` (Por defecto `ACTIVE`, restricción CHECK) |
 | `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |
 | `updated_at` | TIMESTAMPTZ | Sí | — | Sin actualización automática en la base. La aplicación deberá asignarlo al modificar el registro |
 
@@ -152,13 +162,13 @@ Registra un pago asociado a una inscripción.
 |---------|------|-------|-------|-------------|
 | `id` | UUID | No (generado) | Sí (PK) | Clave primaria. UUID v4 generado por la base con `gen_random_uuid()` |
 | `enrollment_id` | UUID | No | — | FK a `enrollment.id` (`ON DELETE RESTRICT`) |
-| `amount` | DECIMAL(19,2) | No | — | |
+| `amount` | DECIMAL(19,2) | No | — | Monto del pago. Restricción CHECK: `amount > 0` |
 | `currency` | VARCHAR(10) | No | — | Valor Enum `Currency` (Por defecto `ARS`, restricción CHECK) |
 | `status` | VARCHAR(20) | No | — | Valor del Enum `PaymentStatus` (Por defecto `PENDING`, restricción CHECK) |
 | `payment_method` | VARCHAR(50) | Sí | — | Método de pago (ej. tarjeta, mercadopago) |
 | `external_reference` | VARCHAR(100) | Sí | — | Referencia externa de transacción |
 | `comments` | VARCHAR(500) | Sí | — | |
-| `discount` | DECIMAL(19,2) | Sí | — | |
+| `discount` | DECIMAL(19,2) | Sí | — | Descuento aplicado en el pago. Restricción CHECK: `discount IS NULL OR (discount >= 0 AND discount <= amount)` |
 | `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |
 | `updated_at` | TIMESTAMPTZ | Sí | — | Sin actualización automática en la base. La aplicación deberá asignarlo al modificar el registro |
 
@@ -177,6 +187,11 @@ Para garantizar la integridad de los datos a nivel conceptual, los siguientes ca
 - `FREE`: Acceso ilimitado.
 - `THREE`: 3 accesos por semana.
 - `TWO`: 2 accesos por semana.
+
+### `EnrollmentStatus` (Tabla `enrollment`)
+- `ACTIVE`: Inscripción activa y vigente en el sistema.
+- `CANCELLED`: Inscripción cancelada / dada de baja lógica (libera el rango temporal para nuevas suscripciones y conserva pagos/accesos históricos).
+- `EXPIRED`: Inscripción cuyo período de vigencia ha finalizado.
 
 ### `Currency` (Tabla `payment`)
 - `ARS`: Peso argentino.
@@ -231,7 +246,7 @@ Su identidad unívoca natural está determinada por quién intentó pasar (`memb
 **5. Uso Justificado de UUID en Entidades Específicas**
 *   **En `enrollment` (Mutabilidad):** Las fechas de inicio y fin de una suscripción son inherentemente mutables (suspensiones, vacaciones, prórrogas). Si usáramos una PK compuesta basada en fechas, cualquier modificación forzaría una cascada de actualizaciones compleja en tablas dependientes. El UUID provee una identidad inmutable que independiza el contrato de sus ajustes temporales.
 *   **En `payment` (Conciliación externa):** En la integración con pasarelas de pago externas (ej. Mercado Pago), el sistema debe generar un identificador único previo a la redirección. El UUID se envía como referencia a la pasarela y permite asociar cada notificación (webhook) con su pago sin exponer datos del negocio. El identificador por sí solo no evita que una misma notificación se procese dos veces: esa idempotencia la resuelve la aplicación al procesar las notificaciones.
-*   **Versión (UUID v4):** Los identificadores son UUID de versión 4 (RFC 9562), formados por 122 bits aleatorios. Los genera la propia base mediante `DEFAULT gen_random_uuid()`, función nativa de PostgreSQL desde la versión 13, por lo que el esquema no necesita extensiones. Se eligió la versión 4 y no la 7 (basada en la hora de creación) porque no revela cuándo se creó el registro ni permite deducir otros identificadores: el identificador de un pago que se envía a Mercado Pago no expone información interna. La versión 7 ordena mejor los índices en tablas de gran volumen, una ventaja que no es relevante para la cantidad de inscripciones y pagos de un gimnasio.
+*   **Versión (UUID v4):** Los identificadores son UUID de versión 4 (RFC 9562), formados por 122 bits aleatorios. Los genera la propia base mediante `DEFAULT gen_random_uuid()`, función nativa de PostgreSQL desde la versión 13. La única extensión requerida por el esquema es `btree_gist`, necesaria para habilitar la restricción de exclusión temporal en `enrollment` (ver punto 9). Se eligió la versión 4 y no la 7 (basada en la hora de creación) porque no revela cuándo se creó el registro ni permite deducir otros identificadores: el identificador de un pago que se envía a Mercado Pago no expone información interna. La versión 7 ordena mejor los índices en tablas de gran volumen, una ventaja que no es relevante para la cantidad de inscripciones y pagos de un gimnasio.
 
 **6. Conservación del Historial (`ON DELETE RESTRICT`)**
 
@@ -250,4 +265,13 @@ El conteo se hace por socio y no por inscripción: si un socio renueva a mitad d
 Todas las columnas de fecha y hora se declaran `TIMESTAMPTZ` (`timestamp with time zone`). PostgreSQL guarda cada valor como un instante absoluto (en UTC) y lo muestra convertido a la zona horaria de la sesión, de modo que un acceso representa el mismo momento sin importar desde dónde se consulte. `birth_date` se mantiene como `DATE`, porque una fecha de nacimiento no es un instante.
 Con `TIMESTAMP` (sin zona), la base guarda la fecha y la hora tal como llegan, sin saber a qué zona corresponden. El backend se desplegará en Render y la base en Neon, que por defecto trabajan en UTC, mientras que el gimnasio opera en hora de Argentina (UTC−3). Un acceso del domingo a las 22:30 en el gimnasio es el lunes a la 01:30 en UTC: guardado sin zona, el mismo registro podría interpretarse en un día distinto según quién lo lea, y los horarios pico del dashboard aparecerían corridos tres horas.
 Las reglas que dependen del día o de la semana se evalúan en la zona horaria del gimnasio. Para el cupo semanal (punto 7), el inicio de la semana se calcula como `date_trunc('week', now(), 'America/Argentina/Buenos_Aires')`: calculado en UTC, el acceso del domingo a las 22:30 se contaría en la semana siguiente.
+
+**9. Prevención de Solapamiento Temporal y Baja Lógica (`enrollment`)**
+
+Para garantizar que un socio no posea simultáneamente dos períodos de suscripción activos o superpuestos en el tiempo, el esquema implementa una restricción de exclusión a nivel de motor:
+`CONSTRAINT no_overlap_enrollment EXCLUDE USING gist (member_number WITH =, tstzrange(start_date, end_date, '[)') WITH &&) WHERE (status != 'CANCELLED')`.
+
+- **Uso de `btree_gist`:** PostgreSQL no admite de forma nativa la combinación de tipos escalares (como `VARCHAR` en `member_number` con el operador `=`) junto con rangos geométricos o temporales dentro de un índice GiST. La extensión `btree_gist` habilita esta compatibilidad, permitiendo evaluar la igualdad de socio y el solapamiento de rangos en un único índice eficiente.
+- **Rango semiabierto `[)`:** El rango temporal `tstzrange(start_date, end_date, '[)')` incluye el instante de inicio (`start_date`) y excluye el de finalización (`end_date`). Esta formulación matemática modela con precisión la regla de vigencia del gimnasio, permitiendo que una renovación inicie exactamente en el mismo instante en que expira el período previo sin generar colisiones ni falsos positivos de solapamiento.
+- **Baja Lógica y Conservación Histórica (RF-11):** La eliminación física mediante `DELETE` vulneraría la integridad referencial (`ON DELETE RESTRICT`) si la membresía ya cuenta con pagos registrados (`payment`) o ingresos en terminal (`access`). Para preservar la inmutabilidad y trazabilidad de estos registros contables y de auditoría, las cancelaciones se resuelven actualizando el estado a `CANCELLED`. Gracias al predicado parcial `WHERE (status != 'CANCELLED')`, al cancelar una inscripción futura o anticipada, el rango temporal queda inmediatamente liberado para registrar una nueva suscripción sin bloqueos.
 

@@ -140,18 +140,21 @@ Diseñada para la supervisión operativa y gerencial (acceso completo para `ADMI
 
 ---
 
-### Pantalla 5: Configuración de Planes y Modalidades (Exclusivo ADMIN)
+### Pantalla 5: Configuración de Aranceles por Modalidad (Exclusivo ADMIN)
 
-Módulo de administración tarifaria con acceso restringido para usuarios con rol `ADMIN`.
+Módulo de administración tarifaria con acceso restringido para usuarios con rol `ADMIN`. Bajo la arquitectura de dominio del sistema, las modalidades de acceso están fijadas de forma estricta por el tipo enumerado (`FREE`, `THREE`, `TWO`), por lo que no existe un catálogo dinámico ni creación de planes arbitrarios. El administrador utiliza este panel para ajustar los aranceles base de referencia.
 
-- **Listado de Planes del Gimnasio:** Visualización de planes vigentes, precios actualizados y límite semanal de accesos.
-- **Formulario de Alta / Modificación de Planes:**
-  - Nombre del plan.
-  - Modalidad asociada (`FREE`, `THREE`, `TWO`).
-  - Arancel mensual.
-  - Estado de vigencia (activo / deshabilitado para nuevas inscripciones).
+- **Catálogo de Modalidades y Aranceles:**
+  - Visualización de las 3 modalidades del dominio (`Pase Libre`, `3 Días / Semana`, `2 Días / Semana`).
+  - Código enum en base de datos (`modality_type`).
+  - Regla de acceso y tope semanal (acceso ilimitado, 3 días o 2 días semanales).
+  - Arancel base de referencia actual y estado activo.
+- **Panel de Ajuste de Arancel de Referencia:**
+  - Selección de la modalidad fija a configurar.
+  - Actualización del importe base sugerido para nuevas inscripciones.
+  - Regla de inmutabilidad financiera (RF-09 / RF-14): los cambios de arancel aplican exclusivamente hacia adelante como valor de referencia al momento de inscribir socios (`enrollment`), garantizando que los cobros ya efectuados y suscripciones previas permanezcan inmutables.
 
-![Configuración de Planes y Tarifas](./mockups/img/pantalla_5_configuracion.png)
+![Configuración de Aranceles por Modalidad](./mockups/img/pantalla_5_configuracion.png)
 ---
 
 ## 3. Formato de Entregables y Estructura en el Repositorio

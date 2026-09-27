@@ -51,13 +51,14 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 |---|---|---|---|---|---|
 | **RF-07** | `GET` | `/api/enrollments` | Lista inscripciones paginadas, permitiendo filtrar por socio (`member_number`) o estado de vigencia. | Query params: `page`, `size`, `member_number`, `active` | `200 OK`. |
 | **RF-08** | `GET` | `/api/enrollments/{id}` | Recupera la información detallada de una inscripción específica por su UUID. | Path param: `id` (UUID) | `200 OK`, `404 Not Found`. |
-| **RF-09** | `POST` | `/api/enrollments` | Da de alta una nueva inscripción para un socio activo, fijando modalidad y rango de fechas. | `{"member_number": "1001", "modality": "THREE", "start_date": "...", "end_date": "..."}` | `201 Created`, `400 Bad Request` (fechas incoherentes o socio inexistente/inactivo), `409 Conflict` (se superpone con otra inscripción del socio). |
+| **RF-09** | `POST` | `/api/enrollments` | Da de alta una nueva inscripción para un socio activo, fijando modalidad, rango de fechas y condiciones comerciales (precio y descuento). | `{"member_number": "1001", "modality": "THREE", "price": 15000.00, "discount": 0.00, "start_date": "...", "end_date": "..."}` | `201 Created`, `400 Bad Request` (fechas incoherentes, precio/descuento inválidos o socio inexistente/inactivo), `409 Conflict` (se superpone con otra inscripción del socio). |
 | **RF-10** | `PUT` | `/api/enrollments/{id}` | Modifica parámetros de la inscripción (ej. extensión de vigencia o cambio de modalidad). | Path param: `id`. Body con atributos modificables. | `200 OK`, `400 Bad Request`, `404 Not Found`, `409 Conflict` (se superpone con otra inscripción del socio). |
 | **RF-11** | `DELETE` | `/api/enrollments/{id}` | Cancela o da de baja una inscripción. | Path param: `id` | `204 No Content`, `404 Not Found`. |
 
 **Reglas de Negocio Formales:**
 1. **Historial y Vigencia:** Un socio puede poseer múltiples registros de inscripción (1:N) a modo de historial, pero el sistema debe garantizar que no existan dos inscripciones activas con fechas superpuestas.
 2. **Cupo Semanal:** El tope de accesos semanales surge de la modalidad (`THREE`: 3, `TWO`: 2, `FREE`: sin tope). No se almacena un contador: los accesos usados se obtienen contando los accesos `GRANTED` del socio desde el lunes a las 00:00 (hora del gimnasio) de la semana en curso, sin necesidad de reinicios periódicos.
+3. **Congelamiento de Condiciones Comerciales:** Al crear una inscripción (`POST /api/enrollments`), se fijan de forma obligatoria el precio base pactado (`price >= 0`) y opcionalmente el descuento concedido (`discount <= price`). Estos valores son inmutables durante el período contratado para garantizar la trazabilidad comercial frente a modificaciones futuras del tarifario general.
 ---
 
 ### 1.4. Módulo Payment (`PaymentController`, `PaymentService`)
@@ -70,12 +71,13 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 |---|---|---|---|---|---|
 | **RF-12** | `GET` | `/api/payments` | Consulta listado de pagos registrados con paginación y filtros por inscripción (`enrollment_id`), estado o rango de fechas. | Query params: `page`, `size`, `enrollment_id`, `status` | `200 OK`. |
 | **RF-13** | `GET` | `/api/payments/{id}` | Obtiene los datos detallados de un comprobante de pago por su UUID. | Path param: `id` (UUID) | `200 OK`, `404 Not Found`. |
-| **RF-14** | `POST` | `/api/payments` | Registra un nuevo cobro asociado a una inscripción. | `{"enrollment_id": "...", "amount": 25000.00, "currency": "ARS", "payment_method": "CASH", "status": "PAID"}` | `201 Created`, `400 Bad Request` (monto inválido o inscripción inexistente). |
+| **RF-14** | `POST` | `/api/payments` | Registra un nuevo cobro asociado a una inscripción. | `{"enrollment_id": "...", "amount": 25000.00, "discount": 0.00, "currency": "ARS", "payment_method": "CASH", "status": "PAID"}` | `201 Created`, `400 Bad Request` (monto inválido `<= 0`, descuento mayor al monto o inscripción inexistente). |
 | **RF-15** | `PUT` | `/api/payments/{id}` | Actualiza el estado de una transacción o referencia externa (ej. confirmación de webhook de pago). | Path param: `id`. Body con nuevo estado o datos de conciliación. | `200 OK`, `404 Not Found`. |
 
 **Reglas de Negocio Formales:**
 1. **Integridad Transaccional:** Todo registro de cobro debe referenciar de forma obligatoria a una inscripción existente (`enrollment_id`); no se admiten pagos "huérfanos".
 2. **Idempotencia y Auditoría:** Los pagos registrados con estado `PAID` son inmutables. Ante un error, el pago se marca como `CANCELLED` para preservar la auditoría financiera, sin eliminarlo (DELETE) de la base de datos.
+3. **Validación de Montos:** Todo pago debe tener un monto estrictamente positivo (`amount > 0`) y, en caso de aplicar descuento, este debe ser no negativo y no superar el monto de la transacción (`0 <= discount <= amount`).
 ---
 
 ### 1.5. Módulo Access (`AccessController`, `AccessService`)
@@ -91,8 +93,9 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 | **RF-17** | `GET` | `/api/access` | Consulta el registro histórico de accesos para reportes, auditoría y análisis de afluencia. Permite filtrar por rango de fechas, socio (`member_number`) y resultado (`GRANTED` / `DENIED`). | Query params: `page`, `size`, `member_number`, `status`, `from`, `to` | `200 OK` (listado paginado). |
 
 **Reglas de Negocio Formales:**
-1. **Motor de Decisión:** El sistema denegará automáticamente el acceso (`DENIED`) si el socio está inactivo, no posee una inscripción vigente en la fecha actual, o si ya consumió la totalidad de los accesos semanales de su plan.
+1. **Motor de Decisión:** El sistema denegará automáticamente el acceso (`DENIED`) si el socio está inactivo, no posee una inscripción vigente en la fecha actual, no tiene la cuota al día, o si ya consumió la totalidad de los accesos semanales de su plan.
 2. **Inmutabilidad de Auditoría:** Cada intento de acceso (concedido o denegado) constituye un evento histórico inmutable. No se exponen métodos de actualización ni borrado.
+3. **Determinación de Cuota al Día:** Para conceder el acceso (`GRANTED`), el socio debe tener la cuota al día en su inscripción vigente. Se considera al día si la suma de los montos (`amount`) de todos los pagos con estado `PAID` asociados a dicha inscripción cubre el saldo neto pactado: $\sum \text{amount}_{\text{PAID}} \ge (\text{price} - \text{discount})$. Si la suma es menor o no registra pagos completados, el acceso se deniega (`DENIED`) por cuota impaga.
 ---
 
 ## 2. Módulos de Frontend Panel Administrativo (`gym-frontend-admin`)
@@ -142,14 +145,14 @@ Esta matriz vincula de forma directa los Requerimientos Funcionales (RF) detalla
 | **RF-06** | Baja/Alta lógica de usuarios | `POST /api/users/.../activate` | Desactiva accesos futuros sin alterar historial inmutable. |
 | **RF-07** | Listado histórico de inscripciones | `GET /api/enrollments` | Soporta filtros de vigencia. |
 | **RF-08** | Consulta de detalle de inscripción | `GET /api/enrollments/{id}` | - |
-| **RF-09** | Alta de planes / membresías | `POST /api/enrollments` | Prohibido solapar fechas de vigencia para un mismo usuario. |
+| **RF-09** | Alta de planes / membresías | `POST /api/enrollments` | Prohibido solapar fechas de vigencia para un mismo usuario. Congela precio base pactado y descuento. |
 | **RF-10** | Modificación de vigencia o modalidad | `PUT /api/enrollments/{id}` | - |
 | **RF-11** | Cancelación de membresía | `DELETE /api/enrollments/{id}` | - |
 | **RF-12** | Auditoría y lista general de pagos | `GET /api/payments` | - |
 | **RF-13** | Consulta de comprobante específico | `GET /api/payments/{id}` | - |
-| **RF-14** | Registro de abonos y comprobantes | `POST /api/payments` | No admite transacciones huérfanas sin referenciar a `enrollment_id`. |
+| **RF-14** | Registro de abonos y comprobantes | `POST /api/payments` | No admite transacciones huérfanas sin referenciar a `enrollment_id`. Valida `amount > 0` y descuento válido. |
 | **RF-15** | Conciliación transaccional (Webhooks) | `PUT /api/payments/{id}` | Registros `PAID` son financieramente inmutables (se marcan `CANCELLED` ante error). |
-| **RF-16** | Validación de ingreso en terminal | `POST /api/access/validate` | Rechazo automático por inactividad, plan vencido o tope semanal alcanzado. |
+| **RF-16** | Validación de ingreso en terminal | `POST /api/access/validate` | Rechazo automático por inactividad, plan vencido, tope semanal alcanzado o cuota impaga ($\sum \text{amount}_{\text{PAID}} < \text{price} - \text{discount}$). |
 | **RF-17** | Historial de auditoría de ingresos | `GET /api/access` | Estrictamente lectura. Operaciones CRUD (`PUT`/`DELETE`) inhabilitadas. |
 | **RF-18** | Visualización métricas financieras | *Frontend / Dashboard* | Consolida cálculos cruzados de Accesos y Pagos. |
 | **RF-19** | Interfaces de Gestión Administrativa | *Frontend / Panel ABM* | Consumo de toda la API protegido vía Bearer Token JWT. |

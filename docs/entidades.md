@@ -24,6 +24,8 @@ erDiagram
         UUID id PK "Identificador de período (v4)"
         VARCHAR(20) member_number FK "Referencia a users"
         VARCHAR(20) modality "Enum Modality: FREE, THREE, TWO"
+        DECIMAL price "Precio pactado (CHECK >= 0)"
+        DECIMAL discount "Descuento pactado (CHECK <= price)"
         TIMESTAMPTZ start_date "Inicio del período (CHECK)"
         TIMESTAMPTZ end_date "Fin del período (CHECK)"
         VARCHAR(500) comments
@@ -117,11 +119,15 @@ Representa la inscripción de un usuario a un plan, con su modalidad y vigencia.
 
 **Nota de Cupo Semanal:** la tabla no guarda un contador de accesos. El tope surge de la modalidad (`THREE`: 3, `TWO`: 2, `FREE`: sin tope) y los accesos ya usados se cuentan en la tabla `access` (ver Fundamentos de Diseño Relacional, punto 7).
 
+**Nota de Condiciones Financieras:** cada inscripción congela el precio pactado (`price`) y el descuento concedido (`discount`) al momento del alta, asegurando la inmutabilidad histórica frente a futuros aumentos de tarifas. Las restricciones `chk_enrollment_price` y `chk_enrollment_discount` exigen que el precio sea no negativo y que el descuento no supere dicho precio.
+
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `id` | UUID | No (generado) | Sí (PK) | Clave primaria. UUID v4 generado por la base con `gen_random_uuid()` |
 | `member_number` | VARCHAR(20) | No | — | FK a `users.member_number` (`ON DELETE RESTRICT`) |
 | `modality` | VARCHAR(20) | No | — | Valor del Enum `Modality` (Restricción CHECK) |
+| `price` | DECIMAL(19,2) | No | — | Precio pactado al suscribirse. Restricción CHECK: `price >= 0` |
+| `discount` | DECIMAL(19,2) | Sí | — | Descuento aplicado al suscribirse. Restricción CHECK: `discount IS NULL OR (discount >= 0 AND discount <= price)` |
 | `start_date` | TIMESTAMPTZ | No | — | Inicio del período (incluido). Restricción CHECK: anterior a `end_date` |
 | `end_date` | TIMESTAMPTZ | No | — | Fin del período (excluido). Restricción CHECK: posterior a `start_date` |
 | `comments` | VARCHAR(500) | Sí | — | |
@@ -152,13 +158,13 @@ Registra un pago asociado a una inscripción.
 |---------|------|-------|-------|-------------|
 | `id` | UUID | No (generado) | Sí (PK) | Clave primaria. UUID v4 generado por la base con `gen_random_uuid()` |
 | `enrollment_id` | UUID | No | — | FK a `enrollment.id` (`ON DELETE RESTRICT`) |
-| `amount` | DECIMAL(19,2) | No | — | |
+| `amount` | DECIMAL(19,2) | No | — | Monto del pago. Restricción CHECK: `amount > 0` |
 | `currency` | VARCHAR(10) | No | — | Valor Enum `Currency` (Por defecto `ARS`, restricción CHECK) |
 | `status` | VARCHAR(20) | No | — | Valor del Enum `PaymentStatus` (Por defecto `PENDING`, restricción CHECK) |
 | `payment_method` | VARCHAR(50) | Sí | — | Método de pago (ej. tarjeta, mercadopago) |
 | `external_reference` | VARCHAR(100) | Sí | — | Referencia externa de transacción |
 | `comments` | VARCHAR(500) | Sí | — | |
-| `discount` | DECIMAL(19,2) | Sí | — | |
+| `discount` | DECIMAL(19,2) | Sí | — | Descuento aplicado en el pago. Restricción CHECK: `discount IS NULL OR (discount >= 0 AND discount <= amount)` |
 | `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |
 | `updated_at` | TIMESTAMPTZ | Sí | — | Sin actualización automática en la base. La aplicación deberá asignarlo al modificar el registro |
 

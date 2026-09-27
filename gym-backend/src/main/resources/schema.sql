@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS payment (
     currency VARCHAR(10) NOT NULL DEFAULT 'ARS' CHECK (currency IN ('ARS', 'USD')),
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PAID', 'FAILED', 'CANCELLED')),
     payment_method VARCHAR(50),
-    external_reference VARCHAR(100),
+    gateway_payment_id VARCHAR(100) UNIQUE,
     comments VARCHAR(500),
     discount DECIMAL(19,2),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -60,9 +60,10 @@ CREATE TABLE IF NOT EXISTS access (
     member_number VARCHAR(20) NOT NULL REFERENCES users(member_number) ON DELETE RESTRICT,
     enrollment_id UUID REFERENCES enrollment(id) ON DELETE RESTRICT,
     access_date TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    status VARCHAR(20) NOT NULL DEFAULT 'GRANTED' CHECK (status IN ('GRANTED', 'DENIED')),
+    status VARCHAR(20) NOT NULL CHECK (status IN ('GRANTED', 'DENIED')),
     denied_reason VARCHAR(500),
-    PRIMARY KEY (member_number, access_date)
+    PRIMARY KEY (member_number, access_date),
+    CONSTRAINT chk_access_logic CHECK ((status = 'GRANTED' AND enrollment_id IS NOT NULL) OR (status = 'DENIED' AND denied_reason IS NOT NULL))
     );
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_users_email_staff ON users (LOWER(email)) WHERE role IN ('ADMIN', 'STAFF');

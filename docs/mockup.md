@@ -16,8 +16,8 @@
 3. **Modalidades de Acceso del Dominio:**
    - Las interfaces reflejan con claridad las tres modalidades del sistema:
      - `FREE`: Acceso libre e ilimitado.
-     - `THREE_DAYS`: Límite de 3 accesos semanales con contador visible de accesos restantes.
-     - `TWO_DAYS`: Límite de 2 accesos semanales con contador visible de accesos restantes.
+     - `THREE`: Límite de 3 accesos semanales con contador visible de accesos restantes.
+     - `TWO`: Límite de 2 accesos semanales con contador visible de accesos restantes.
 4. **Diferenciación de Roles y Control de Acceso (RBAC):**
    - El panel administrativo distingue visualmente en su cabecera y barra lateral entre el personal operativo de recepción (`STAFF`) y la administración general (`ADMIN`).
    - Las opciones de configuración de tarifas/planes y la emisión de comunicados masivos se reservan visualmente para el rol `ADMIN`.

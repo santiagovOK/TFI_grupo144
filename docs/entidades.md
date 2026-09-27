@@ -8,12 +8,12 @@ Documentación técnica completa del esquema de la base de datos. Este archivo c
 erDiagram
     users {
         VARCHAR(20) member_number PK "Clave natural de negocio"
-        VARCHAR(15) dni UK "Dato administrativo sensible"
-        VARCHAR(255) email UK "Canal contacto (CHECK)"
-        VARCHAR(20) phone "Canal contacto (CHECK)"
-        VARCHAR(255) password "Hash BCrypt"
-        VARCHAR(100) name
-        VARCHAR(100) last_name
+        VARCHAR(15) dni UK "Dato administrativo sensible, no vacío (CHECK)"
+        VARCHAR(255) email "Canal contacto (CHECK), no vacío, obligatorio y único en ADMIN y STAFF"
+        VARCHAR(20) phone "Canal contacto (CHECK), no vacío"
+        VARCHAR(255) password "Hash BCrypt, obligatorio en ADMIN y STAFF"
+        VARCHAR(100) name "No vacío (CHECK)"
+        VARCHAR(100) last_name "No vacío (CHECK)"
         DATE birth_date
         VARCHAR(20) role "Enum Role: ADMIN, STAFF, USER"
         BOOLEAN active
@@ -86,6 +86,8 @@ Representa a un socio, personal o administrador del gimnasio.
 
 **Nota de Privacidad y Contacto:** Se utiliza el número de socio (`member_number`) como identificador principal operativo para proteger el DNI. Para evitar "socios fantasmas", el sistema exige obligatoriamente registrar un email o un teléfono de contacto mediante una restricción de base de datos (`CHECK`).
 
+**Nota sobre el email:** Un mismo email puede repetirse entre socios, por ejemplo cuando una madre o un padre anota a sus hijos con su propio correo. En `ADMIN` y `STAFF` no se puede repetir, sin distinguir mayúsculas de minúsculas, porque es el dato con el que inician sesión. Esto lo controla el índice único parcial `ux_users_email_staff`. Además, `ADMIN` y `STAFF` tienen que tener email y contraseña (`chk_user_staff_login`), porque sin alguno de los dos no podrían iniciar sesión.
+
 **Nota de Escalabilidad (Credenciales opcionales):** Para la versión 1, los usuarios con rol `USER` (Socios) son dados de alta exclusivamente por el administrador y no poseen acceso al sistema, por lo que el campo `password` será nulo para ellos. La tabla se diseñó unificada para permitir a futuro habilitarles credenciales sin reestructurar la base de datos (ej. para un portal de autogestión).
 
 ### Tabla `users`
@@ -93,12 +95,12 @@ Representa a un socio, personal o administrador del gimnasio.
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `member_number` | VARCHAR(20) | No | Sí (PK) | Clave primaria natural |
-| `dni` | VARCHAR(15) | No | Sí (UK)| Dato administrativo sensible |
-| `email` | VARCHAR(255)| Sí | Sí (UK) | Restricción CHECK: email o phone obligatorios |
-| `phone` | VARCHAR(20) | Sí | — | Restricción CHECK: email o phone obligatorios |
-| `password` | VARCHAR(255)| Sí | — | Hash BCrypt |
-| `name` | VARCHAR(100) | No | — | |
-| `last_name` | VARCHAR(100) | No | — | |
+| `dni` | VARCHAR(15) | No | Sí (UK)| Dato administrativo sensible. No puede quedar vacío (CHECK) |
+| `email` | VARCHAR(255)| Sí | Solo ADMIN y STAFF | Restricción CHECK: email o phone obligatorios. Obligatorio en ADMIN y STAFF. Si se carga, no puede quedar vacío |
+| `phone` | VARCHAR(20) | Sí | — | Restricción CHECK: email o phone obligatorios. Si se carga, no puede quedar vacío |
+| `password` | VARCHAR(255)| Sí | — | Hash BCrypt. Obligatorio en ADMIN y STAFF (CHECK) |
+| `name` | VARCHAR(100) | No | — | No puede quedar vacío (CHECK) |
+| `last_name` | VARCHAR(100) | No | — | No puede quedar vacío (CHECK) |
 | `birth_date` | DATE | Sí | — | |
 | `role` | VARCHAR(20) | No | — | Valor del Enum `Role` (Por defecto `USER`, restricción CHECK) |
 | `active` | BOOLEAN | No | — | Valor por defecto `true` |
@@ -192,10 +194,11 @@ Para garantizar la integridad de los datos a nivel conceptual, los siguientes ca
 
 ## Índices
 
-PostgreSQL crea automáticamente un índice por cada clave primaria y por cada restricción `UNIQUE` (`users.member_number`, `users.dni`, `users.email`, `enrollment.id`, `payment.id` y la clave compuesta de `access`), pero no indexa las claves foráneas. Por eso el esquema define los siguientes índices B-Tree:
+PostgreSQL crea automáticamente un índice por cada clave primaria y por cada restricción `UNIQUE` (`users.member_number`, `users.dni`, `enrollment.id`, `payment.id` y la clave compuesta de `access`), pero no indexa las claves foráneas. Por eso el esquema define los siguientes índices B-Tree:
 
 | Índice | Tabla (columna) | Consultas que acelera |
 |--------|-----------------|-----------------------|
+| `ux_users_email_staff` | `users` (`LOWER(email)`), solo filas `ADMIN` y `STAFF` | Búsqueda del usuario por email al iniciar sesión (RF-01); para usar el índice, el login tiene que comparar con `LOWER(email)`. Además es único sin distinguir mayúsculas: dos cuentas del personal no pueden tener el mismo email. |
 | `ix_enrollment_member_number` | `enrollment` (`member_number`) | Historial de inscripciones en la ficha del socio y búsqueda de la inscripción vigente en cada validación de acceso. También el control de `ON DELETE RESTRICT` al intentar borrar un socio. |
 | `ix_payment_enrollment_id` | `payment` (`enrollment_id`) | Pagos de una inscripción al cobrar en caja y al controlar la cuota. También el control de `RESTRICT` al intentar borrar una inscripción. |
 | `ix_access_enrollment_id` | `access` (`enrollment_id`) | Accesos habilitados por una inscripción (auditoría). También el control de `RESTRICT` al intentar borrar una inscripción. |
@@ -218,7 +221,7 @@ Por lo tanto, el DNI se aisló con una restricción `UNIQUE NOT NULL` como clave
 
 **3. Garantía de Canal de Contacto**
 
-Para evitar el registro de "socios fantasmas" incontactables ante vencimientos, se implementó una restricción a nivel de motor de base de datos: `CONSTRAINT chk_user_contact CHECK (email IS NOT NULL OR phone IS NOT NULL)`. Esto garantiza que se registre al menos un dato de contacto, sin hacer obligatorios ambos. La restricción comprueba que el dato exista, no que sea válido: un valor vacío o mal escrito la cumple igual, por lo que el formato del email y del teléfono lo valida la aplicación al dar de alta al socio.
+Para evitar el registro de "socios fantasmas" incontactables ante vencimientos, se implementó una restricción a nivel de motor de base de datos: `CONSTRAINT chk_user_contact CHECK (email IS NOT NULL OR phone IS NOT NULL)`. Esto garantiza que se registre al menos un dato de contacto, sin hacer obligatorios ambos. La restricción comprueba que el dato exista, no que sea válido: un valor mal escrito la cumple igual (los vacíos los rechazan `chk_user_email` y `chk_user_phone`), por lo que el formato del email y del teléfono lo valida la aplicación al dar de alta al socio.
 
 **4. Clave Primaria Compuesta en Eventos Temporales (`access`)**
 

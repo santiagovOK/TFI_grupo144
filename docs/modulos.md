@@ -31,13 +31,14 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 |---|---|---|---|---|---|
 | **RF-02** | `GET` | `/api/users` | Listado paginado de usuarios con soporte de filtros por rol y estado (`active`). | Query params: `page`, `size`, `role`, `active` | `200 OK` (lista paginada). |
 | **RF-03** | `GET` | `/api/users/{member_number}` | Obtiene el detalle administrativo de un usuario a partir de su clave primaria natural (`member_number`). | Path param: `member_number` | `200 OK` (objeto UserDTO), `404 Not Found`. |
-| **RF-04** | `POST` | `/api/users` | Registra un nuevo usuario en el sistema con su `member_number` único y validación de contacto (email o teléfono requerido). | `{"member_number": "1001", "name": "...", "lastName": "...", "dni": "...", "email": "...", "role": "USER"}` | `201 Created` (UserDTO creado), `400 Bad Request` (validación fallida), `409 Conflict` (número de socio o DNI duplicado). |
-| **RF-05** | `PUT` | `/api/users/{member_number}` | Actualiza datos de contacto o personales de un usuario existente. | Path param: `member_number`. Body con campos actualizables. | `200 OK`, `400 Bad Request`, `404 Not Found`. |
+| **RF-04** | `POST` | `/api/users` | Registra un nuevo usuario en el sistema con su `member_number` único y validación de contacto (email o teléfono requerido). | `{"member_number": "1001", "name": "...", "lastName": "...", "dni": "...", "email": "...", "role": "USER"}` | `201 Created` (UserDTO creado), `400 Bad Request` (validación fallida), `409 Conflict` (número de socio o DNI duplicado, o email repetido de ADMIN o STAFF). |
+| **RF-05** | `PUT` | `/api/users/{member_number}` | Actualiza datos de contacto o personales de un usuario existente. | Path param: `member_number`. Body con campos actualizables. | `200 OK`, `400 Bad Request`, `404 Not Found`, `409 Conflict` (email repetido de ADMIN o STAFF). |
 | **RF-06** | `POST` | `/api/users/{member_number}/activate` | Cambia el estado de activación lógica del usuario (`active = true / false`). | Path param: `member_number`. Body: `{"active": true/false}` | `200 OK`, `404 Not Found`. |
 
 **Reglas de Negocio Formales:**
 1. **Canal de contacto mínimo (Privacy & Contact):** Es estrictamente obligatorio registrar al menos un canal de contacto válido (email o teléfono) al dar de alta un usuario, garantizando la viabilidad de envío de notificaciones.
 2. El Número de Socio (`member_number`) es la clave primaria unívoca y no puede ser modificado una vez asignado, protegiendo el DNI como un dato netamente administrativo.
+3. **Email compartido:** Varios socios (`USER`) pueden registrar el mismo email, por ejemplo hijos anotados con el correo de su madre o su padre. `ADMIN` y `STAFF` necesitan email y contraseña, y su email no puede repetirse entre ellos, sin distinguir mayúsculas, porque lo usan para iniciar sesión; si se repite, el alta o la modificación responde `409 Conflict`.
 ---
 
 ### 1.3. Módulo Enrollment (`EnrollmentController`, `EnrollmentService`)
@@ -136,7 +137,7 @@ Esta matriz vincula de forma directa los Requerimientos Funcionales (RF) detalla
 | **RF-01** | Autenticación y generación de sesión | `POST /api/auth/login` | Solo para `ADMIN` o `STAFF` con cuenta activa. Genera JWT inmutable. |
 | **RF-02** | Consulta general de usuarios | `GET /api/users` | Exclusivo para roles administrativos. Soporta paginación. |
 | **RF-03** | Consulta individual de perfil de usuario | `GET /api/users/{member_number}` | - |
-| **RF-04** | Registro de nuevos socios/staff | `POST /api/users` | DNI protegido operativamente. Email o teléfono obligatorios. |
+| **RF-04** | Registro de nuevos socios/staff | `POST /api/users` | DNI protegido operativamente. Email o teléfono obligatorios. Email único solo para ADMIN y STAFF. |
 | **RF-05** | Modificación de datos personales | `PUT /api/users/{member_number}` | Clave natural `member_number` inmutable. |
 | **RF-06** | Baja/Alta lógica de usuarios | `POST /api/users/.../activate` | Desactiva accesos futuros sin alterar historial inmutable. |
 | **RF-07** | Listado histórico de inscripciones | `GET /api/enrollments` | Soporta filtros de vigencia. |

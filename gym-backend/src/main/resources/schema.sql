@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
 CREATE TABLE IF NOT EXISTS users (
     member_number VARCHAR(20) PRIMARY KEY,
     email VARCHAR(255),
@@ -29,11 +31,13 @@ CREATE TABLE IF NOT EXISTS enrollment (
     start_date TIMESTAMPTZ NOT NULL,
     end_date TIMESTAMPTZ NOT NULL,
     comments VARCHAR(500),
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'CANCELLED', 'EXPIRED')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ,
     CONSTRAINT chk_enrollment_dates CHECK (end_date > start_date),
     CONSTRAINT chk_enrollment_price CHECK (price >= 0),
-    CONSTRAINT chk_enrollment_discount CHECK (discount IS NULL OR (discount >= 0 AND discount <= price))
+    CONSTRAINT chk_enrollment_discount CHECK (discount IS NULL OR (discount >= 0 AND discount <= price)),
+    CONSTRAINT no_overlap_enrollment EXCLUDE USING gist (member_number WITH =, tstzrange(start_date, end_date, '[)') WITH &&) WHERE (status != 'CANCELLED')
     );
 
 CREATE TABLE IF NOT EXISTS payment (

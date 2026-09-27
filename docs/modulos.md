@@ -53,12 +53,13 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 | **RF-08** | `GET` | `/api/enrollments/{id}` | Recupera la información detallada de una inscripción específica por su UUID. | Path param: `id` (UUID) | `200 OK`, `404 Not Found`. |
 | **RF-09** | `POST` | `/api/enrollments` | Da de alta una nueva inscripción para un socio activo, fijando modalidad, rango de fechas y condiciones comerciales (precio y descuento). | `{"member_number": "1001", "modality": "THREE", "price": 15000.00, "discount": 0.00, "start_date": "...", "end_date": "..."}` | `201 Created`, `400 Bad Request` (fechas incoherentes, precio/descuento inválidos o socio inexistente/inactivo), `409 Conflict` (se superpone con otra inscripción del socio). |
 | **RF-10** | `PUT` | `/api/enrollments/{id}` | Modifica parámetros de la inscripción (ej. extensión de vigencia o cambio de modalidad). | Path param: `id`. Body con atributos modificables. | `200 OK`, `400 Bad Request`, `404 Not Found`, `409 Conflict` (se superpone con otra inscripción del socio). |
-| **RF-11** | `DELETE` | `/api/enrollments/{id}` | Cancela o da de baja una inscripción. | Path param: `id` | `204 No Content`, `404 Not Found`. |
+| **RF-11** | `DELETE` | `/api/enrollments/{id}` | Realiza la baja lógica de la inscripción (actualiza `status = 'CANCELLED'`), preservando el historial de pagos y accesos asociados. | Path param: `id` | `204 No Content`, `404 Not Found`. |
 
 **Reglas de Negocio Formales:**
-1. **Historial y Vigencia:** Un socio puede poseer múltiples registros de inscripción (1:N) a modo de historial, pero el sistema debe garantizar que no existan dos inscripciones activas con fechas superpuestas.
+1. **Historial, Vigencia y No Solapamiento:** Un socio puede poseer múltiples registros de inscripción (1:N) a modo de historial. El motor de base de datos prohíbe que existan dos inscripciones activas con fechas superpuestas mediante una restricción de exclusión (`no_overlap_enrollment` con `EXCLUDE USING gist`), evaluada exclusivamente sobre registros con `status != 'CANCELLED'`.
 2. **Cupo Semanal:** El tope de accesos semanales surge de la modalidad (`THREE`: 3, `TWO`: 2, `FREE`: sin tope). No se almacena un contador: los accesos usados se obtienen contando los accesos `GRANTED` del socio desde el lunes a las 00:00 (hora del gimnasio) de la semana en curso, sin necesidad de reinicios periódicos.
 3. **Congelamiento de Condiciones Comerciales:** Al crear una inscripción (`POST /api/enrollments`), se fijan de forma obligatoria el precio base pactado (`price >= 0`) y opcionalmente el descuento concedido (`discount <= price`). Estos valores son inmutables durante el período contratado para garantizar la trazabilidad comercial frente a modificaciones futuras del tarifario general.
+4. **Baja Lógica y Conservación de Auditoría:** La cancelación de una membresía (`DELETE /api/enrollments/{id}`, RF-11) opera como una baja lógica actualizando su estado a `CANCELLED`. De esta forma se respeta la integridad referencial (`ON DELETE RESTRICT`) frente a pagos (`payment`) o registros de acceso (`access`) preexistentes, al tiempo que se libera inmediatamente el rango temporal para permitir la inscripción de un nuevo período sin bloqueos.
 ---
 
 ### 1.4. Módulo Payment (`PaymentController`, `PaymentService`)
@@ -147,7 +148,7 @@ Esta matriz vincula de forma directa los Requerimientos Funcionales (RF) detalla
 | **RF-08** | Consulta de detalle de inscripción | `GET /api/enrollments/{id}` | - |
 | **RF-09** | Alta de planes / membresías | `POST /api/enrollments` | Prohibido solapar fechas de vigencia para un mismo usuario. Congela precio base pactado y descuento. |
 | **RF-10** | Modificación de vigencia o modalidad | `PUT /api/enrollments/{id}` | - |
-| **RF-11** | Cancelación de membresía | `DELETE /api/enrollments/{id}` | - |
+| **RF-11** | Cancelación lógica de membresía | `DELETE /api/enrollments/{id}` | Baja lógica (`status = 'CANCELLED'`) que preserva integridad referencial y libera el rango temporal de solapamiento. |
 | **RF-12** | Auditoría y lista general de pagos | `GET /api/payments` | - |
 | **RF-13** | Consulta de comprobante específico | `GET /api/payments/{id}` | - |
 | **RF-14** | Registro de abonos y comprobantes | `POST /api/payments` | No admite transacciones huérfanas sin referenciar a `enrollment_id`. Valida `amount > 0` y descuento válido. |

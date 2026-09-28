@@ -138,6 +138,7 @@ gym-manager/
 │   │   │   ├── Role.java
 │   │   │   ├── Currency.java
 │   │   │   ├── Modality.java
+│   │   │   ├── EnrollmentStatus.java
 │   │   │   ├── PaymentStatus.java
 │   │   │   └── AccessStatus.java
 │   │   └── dto/                          # Objetos de request/response
@@ -391,7 +392,7 @@ npm run dev          # Development server :3002
 - [ ] Configurar `build.gradle` con dependencias (Spring Boot 4.x, JPA, Lombok, JWT, Validation, OpenAPI 3.x).
 - [ ] Configurar `settings.gradle` con grupo y nombre del proyecto.
 - [ ] Configurar `application.yml` (DB connection, server port, security settings).
-- [ ] Crear entidades JPA (4 entidades + 5 enums).
+- [ ] Crear entidades JPA (4 entidades + 6 enums).
 - [ ] Crear DTOs para request/response.
 - [x] Crear `schema.sql` manual en PostgreSQL (CREATE TABLES).
 - [ ] Configurar Spring Security: habilitar JWT, deshabilitar HTTP basic auth.

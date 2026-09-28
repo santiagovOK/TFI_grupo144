@@ -49,9 +49,9 @@ erDiagram
     access {
         VARCHAR(20) member_number PK,FK "Referencia obligatoria a users"
         TIMESTAMPTZ access_date PK "Momento exacto del intento"
-        UUID enrollment_id FK "Referencia opcional a enrollment"
+        UUID enrollment_id FK "Obligatoria si es concedido (CHECK)"
         VARCHAR(20) status "Enum AccessStatus: GRANTED, DENIED"
-        VARCHAR(500) denied_reason "Motivo si es denegado"
+        VARCHAR(500) denied_reason "Obligatorio si es denegado (CHECK)"
     }
     users ||..o{ enrollment : "tiene historial (1:N)"
     users ||--o{ access : "registra intentos (1:N)"
@@ -148,9 +148,9 @@ Registra cada intento de ingreso validado en la terminal de acceso.
 |---------|------|-------|-------|-------------|
 | `member_number` | VARCHAR(20) | No | En conjunto (PK compuesta) | Clave primaria compuesta (PK), FK a `users.member_number` (`ON DELETE RESTRICT`) |
 | `access_date` | TIMESTAMPTZ | No | En conjunto (PK compuesta) | Clave primaria compuesta (PK). Por defecto `CURRENT_TIMESTAMP` |
-| `enrollment_id` | UUID | Sí | — | FK a `enrollment.id` (`ON DELETE RESTRICT`). Opcional (puede ser nulo en accesos denegados) |
-| `status` | VARCHAR(20) | No | — | Valor del Enum `AccessStatus` (Por defecto `GRANTED`, restricción CHECK) |
-| `denied_reason` | VARCHAR(500) | Sí | — | Motivo si es denegado |
+| `enrollment_id` | UUID | Sí | — | FK a `enrollment.id` (`ON DELETE RESTRICT`). Obligatorio si el acceso es `GRANTED`, opcional si es `DENIED` (`chk_access_logic`) |
+| `status` | VARCHAR(20) | No | — | Valor del Enum `AccessStatus` (Sin valor por defecto, restricción CHECK) |
+| `denied_reason` | VARCHAR(500) | Sí | — | Motivo del rechazo. Obligatorio si el acceso es `DENIED` (`chk_access_logic`) |
 
 ---
 
@@ -209,7 +209,7 @@ Para garantizar la integridad de los datos a nivel conceptual, los siguientes ca
 
 ## Índices
 
-PostgreSQL crea automáticamente un índice por cada clave primaria y por cada restricción `UNIQUE` (`users.member_number`, `users.dni`, `enrollment.id`, `payment.id` y la clave compuesta de `access`), pero no indexa las claves foráneas. Por eso el esquema define los siguientes índices B-Tree:
+PostgreSQL crea automáticamente un índice por cada clave primaria y por cada restricción `UNIQUE` (`users.member_number`, `users.dni`, `enrollment.id`, `payment.id`, `payment.gateway_payment_id` y la clave compuesta de `access`), y otro para la restricción de exclusión `no_overlap_enrollment`: un índice GiST sobre el socio y el rango de fechas de `enrollment`, sin las inscripciones canceladas (ver Fundamentos de Diseño Relacional, punto 9). Pero no indexa las claves foráneas. Por eso el esquema define los siguientes índices B-Tree:
 
 | Índice | Tabla (columna) | Consultas que acelera |
 |--------|-----------------|-----------------------|
@@ -245,7 +245,7 @@ Su identidad unívoca natural está determinada por quién intentó pasar (`memb
 
 **5. Uso Justificado de UUID en Entidades Específicas**
 *   **En `enrollment` (Mutabilidad):** Las fechas de inicio y fin de una suscripción son inherentemente mutables (suspensiones, vacaciones, prórrogas). Si usáramos una PK compuesta basada en fechas, cualquier modificación forzaría una cascada de actualizaciones compleja en tablas dependientes. El UUID provee una identidad inmutable que independiza el contrato de sus ajustes temporales.
-*   **En `payment` (Conciliación externa):** En la integración con pasarelas de pago externas (ej. Mercado Pago), el sistema debe generar un identificador único previo a la redirección. El UUID se envía como referencia a la pasarela y permite asociar cada notificación (webhook) con su pago sin exponer datos del negocio. El identificador por sí solo no evita que una misma notificación se procese dos veces: esa idempotencia la resuelve la aplicación al procesar las notificaciones.
+*   **En `payment` (Conciliación externa):** En la integración con pasarelas de pago externas (ej. Mercado Pago), el sistema debe generar un identificador único previo a la redirección. El UUID se envía como referencia a la pasarela y permite asociar cada notificación (webhook) con su pago sin exponer datos del negocio. El identificador por sí solo no evita que una misma notificación se procese dos veces. Para eso, el id que devuelve la pasarela se guarda en `gateway_payment_id`, que es `UNIQUE`: la base no permite registrar dos veces el mismo pago de Mercado Pago. Además, como un pago `PAID` no se modifica (regla 2 del módulo Payment), una notificación repetida no cambia un pago ya acreditado.
 *   **Versión (UUID v4):** Los identificadores son UUID de versión 4 (RFC 9562), formados por 122 bits aleatorios. Los genera la propia base mediante `DEFAULT gen_random_uuid()`, función nativa de PostgreSQL desde la versión 13. La única extensión requerida por el esquema es `btree_gist`, necesaria para habilitar la restricción de exclusión temporal en `enrollment` (ver punto 9). Se eligió la versión 4 y no la 7 (basada en la hora de creación) porque no revela cuándo se creó el registro ni permite deducir otros identificadores: el identificador de un pago que se envía a Mercado Pago no expone información interna. La versión 7 ordena mejor los índices en tablas de gran volumen, una ventaja que no es relevante para la cantidad de inscripciones y pagos de un gimnasio.
 
 **6. Conservación del Historial (`ON DELETE RESTRICT`)**

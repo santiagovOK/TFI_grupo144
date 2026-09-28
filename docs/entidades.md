@@ -49,9 +49,9 @@ erDiagram
     access {
         VARCHAR(20) member_number PK,FK "Referencia obligatoria a users"
         TIMESTAMPTZ access_date PK "Momento exacto del intento"
-        UUID enrollment_id FK "Referencia opcional a enrollment"
+        UUID enrollment_id FK "Obligatoria si es concedido (CHECK)"
         VARCHAR(20) status "Enum AccessStatus: GRANTED, DENIED"
-        VARCHAR(500) denied_reason "Motivo si es denegado"
+        VARCHAR(500) denied_reason "Obligatorio si es denegado (CHECK)"
     }
     users ||..o{ enrollment : "tiene historial (1:N)"
     users ||--o{ access : "registra intentos (1:N)"
@@ -148,9 +148,9 @@ Registra cada intento de ingreso validado en la terminal de acceso.
 |---------|------|-------|-------|-------------|
 | `member_number` | VARCHAR(20) | No | En conjunto (PK compuesta) | Clave primaria compuesta (PK), FK a `users.member_number` (`ON DELETE RESTRICT`) |
 | `access_date` | TIMESTAMPTZ | No | En conjunto (PK compuesta) | Clave primaria compuesta (PK). Por defecto `CURRENT_TIMESTAMP` |
-| `enrollment_id` | UUID | Sí | — | FK a `enrollment.id` (`ON DELETE RESTRICT`). Opcional (puede ser nulo en accesos denegados) |
-| `status` | VARCHAR(20) | No | — | Valor del Enum `AccessStatus` (Por defecto `GRANTED`, restricción CHECK) |
-| `denied_reason` | VARCHAR(500) | Sí | — | Motivo si es denegado |
+| `enrollment_id` | UUID | Sí | — | FK a `enrollment.id` (`ON DELETE RESTRICT`). Obligatorio si el acceso es `GRANTED`, opcional si es `DENIED` (`chk_access_logic`) |
+| `status` | VARCHAR(20) | No | — | Valor del Enum `AccessStatus` (Sin valor por defecto, restricción CHECK) |
+| `denied_reason` | VARCHAR(500) | Sí | — | Motivo del rechazo. Obligatorio si el acceso es `DENIED` (`chk_access_logic`) |
 
 ---
 

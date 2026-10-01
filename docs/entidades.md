@@ -1,8 +1,69 @@
-# Modelo Relacional de Base de Datos
+# Modelo de Datos del Dominio (Conceptual y Relacional)
 
-Documentación técnica completa del esquema de la base de datos. Este archivo contiene el detalle de cada tabla, sus columnas, tipos de datos, restricciones y las relaciones entre ellas. La versión resumida y orientada al uso está en el `README.md`.
+Documentación técnica del modelo de datos del sistema, estructurada en dos niveles de abstracción:
+1. **Modelo Conceptual de Dominio (UML):** Representación orientada a objetos de las clases de negocio, su jerarquía de herencia y atributos sin detalles de persistencia relacional.
+2. **Modelo Relacional (DER):** Esquema físico en base de datos PostgreSQL, especificando tablas, claves primarias/foráneas, tipos de datos y restricciones.
 
-## Diagrama de entidades
+---
+
+## 1. Modelo Conceptual de Dominio (UML)
+
+Diagrama de clases formal del dominio siguiendo las convenciones de tipos y visibilidad de Java:
+
+```mermaid
+classDiagram
+    direction TB
+
+    class Person {
+        <<abstract>>
+        - String dni
+        - String firstName
+        - String lastName
+        - String email
+        - String phone
+        - LocalDate birthDate
+    }
+
+    class Member {
+        - String memberNumber
+        - LocalDateTime joinDate
+        - MemberStatus status
+    }
+
+    class Employee {
+        - String employeeCode
+        - String password
+        - Role role
+        - Boolean active
+    }
+
+    class Role {
+        <<enumeration>>
+        ADMIN
+        STAFF
+    }
+
+    class MemberStatus {
+        <<enumeration>>
+        ACTIVE
+        OVERDUE
+        INACTIVE
+    }
+
+    Person <|-- Member : hereda
+    Person <|-- Employee : hereda
+    Employee ..> Role : utiliza
+    Member ..> MemberStatus : utiliza
+```
+
+### Justificación del Diseño Conceptual de Actores
+* **Herencia `Person <|-- Member` y `Person <|-- Employee`:** Se desacoplan los roles y responsabilidades de los actores. Los empleados no son socios del gimnasio (no poseen `memberNumber` ni contratan suscripciones), y los socios no poseen credenciales de acceso al sistema administrativo (`password` ni `role`).
+* **Seguridad y Privacidad:** Las credenciales de autenticación quedan estrictamente contenidas en `Employee`. `Member` solo expone atributos de membresía deportiva (`memberNumber`, `joinDate`, `status`).
+* **Tipado:** Los atributos siguen las convenciones y tipos estándar de Java (`String`, `LocalDate`, `LocalDateTime`, tipos de enums), prescindiendo de tipos físicos de almacenamiento como `VARCHAR` o `TIMESTAMPTZ`.
+
+---
+
+## 2. Diagrama de Entidades (DER Relacional)
 
 ```mermaid
 erDiagram

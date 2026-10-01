@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS members (
 CREATE TABLE IF NOT EXISTS employees (
     employee_code VARCHAR(20) PRIMARY KEY,
     dni VARCHAR(15) UNIQUE NOT NULL REFERENCES persons(dni) ON DELETE RESTRICT,
-    work_email VARCHAR(255) UNIQUE NOT NULL,
+    work_email VARCHAR(255) NOT NULL, -- Unicidad case-insensitive asegurada mediante ux_employees_work_email
     password VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL CHECK (role IN ('ADMIN', 'STAFF')),
     active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS access (
     );
 
 CREATE INDEX IF NOT EXISTS ix_persons_email ON persons (LOWER(email)) WHERE email IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_employees_work_email ON employees (LOWER(work_email));
 CREATE INDEX IF NOT EXISTS ix_enrollment_member_number ON enrollment (member_number);
 CREATE INDEX IF NOT EXISTS ix_payment_subscription_number ON payment (subscription_number);
 CREATE INDEX IF NOT EXISTS ix_access_subscription_number ON access (subscription_number);

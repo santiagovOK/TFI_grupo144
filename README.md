@@ -114,14 +114,16 @@ gym-manager/
 │   │   │   └── OpenApiConfig.java
 │   │   ├── controllers/                  # Endpoints REST (uno por módulo)
 │   │   │   ├── AuthController.java
-│   │   │   ├── UserController.java
+│   │   │   ├── MemberController.java
+│   │   │   ├── EmployeeController.java
 │   │   │   ├── EnrollmentController.java
 │   │   │   ├── PaymentController.java
 │   │   │   ├── AccessController.java
 │   │   │   └── PlanController.java
 │   │   ├── services/                     # Lógica de negocio (uno por módulo)
 │   │   │   ├── AuthService.java
-│   │   │   ├── UserService.java
+│   │   │   ├── MemberService.java
+│   │   │   ├── EmployeeService.java
 │   │   │   ├── EnrollmentService.java
 │   │   │   ├── PaymentService.java
 │   │   │   ├── AccessService.java
@@ -150,7 +152,9 @@ gym-manager/
 │   │   │   └── AccessStatus.java
 │   │   └── dto/                          # Objetos de request/response
 │   │       ├── LoginRequest.java
-│   │       ├── UserDTO.java
+│   │       ├── MemberDTO.java
+│   │       ├── EmployeeDTO.java
+│   │       ├── PlanDTO.java
 │   │       ├── EnrollmentDTO.java
 │   │       └── PaymentDTO.java
 │   ├── src/main/resources/
@@ -179,10 +183,12 @@ gym-manager/
 │   │   ├── pages/
 │   │   │   ├── Login.tsx
 │   │   │   ├── Dashboard.tsx
-│   │   │   ├── Users.tsx
+│   │   │   ├── Members.tsx
+│   │   │   ├── Employees.tsx
 │   │   │   ├── Enrollments.tsx
 │   │   │   ├── Payments.tsx
-│   │   │   └── Accesses.tsx
+│   │   │   ├── Accesses.tsx
+│   │   │   └── Plans.tsx
 │   │   ├── hooks/
 │   │   │   ├── useAuth.ts
 │   │   │   └── useApi.ts
@@ -404,7 +410,7 @@ npm run dev          # Development server :3002
 - [ ] Configurar `build.gradle` con dependencias (Spring Boot 4.x, JPA, Lombok, JWT, Validation, OpenAPI 3.x).
 - [ ] Configurar `settings.gradle` con grupo y nombre del proyecto.
 - [ ] Configurar `application.yml` (DB connection, server port, security settings).
-- [ ] Crear entidades JPA (4 entidades + 6 enums).
+- [ ] Crear entidades JPA (7 entidades + 6 enums).
 - [ ] Crear DTOs para request/response.
 - [x] Crear `schema.sql` manual en PostgreSQL (CREATE TABLES).
 - [ ] Configurar Spring Security: habilitar JWT, deshabilitar HTTP basic auth.
@@ -421,7 +427,8 @@ npm run dev          # Development server :3002
 <summary>Ver Fase 2: Backend — Business Logic</summary>
 
 - [ ] Implementar `AuthService` + `AuthController` (login con credenciales + JWT).
-- [ ] Implementar `UserService` + `UserController` (CRUD completo, activar/desactivar).
+- [ ] Implementar `MemberService` + `MemberController` y `EmployeeService` + `EmployeeController` (gestión de socios y personal).
+- [ ] Implementar `PlanService` + `PlanController` (catálogo de modalidades y aranceles).
 - [ ] Implementar `EnrollmentService` + `EnrollmentController` (CRUD, control de historial 1:N y validación de vigencia).
 - [ ] Implementar `PaymentService` + `PaymentController` (registro de pagos, métodos de cobro, estados transaccionales y moneda).
 - [ ] Implementar `AccessService` + `AccessController` (reglas de negocio, conteo semanal).
@@ -457,8 +464,8 @@ npm run dev          # Development server :3002
 - [ ] Configurar React Router v6 para navegación entre páginas.
 - [ ] Crear contexto de autenticación (`AuthContext`).
 - [ ] Implementar Login page con form y validación.
-- [ ] Dashboard con resumen de usuarios, inscripciones, pagos.
-- [ ] Páginas CRUD: Usuarios, Inscripciones, Pagos.
+- [ ] Dashboard con resumen de socios, personal, inscripciones, pagos.
+- [ ] Páginas CRUD: Socios, Personal, Inscripciones, Pagos, Planes.
 - [ ] Consumo de API del Spring Boot vía Axios.
 - [ ] Manejo de errores y loading states.
 
@@ -488,7 +495,7 @@ La autenticación y autorización se gestionan con **Spring Security + JWT**.
 - **`JwtTokenProvider`**: genera y valida los tokens de acceso.
 - **`JwtAuthenticationFilter`**: intercepta las peticiones HTTP y valida el JWT.
 - **BCrypt**: las contraseñas se almacenan como hash (`BCryptPasswordEncoder`).
-- **Roles**: `ADMIN`, `STAFF`, `USER` controlan el acceso a los endpoints mediante `@PreAuthorize`.
+- **Roles**: `ADMIN` y `STAFF` controlan el acceso a los endpoints mediante `@PreAuthorize`.
 
 > **Datos sensibles:** en producción reemplazar `[PASSWORD_DE_POSTGRESQL]` y `[JWT_SECRET_KEY]` por valores reales. Generar el secret JWT con una clave aleatoria de 32+ caracteres, por ejemplo `openssl rand -hex 32`.
 

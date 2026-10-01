@@ -9,7 +9,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 ### 1.1. Módulo Auth (`AuthController`, `AuthService`)
 
 - **Objetivos:** Proveer el mecanismo centralizado de autenticación y autorización para el personal administrativo y operativo (roles `ADMIN` y `STAFF`), emitiendo y validando tokens JWT para securizar el resto de los endpoints de la API.
-- **Entidades involucradas:** `User` (`users`).
+- **Entidades involucradas:** `Employee` (`employees`), `Person` (`persons`).
 - **Contratos de Interfaz REST:**
 
 | RF | Método | Endpoint | Descripción | Request Body | Códigos de Respuesta |
@@ -21,30 +21,32 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 2. Los tokens JWT emitidos son inmutables; cualquier alteración de roles o permisos requerirá un nuevo inicio de sesión.
 ---
 
-### 1.2. Módulo User (`UserController`, `UserService`)
+### 1.2. Módulo Actors: Members & Employees (`MemberController`, `EmployeeController`)
 
-- **Objetivos:** Administrar el ciclo de vida de los usuarios del sistema (socios, instructores/staff y administradores). Permite el alta, modificación de datos de contacto, consulta de perfiles y activación/desactivación lógica de cuentas.
-- **Entidades involucradas:** `User` (`users`).
+- **Objetivos:** Administrar el ciclo de vida de los actores del sistema. Diferencia conceptualmente la gestión de socios deportivos (`Member`) del personal administrativo y operativo (`Employee`), compartiendo la entidad base `Person` para sus datos personales y legales.
+- **Entidades involucradas:** `Person` (`persons`), `Member` (`members`), `Employee` (`employees`).
 - **Contratos de Interfaz REST:**
 
 | RF | Método | Endpoint | Descripción | Request Body / Parámetros | Códigos de Respuesta |
 |---|---|---|---|---|---|
-| **RF-02** | `GET` | `/api/users` | Listado paginado de usuarios con soporte de filtros por rol y estado (`active`). | Query params: `page`, `size`, `role`, `active` | `200 OK` (lista paginada). |
-| **RF-03** | `GET` | `/api/users/{member_number}` | Obtiene el detalle administrativo de un usuario a partir de su clave primaria natural (`member_number`). | Path param: `member_number` | `200 OK` (objeto UserDTO), `404 Not Found`. |
-| **RF-04** | `POST` | `/api/users` | Registra un nuevo usuario en el sistema con su `member_number` único y validación de contacto (email o teléfono requerido). | `{"member_number": "1001", "name": "...", "lastName": "...", "dni": "...", "email": "...", "role": "USER"}` | `201 Created` (UserDTO creado), `400 Bad Request` (validación fallida), `409 Conflict` (número de socio o DNI duplicado, o email repetido de ADMIN o STAFF). |
-| **RF-05** | `PUT` | `/api/users/{member_number}` | Actualiza datos de contacto o personales de un usuario existente. | Path param: `member_number`. Body con campos actualizables. | `200 OK`, `400 Bad Request`, `404 Not Found`, `409 Conflict` (email repetido de ADMIN o STAFF). |
-| **RF-06** | `POST` | `/api/users/{member_number}/activate` | Cambia el estado de activación lógica del usuario (`active = true / false`). | Path param: `member_number`. Body: `{"active": true/false}` | `200 OK`, `404 Not Found`. |
+| **RF-02** | `GET` | `/api/members` | Listado paginado de socios con soporte de filtros por estado (`status`: `ACTIVE`, `OVERDUE`, `INACTIVE`). | Query params: `page`, `size`, `status` | `200 OK` (lista paginada). |
+| **RF-03** | `GET` | `/api/members/{member_number}` | Obtiene la ficha de un socio a partir de su clave primaria natural de negocio (`member_number`). | Path param: `member_number` | `200 OK` (objeto MemberDTO), `404 Not Found`. |
+| **RF-04** | `POST` | `/api/members` | Registra un nuevo socio en el sistema con su `member_number` único, vinculándolo a sus datos personales en `Person` (`dni` único, contacto obligatorio). | `{"member_number": "1001", "dni": "...", "name": "...", "lastName": "...", "email": "...", "phone": "..."}` | `201 Created` (MemberDTO creado), `400 Bad Request` (validación fallida), `409 Conflict` (número de socio o DNI ya existente, o email duplicado). |
+| **RF-05** | `PUT` | `/api/members/{member_number}` | Actualiza datos de contacto o personales de un socio existente. | Path param: `member_number`. Body con campos actualizables. | `200 OK`, `400 Bad Request`, `404 Not Found`, `409 Conflict` (email duplicado). |
+| **RF-06** | `POST` | `/api/members/{member_number}/status` | Cambia el estado de membresía del socio (`ACTIVE`, `INACTIVE`). | Path param: `member_number`. Body: `{"status": "INACTIVE"}` | `200 OK`, `404 Not Found`. |
+| — | `GET` | `/api/employees` | Listado de empleados del gimnasio para administración de personal. | Query params: `page`, `size`, `role` | `200 OK`. |
+| — | `POST` | `/api/employees` | Registra un nuevo empleado con credenciales de login (`password`) y rol operativo (`ADMIN`, `STAFF`). | `{"employee_code": "EMP01", "dni": "...", "name": "...", "lastName": "...", "email": "...", "password": "...", "role": "STAFF"}` | `201 Created`, `400 Bad Request`, `409 Conflict`. |
 
 **Reglas de Negocio Formales:**
-1. **Canal de contacto mínimo (Privacy & Contact):** Es estrictamente obligatorio registrar al menos un canal de contacto válido (email o teléfono) al dar de alta un usuario, garantizando la viabilidad de envío de notificaciones.
-2. El Número de Socio (`member_number`) es la clave primaria unívoca y no puede ser modificado una vez asignado, protegiendo el DNI como un dato netamente administrativo.
-3. **Email compartido:** Varios socios (`USER`) pueden registrar el mismo email, por ejemplo hijos anotados con el correo de su madre o su padre. `ADMIN` y `STAFF` necesitan email y contraseña, y su email no puede repetirse entre ellos, sin distinguir mayúsculas, porque lo usan para iniciar sesión; si se repite, el alta o la modificación responde `409 Conflict`.
----
+1. **Canal de contacto mínimo (Privacy & Contact):** Es estrictamente obligatorio registrar al menos un canal de contacto válido (email o teléfono) en la persona base, garantizando la viabilidad de notificaciones.
+2. **Aislamiento de Credenciales:** Los socios (`Member`) no poseen contraseña ni rol administrativo en V1. Las credenciales de acceso residen de forma exclusiva en `Employee`.
+3. **Número de Socio como Identificador Operativo:** El `member_number` es la clave primaria natural del socio para toda interacción de mostrador y molinete, resguardando el DNI como dato netamente civil y administrativo.
+4. **Email único global:** La dirección de correo electrónico identifica unívocamente a una `Person` en el sistema (`ux_persons_email`), evitando duplicidad de identidades.
 
 ### 1.3. Módulo Enrollment (`EnrollmentController`, `EnrollmentService`)
 
 - **Objetivos:** Gestionar los períodos de suscripción e inscripción de los socios, asignando la modalidad de asistencia (`FREE`, `THREE`, `TWO`), estableciendo la vigencia temporal (`start_date`, `end_date`) y definiendo, a través de la modalidad, el tope semanal de accesos.
-- **Entidades involucradas:** `Enrollment` (`enrollment`), `User` (`users`).
+- **Entidades involucradas:** `Enrollment` (`enrollment`), `Member` (`members`).
 - **Contratos de Interfaz REST:**
 
 | RF | Método | Endpoint | Descripción | Request Body / Parámetros | Códigos de Respuesta |
@@ -85,7 +87,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 
 - **Objetivos:** Servir como motor transaccional de validación de ingresos en tiempo real en la entrada del gimnasio y mantener el registro histórico inmutable de auditoría de cada intento de acceso.
 - **Criterio de diseño:** Dado que cada acceso constituye un evento de auditoría en una serie temporal (identificado por la clave compuesta `member_number` + `access_date`), **no se exponen operaciones CRUD planas** (`PUT` o `DELETE`). Los registros de acceso son inmutables y no se editan ni eliminan manualmente.
-- **Entidades involucradas:** `Access` (`access`), `User` (`users`), `Enrollment` (`enrollment`).
+- **Entidades involucradas:** `Access` (`access`), `Member` (`members`), `Enrollment` (`enrollment`).
 - **Contratos de Interfaz REST:**
 
 | RF | Método | Endpoint | Descripción | Request Body / Parámetros | Códigos de Respuesta |
@@ -112,7 +114,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 ### 2.2. Módulo ABM (Gestión Administrativa) (RF-19)
 - **Objetivos:** Centralizar las operaciones de administración del sistema mediante interfaces responsivas y securizadas por JWT.
 - **Funcionalidades:**
-  - **Gestión de Socios y Personal:** Altas, modificaciones, visualización de fichas individuales y activación/desactivación consumiendo `/api/users`.
+  - **Gestión de Socios y Personal:** Altas, modificaciones, visualización de fichas individuales y gestión de estados consumiendo `/api/members` y `/api/employees`.
   - **Gestión de Inscripciones:** Asignación de modalidades, prórrogas y monitoreo de vigencia consumiendo `/api/enrollments`.
   - **Gestión de Cobros:** Registro manual de pagos, emisión de comprobantes internos y seguimiento de estados transaccionales consumiendo `/api/payments`.
   - **Monitor de Accesos:** Vista en vivo y reportes históricos de ingresos y rechazos consumiendo `/api/access`.
@@ -139,11 +141,11 @@ Esta matriz vincula de forma directa los Requerimientos Funcionales (RF) detalla
 | Código | Requerimiento Funcional | Endpoint / Módulo de Resolución | Regla de Negocio / Criterio de Aceptación Restrictivo |
 |---|---|---|---|
 | **RF-01** | Autenticación y generación de sesión | `POST /api/auth/login` | Solo para `ADMIN` o `STAFF` con cuenta activa. Genera JWT inmutable. |
-| **RF-02** | Consulta general de usuarios | `GET /api/users` | Exclusivo para roles administrativos. Soporta paginación. |
-| **RF-03** | Consulta individual de perfil de usuario | `GET /api/users/{member_number}` | - |
-| **RF-04** | Registro de nuevos socios/staff | `POST /api/users` | DNI protegido operativamente. Email o teléfono obligatorios. Email único solo para ADMIN y STAFF. |
-| **RF-05** | Modificación de datos personales | `PUT /api/users/{member_number}` | Clave natural `member_number` inmutable. |
-| **RF-06** | Baja/Alta lógica de usuarios | `POST /api/users/.../activate` | Desactiva accesos futuros sin alterar historial inmutable. |
+| **RF-02** | Consulta general de socios | `GET /api/members` | Exclusivo para roles administrativos. Soporta paginación y filtros de estado. |
+| **RF-03** | Consulta individual de perfil de socio | `GET /api/members/{member_number}` | Búsqueda por número de socio (clave natural de negocio). |
+| **RF-04** | Registro de nuevos socios | `POST /api/members` | DNI protegido operativamente. Email o teléfono obligatorios. |
+| **RF-05** | Modificación de datos de socios | `PUT /api/members/{member_number}` | Clave natural `member_number` inmutable. |
+| **RF-06** | Baja/Alta lógica de socios | `POST /api/members/{member_number}/status` | Actualiza estado (`ACTIVE` / `INACTIVE`) sin borrar historial inmutable. |
 | **RF-07** | Listado histórico de inscripciones | `GET /api/enrollments` | Soporta filtros de vigencia. |
 | **RF-08** | Consulta de detalle de inscripción | `GET /api/enrollments/{id}` | - |
 | **RF-09** | Alta de planes / membresías | `POST /api/enrollments` | Prohibido solapar fechas de vigencia para un mismo usuario. Congela precio base pactado y descuento. |

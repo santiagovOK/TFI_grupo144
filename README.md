@@ -125,12 +125,15 @@ gym-manager/
 │   │   │   ├── PaymentService.java
 │   │   │   └── AccessService.java
 │   │   ├── repositories/                 # Repositorios JPA (uno por entidad)
-│   │   │   ├── UserRepository.java
+│   │   │   ├── MemberRepository.java
+│   │   │   ├── EmployeeRepository.java
 │   │   │   ├── EnrollmentRepository.java
 │   │   │   ├── PaymentRepository.java
 │   │   │   └── AccessRepository.java
 │   │   ├── models/                       # Modelos de dominio / Entidades
-│   │   │   ├── User.java
+│   │   │   ├── Person.java
+│   │   │   ├── Member.java
+│   │   │   ├── Employee.java
 │   │   │   ├── Enrollment.java
 │   │   │   ├── Payment.java
 │   │   │   └── Access.java
@@ -215,15 +218,19 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 
 | Entidad | Tabla | Descripción |
 |---------|-------|-------------|
-| `User` | `users` | Socio, personal o administrador del gimnasio |
+| `Person` | `persons` | Datos comunes y de contacto de cualquier individuo |
+| `Member` | `members` | Socio del gimnasio (identificado por `member_number`) |
+| `Employee` | `employees` | Personal operativo o administrativo con credenciales de login |
 | `Enrollment` | `enrollment` | Inscripción con modalidad y vigencia |
 | `Access` | `access` | Registro de cada intento de ingreso validado |
 | `Payment` | `payment` | Pago asociado a una inscripción |
 
 ### Relaciones
 
-- `User` ↔ `Enrollment`: relación uno a muchos (1:N).
-- `User` ↔ `Access`: relación uno a muchos (1:N).
+- `Person` ↔ `Member`: especialización uno a uno opcional (1:1, Joined Table).
+- `Person` ↔ `Employee`: especialización uno a uno opcional (1:1, Joined Table).
+- `Member` ↔ `Enrollment`: relación uno a muchos (1:N).
+- `Member` ↔ `Access`: relación uno a muchos (1:N).
 - `Enrollment` ↔ `Payment`: relación uno a muchos (1:N).
 - `Enrollment` ↔ `Access`: relación uno a muchos (1:N).
 
@@ -231,13 +238,13 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 
 | Enum | Valores |
 |------|---------|
-| `Role` | `ADMIN`, `STAFF`, `USER` |
+| `Role` | `ADMIN`, `STAFF` |
+| `MemberStatus` | `ACTIVE`, `OVERDUE`, `INACTIVE` |
 | `Currency` | `ARS`, `USD` |
 | `Modality` | `FREE` (ilimitado), `THREE` (3 por semana), `TWO` (2 por semana) |
 | `EnrollmentStatus` | `ACTIVE`, `CANCELLED`, `EXPIRED` |
 | `AccessStatus` | `GRANTED`, `DENIED` |
 | `PaymentStatus` | `PENDING`, `PAID`, `FAILED`, `CANCELLED` |
-
 ---
 
 ## Endpoints REST

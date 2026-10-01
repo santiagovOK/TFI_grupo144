@@ -1,30 +1,47 @@
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
-CREATE TABLE IF NOT EXISTS users (
-    member_number VARCHAR(20) PRIMARY KEY,
-    email VARCHAR(255),
-    password VARCHAR(255),
+CREATE TABLE IF NOT EXISTS persons (
+    dni VARCHAR(15) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
-    dni VARCHAR(15) UNIQUE NOT NULL,
-    birth_date DATE,
+    email VARCHAR(255),
     phone VARCHAR(20),
-    role VARCHAR(20) NOT NULL DEFAULT 'USER' CHECK (role IN ('ADMIN', 'STAFF', 'USER')),
+    birth_date DATE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ,
+    CONSTRAINT chk_person_contact CHECK (email IS NOT NULL OR phone IS NOT NULL),
+    CONSTRAINT chk_person_name CHECK (TRIM(name) <> ''),
+    CONSTRAINT chk_person_last_name CHECK (TRIM(last_name) <> ''),
+    CONSTRAINT chk_person_dni CHECK (TRIM(dni) <> ''),
+    CONSTRAINT chk_person_email CHECK (TRIM(email) <> ''),
+    CONSTRAINT chk_person_phone CHECK (TRIM(phone) <> '')
+);
+
+CREATE TABLE IF NOT EXISTS members (
+    member_number VARCHAR(20) PRIMARY KEY,
+    dni VARCHAR(15) UNIQUE NOT NULL REFERENCES persons(dni) ON DELETE RESTRICT,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'OVERDUE', 'INACTIVE')),
+    join_date TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ,
+    CONSTRAINT chk_member_number CHECK (TRIM(member_number) <> '')
+);
+
+CREATE TABLE IF NOT EXISTS employees (
+    employee_code VARCHAR(20) PRIMARY KEY,
+    dni VARCHAR(15) UNIQUE NOT NULL REFERENCES persons(dni) ON DELETE RESTRICT,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL CHECK (role IN ('ADMIN', 'STAFF')),
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ,
-    CONSTRAINT chk_user_contact CHECK (email IS NOT NULL OR phone IS NOT NULL),
-    CONSTRAINT chk_user_staff_login CHECK (role = 'USER' OR (email IS NOT NULL AND password IS NOT NULL)),
-    CONSTRAINT chk_user_name CHECK (TRIM(name) <> ''),
-    CONSTRAINT chk_user_last_name CHECK (TRIM(last_name) <> ''),
-    CONSTRAINT chk_user_dni CHECK (TRIM(dni) <> ''),
-    CONSTRAINT chk_user_email CHECK (TRIM(email) <> ''),
-    CONSTRAINT chk_user_phone CHECK (TRIM(phone) <> '')
-    );
+    CONSTRAINT chk_employee_code CHECK (TRIM(employee_code) <> ''),
+    CONSTRAINT chk_employee_password CHECK (TRIM(password) <> '')
+);
 
 CREATE TABLE IF NOT EXISTS enrollment (
     subscription_number SERIAL PRIMARY KEY,
-    member_number VARCHAR(20) NOT NULL REFERENCES users(member_number) ON DELETE RESTRICT,
+    member_number VARCHAR(20) NOT NULL REFERENCES members(member_number) ON DELETE RESTRICT,
     modality VARCHAR(20) NOT NULL CHECK (modality IN ('FREE', 'THREE', 'TWO')),
     price DECIMAL(19,2) NOT NULL,
     discount DECIMAL(19,2),
@@ -58,7 +75,7 @@ CREATE TABLE IF NOT EXISTS payment (
 
 CREATE TABLE IF NOT EXISTS access (
     access_id SERIAL PRIMARY KEY,
-    member_number VARCHAR(20) NOT NULL REFERENCES users(member_number) ON DELETE RESTRICT,
+    member_number VARCHAR(20) NOT NULL REFERENCES members(member_number) ON DELETE RESTRICT,
     subscription_number INTEGER REFERENCES enrollment(subscription_number) ON DELETE RESTRICT,
     access_date TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) NOT NULL CHECK (status IN ('GRANTED', 'DENIED')),
@@ -66,7 +83,7 @@ CREATE TABLE IF NOT EXISTS access (
     CONSTRAINT chk_access_logic CHECK ((status = 'GRANTED' AND subscription_number IS NOT NULL) OR (status = 'DENIED' AND denied_reason IS NOT NULL))
     );
 
-CREATE UNIQUE INDEX IF NOT EXISTS ux_users_email_staff ON users (LOWER(email)) WHERE role IN ('ADMIN', 'STAFF');
+CREATE UNIQUE INDEX IF NOT EXISTS ux_persons_email ON persons (LOWER(email)) WHERE email IS NOT NULL;
 CREATE INDEX IF NOT EXISTS ix_enrollment_member_number ON enrollment (member_number);
 CREATE INDEX IF NOT EXISTS ix_payment_subscription_number ON payment (subscription_number);
 CREATE INDEX IF NOT EXISTS ix_access_subscription_number ON access (subscription_number);

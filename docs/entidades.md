@@ -67,23 +67,36 @@ classDiagram
 
 ```mermaid
 erDiagram
-    users {
-        VARCHAR(20) member_number PK "Clave natural de negocio"
-        VARCHAR(15) dni UK "Dato administrativo sensible, no vacío (CHECK)"
-        VARCHAR(255) email "Canal contacto (CHECK), no vacío, obligatorio y único en ADMIN y STAFF"
-        VARCHAR(20) phone "Canal contacto (CHECK), no vacío"
-        VARCHAR(255) password "Hash BCrypt, obligatorio en ADMIN y STAFF"
+    persons {
+        VARCHAR(15) dni PK "Identificador natural ante el Estado"
         VARCHAR(100) name "No vacío (CHECK)"
         VARCHAR(100) last_name "No vacío (CHECK)"
+        VARCHAR(255) email "Canal contacto (CHECK), único globalmente"
+        VARCHAR(20) phone "Canal contacto (CHECK), no vacío"
         DATE birth_date
-        VARCHAR(20) role "Enum Role: ADMIN, STAFF, USER"
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    members {
+        VARCHAR(20) member_number PK "Clave natural de negocio"
+        VARCHAR(15) dni FK "UK, Referencia a persons(dni)"
+        VARCHAR(20) status "Enum MemberStatus: ACTIVE, OVERDUE, INACTIVE"
+        TIMESTAMPTZ join_date "Fecha de afiliación"
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+    employees {
+        VARCHAR(20) employee_code PK "Código operativo interno"
+        VARCHAR(15) dni FK "UK, Referencia a persons(dni)"
+        VARCHAR(255) password "Hash BCrypt no vacío (CHECK)"
+        VARCHAR(20) role "Enum Role: ADMIN, STAFF"
         BOOLEAN active
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
     }
     enrollment {
         INTEGER subscription_number PK "Número correlativo de suscripción (SERIAL)"
-        VARCHAR(20) member_number FK "Referencia a users"
+        VARCHAR(20) member_number FK "Referencia a members"
         VARCHAR(20) modality "Enum Modality: FREE, THREE, TWO"
         DECIMAL price "Precio pactado (CHECK >= 0)"
         DECIMAL discount "Descuento pactado (CHECK <= price)"
@@ -109,14 +122,16 @@ erDiagram
     }
     access {
         INTEGER access_id PK "Secuencial de auditoría temporal (SERIAL)"
-        VARCHAR(20) member_number FK "Referencia obligatoria a users"
+        VARCHAR(20) member_number FK "Referencia obligatoria a members"
         INTEGER subscription_number FK "Referencia a enrollment(subscription_number)"
         TIMESTAMPTZ access_date "Momento exacto del intento"
         VARCHAR(20) status "Enum AccessStatus: GRANTED, DENIED"
         VARCHAR(500) denied_reason "Obligatorio si es denegado (CHECK)"
     }
-    users ||..o{ enrollment : "tiene historial (1:N)"
-    users ||..o{ access : "registra intentos (1:N)"
+    persons ||--|o members : "especializa en socio (0..1)"
+    persons ||--|o employees : "especializa en empleado (0..1)"
+    members ||..o{ enrollment : "tiene historial (1:N)"
+    members ||..o{ access : "registra intentos (1:N)"
     enrollment ||..o{ payment : "tiene pagos (1:N)"
     enrollment |o..o{ access : "asocia accesos concedidos (1:N)"
 ```
@@ -128,7 +143,9 @@ Para garantizar la solidez del modelo relacional y evitar el abuso de IDs artifi
 
 | Entidad | ¿Posee Clave Natural Estable? | Naturaleza Conceptual | Tipo de PK Seleccionada | Justificación Académica y Operativa |
 |---------|-------------------------------|-----------------------|-------------------------|-------------------------------------|
-| `users` | Sí (`member_number`) | Fuerte / Negocio | Clave Natural (`member_number`) | Identidad real del socio, credencial física y tipeo en terminales. |
+| `persons` | Sí (`dni`) | Fuerte / Natural | Clave Natural (`dni VARCHAR(15)`) | Identidad unívoca de la persona ante el Estado, asegura la unicidad física y canal de contacto de los datos personales. |
+| `members` | Sí (`member_number`) | Fuerte / Negocio | Clave Natural (`member_number VARCHAR(20)`) | Identidad operativa del cliente, credencial física y tipeo en terminales; vincula a `persons(dni)` mediante clave foránea 1:1. |
+| `employees` | Sí (`employee_code`) | Fuerte / Negocio | Clave Natural (`employee_code VARCHAR(20)`) | Código de legajo operativo del personal; vincula a `persons(dni)` mediante clave foránea 1:1 y aisla credenciales de login. |
 | `access`| No (auditoría secuencial) | Evento temporal puntual | Secuencia Correlativa (`access_id SERIAL`) | Identificador secuencial de evento de auditoría de puerta; desacopla el evento y permite auditar intentos de forma independiente sin sobrecarga de identificadores artificiales ni colisiones. |
 | `enrollment` | No (período contractual) | Período contractual dependiente | Secuencia Correlativa (`subscription_number SERIAL`) | Numeración correlativa de suscripción o contrato de mostrador; evita claves subrogadas artificiales y claves compuestas mutables. |
 | `payment` | No (transaccional comercial) | Comprobante contable de caja | Secuencia Correlativa (`receipt_number SERIAL`) | Número de recibo correlativo de mostrador para trazabilidad comercial y contable (#00001, #00002). |
@@ -137,40 +154,66 @@ Para garantizar la solidez del modelo relacional y evitar el abuso de IDs artifi
 
 | Relación | Tipo | Descripción |
 |----------|------|-------------|
-| `users` ↔ `enrollment` | `1:N` (Uno a Muchos), no identificadora | Un usuario puede tener múltiples inscripciones a lo largo del tiempo (historial por período). |
-| `users` ↔ `access` | `1:N` (Uno a Muchos), no identificadora | Un usuario puede registrar múltiples intentos de acceso (historial de accesos). |
+| `persons` ↔ `members` | `1:1` opcional (Joined Table) | Una persona física puede especializarse como socio activo del gimnasio. |
+| `persons` ↔ `employees` | `1:1` opcional (Joined Table) | Una persona física puede especializarse como empleado (cajero/administrador). |
+| `members` ↔ `enrollment` | `1:N` (Uno a Muchos), no identificadora | Un socio puede tener múltiples inscripciones a lo largo del tiempo (historial por período). |
+| `members` ↔ `access` | `1:N` (Uno a Muchos), no identificadora | Un socio puede registrar múltiples intentos de acceso (historial de accesos). |
 | `enrollment` ↔ `payment` | `1:N` (Uno a Muchos), no identificadora | Una inscripción puede registrar múltiples pagos o intentos de cobro vinculados por `subscription_number`. |
 | `enrollment` ↔ `access` | `1:N` (Uno a Muchos), no identificadora | Una inscripción asocia los accesos concedidos durante su vigencia a través de `subscription_number` (opcional; nulo si el acceso fue denegado sin inscripción activa). |
 
 ---
 
-## Tabla: `users`
+## Tabla: `persons`
 
-Representa a un socio, personal o administrador del gimnasio.
+Representa los datos físicos y de contacto de cualquier individuo registrado en el sistema (socio o empleado).
 
-**Nota de Privacidad y Contacto:** Se utiliza el número de socio (`member_number`) como identificador principal operativo para proteger el DNI. Para evitar "socios fantasmas", el sistema exige obligatoriamente registrar un email o un teléfono de contacto mediante una restricción de base de datos (`CHECK`).
-
-**Nota sobre el email:** Un mismo email puede repetirse entre socios, por ejemplo cuando una madre o un padre anota a sus hijos con su propio correo. En `ADMIN` y `STAFF` no se puede repetir, sin distinguir mayúsculas de minúsculas, porque es el dato con el que inician sesión. Esto lo controla el índice único parcial `ux_users_email_staff`. Además, `ADMIN` y `STAFF` tienen que tener email y contraseña (`chk_user_staff_login`), porque sin alguno de los dos no podrían iniciar sesión.
-
-**Nota de Escalabilidad (Credenciales opcionales):** Para la versión 1, los usuarios con rol `USER` (Socios) son dados de alta exclusivamente por el administrador y no poseen acceso al sistema, por lo que el campo `password` será nulo para ellos. La tabla se diseñó unificada para permitir a futuro habilitarles credenciales sin reestructurar la base de datos (ej. para un portal de autogestión).
-
-### Tabla `users`
+**Nota de Integridad y Contacto:** Centraliza la identidad legal de la persona (`dni`) y garantiza que no haya registros "fantasma" exigiendo al menos un medio de comunicación (`chk_person_contact`: email o teléfono obligatorios). El índice `ux_persons_email` asegura que un email no sea utilizado por dos personas diferentes.
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
-| `member_number` | VARCHAR(20) | No | Sí (PK) | Clave primaria natural |
-| `dni` | VARCHAR(15) | No | Sí (UK)| Dato administrativo sensible. No puede quedar vacío (CHECK) |
-| `email` | VARCHAR(255)| Sí | Solo ADMIN y STAFF | Restricción CHECK: email o phone obligatorios. Obligatorio en ADMIN y STAFF. Si se carga, no puede quedar vacío |
-| `phone` | VARCHAR(20) | Sí | — | Restricción CHECK: email o phone obligatorios. Si se carga, no puede quedar vacío |
-| `password` | VARCHAR(255)| Sí | — | Hash BCrypt. Obligatorio en ADMIN y STAFF (CHECK) |
-| `name` | VARCHAR(100) | No | — | No puede quedar vacío (CHECK) |
-| `last_name` | VARCHAR(100) | No | — | No puede quedar vacío (CHECK) |
-| `birth_date` | DATE | Sí | — | |
-| `role` | VARCHAR(20) | No | — | Valor del Enum `Role` (Por defecto `USER`, restricción CHECK) |
-| `active` | BOOLEAN | No | — | Valor por defecto `true` |
+| `dni` | VARCHAR(15) | No | Sí (PK) | Clave primaria natural legal. No puede quedar vacío (CHECK) |
+| `name` | VARCHAR(100) | No | — | Nombre(s). No puede quedar vacío (CHECK) |
+| `last_name` | VARCHAR(100) | No | — | Apellido(s). No puede quedar vacío (CHECK) |
+| `email` | VARCHAR(255)| Sí | Sí (UK) | Canal de contacto principal. Validado por `ux_persons_email` |
+| `phone` | VARCHAR(20) | Sí | — | Canal de contacto alternativo. Si se carga, no puede quedar vacío |
+| `birth_date` | DATE | Sí | — | Fecha de nacimiento |
 | `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |
-| `updated_at` | TIMESTAMPTZ | Sí | — | Sin actualización automática en la base. La aplicación deberá asignarlo al modificar el registro |
+| `updated_at` | TIMESTAMPTZ | Sí | — | Asignado por la aplicación al modificar datos de la persona |
 
+---
+
+## Tabla: `members`
+
+Representa la especialización de una persona como cliente/socio del gimnasio.
+
+**Nota de Privacidad y Negocio:** El socio opera en terminales y mostrador mediante su `member_number`, protegiendo el `dni` civil. Esta tabla no posee contraseñas ni roles administrativos, desacoplando completamente la membresía deportiva de la seguridad del sistema.
+
+| Columna | Tipo | Nulos | Único | Observación |
+|---------|------|-------|-------|-------------|
+| `member_number` | VARCHAR(20) | No | Sí (PK) | Clave natural de negocio utilizada en terminales de acceso |
+| `dni` | VARCHAR(15) | No | Sí (UK/FK) | Clave foránea 1:1 a `persons.dni` (`ON DELETE RESTRICT`) |
+| `status` | VARCHAR(20) | No | — | Valor del Enum `MemberStatus` (`ACTIVE`, `OVERDUE`, `INACTIVE`) |
+| `join_date` | TIMESTAMPTZ | No | — | Fecha y hora de alta de la membresía |
+| `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |
+| `updated_at` | TIMESTAMPTZ | Sí | — | Asignado por la aplicación ante modificaciones |
+
+---
+
+## Tabla: `employees`
+
+Representa la especialización de una persona como personal operativo o administrativo del gimnasio.
+
+**Nota de Autenticación y Roles:** Centraliza exclusivamente las credenciales de acceso al sistema informático (`password` encriptado con BCrypt) y el rol de seguridad asignado (`ADMIN`, `STAFF`). No contiene número de socio.
+
+| Columna | Tipo | Nulos | Único | Observación |
+|---------|------|-------|-------|-------------|
+| `employee_code` | VARCHAR(20) | No | Sí (PK) | Identificador unívoco o legajo del empleado en el gimnasio |
+| `dni` | VARCHAR(15) | No | Sí (UK/FK) | Clave foránea 1:1 a `persons.dni` (`ON DELETE RESTRICT`) |
+| `password` | VARCHAR(255)| No | — | Hash BCrypt obligatorio. No puede quedar vacío (CHECK) |
+| `role` | VARCHAR(20) | No | — | Valor del Enum `Role` (`ADMIN`, `STAFF`, restricción CHECK) |
+| `active` | BOOLEAN | No | — | Estado del usuario para control de login (por defecto `true`) |
+| `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |
+| `updated_at` | TIMESTAMPTZ | Sí | — | Asignado por la aplicación ante modificaciones |
 ---
 
 ## Tabla: `enrollment`
@@ -188,7 +231,7 @@ Representa la inscripción de un usuario a un plan, con su modalidad y vigencia.
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `subscription_number` | SERIAL / INTEGER | No (generado) | Sí (PK) | Clave primaria. Número correlativo autoincremental de suscripción |
-| `member_number` | VARCHAR(20) | No | — | FK a `users.member_number` (`ON DELETE RESTRICT`) |
+| `member_number` | VARCHAR(20) | No | — | FK a `members.member_number` (`ON DELETE RESTRICT`) |
 | `modality` | VARCHAR(20) | No | — | Valor del Enum `Modality` (Restricción CHECK) |
 | `price` | DECIMAL(19,2) | No | — | Precio pactado al suscribirse. Restricción CHECK: `price >= 0` |
 | `discount` | DECIMAL(19,2) | Sí | — | Descuento aplicado al suscribirse. Restricción CHECK: `discount IS NULL OR (discount >= 0 AND discount <= price)` |
@@ -207,7 +250,7 @@ Registra cada intento de ingreso validado en la terminal de acceso.
 
 | Columna | Tipo | Nulos | Único | Observación |
 | `access_id` | SERIAL / INTEGER | No (generado) | Sí (PK) | Clave primaria secuencial de auditoría temporal |
-| `member_number` | VARCHAR(20) | No | — | FK a `users.member_number` (`ON DELETE RESTRICT`) |
+| `member_number` | VARCHAR(20) | No | — | FK a `members.member_number` (`ON DELETE RESTRICT`) |
 | `subscription_number` | INTEGER | Sí | — | FK a `enrollment.subscription_number` (`ON DELETE RESTRICT`). Obligatorio si el acceso es `GRANTED`, opcional si es `DENIED` (`chk_access_logic`) |
 | `access_date` | TIMESTAMPTZ | No | — | Momento exacto del intento. Por defecto `CURRENT_TIMESTAMP` |
 | `status` | VARCHAR(20) | No | — | Valor del Enum `AccessStatus` (Sin valor por defecto, restricción CHECK) |
@@ -239,11 +282,14 @@ Registra un pago asociado a una inscripción.
 
 Para garantizar la integridad de los datos a nivel conceptual, los siguientes campos operan bajo dominios de valores cerrados y están validados a nivel de motor de base de datos (`CHECK`):
 
-### `Role` (Tabla `users`)
-- `ADMIN`: Personal con acceso total al panel administrativo.
-- `STAFF`: Personal operativo (instructores, recepcionistas).
-- `USER`: Socio / usuario (sin acceso al sistema en V1; reservado para escalabilidad futura).
+### `Role` (Tabla `employees`)
+- `ADMIN`: Personal con acceso total al panel administrativo y configuración del sistema.
+- `STAFF`: Personal operativo (instructores, recepcionistas, cajeros).
 
+### `MemberStatus` (Tabla `members`)
+- `ACTIVE`: Socio con cuota y membresía al día; habilitado para acceder al gimnasio.
+- `OVERDUE`: Socio con cuota pendiente o período vencido; acceso temporalmente denegado en molinete.
+- `INACTIVE`: Socio dado de baja administrativa definitiva o suspendido.
 ### `Modality` (Tabla `enrollment`)
 - `FREE`: Acceso ilimitado.
 - `THREE`: 3 accesos por semana.
@@ -270,11 +316,11 @@ Para garantizar la integridad de los datos a nivel conceptual, los siguientes ca
 
 ## Índices
 
-PostgreSQL crea automáticamente un índice por cada clave primaria y por cada restricción `UNIQUE` (`users.member_number`, `users.dni`, `enrollment.subscription_number`, `payment.receipt_number`, `payment.gateway_payment_id` y `access.access_id`), y otro para la restricción de exclusión `no_overlap_enrollment`: un índice GiST sobre el socio y el rango de fechas de `enrollment`, sin las inscripciones canceladas (ver Fundamentos de Diseño Relacional, punto 9). Pero no indexa las claves foráneas. Por eso el esquema define los siguientes índices B-Tree:
+PostgreSQL crea automáticamente un índice por cada clave primaria y por cada restricción `UNIQUE` (`persons.dni`, `members.member_number`, `members.dni`, `employees.employee_code`, `employees.dni`, `enrollment.subscription_number`, `payment.receipt_number`, `payment.gateway_payment_id` y `access.access_id`), y otro para la restricción de exclusión `no_overlap_enrollment`: un índice GiST sobre el socio y el rango de fechas de `enrollment`, sin las inscripciones canceladas (ver Fundamentos de Diseño Relacional, punto 9). Pero no indexa las claves foráneas. Por eso el esquema define los siguientes índices B-Tree:
 
 | Índice | Tabla (columna) | Consultas que acelera |
 |---|---|---|
-| `ux_users_email_staff` | `users` (`LOWER(email)`), solo filas `ADMIN` y `STAFF` | Búsqueda del usuario por email al iniciar sesión (RF-01); para usar el índice, el login tiene que comparar con `LOWER(email)`. Además es único sin distinguir mayúsculas: dos cuentas del personal no pueden tener el mismo email. |
+| `ux_persons_email` | `persons` (`LOWER(email)`), WHERE email IS NOT NULL | Búsqueda y unicidad del usuario por email al iniciar sesión (RF-01) y prevención de cuentas de personas duplicadas. |
 | `ix_enrollment_member_number` | `enrollment` (`member_number`) | Historial de inscripciones en la ficha del socio y búsqueda de la inscripción vigente en cada validación de acceso. También el control de `ON DELETE RESTRICT` al intentar borrar un socio. |
 | `ix_payment_subscription_number` | `payment` (`subscription_number`) | Pagos de una inscripción al cobrar en caja y al controlar la cuota. También el control de `RESTRICT` al intentar borrar una inscripción. |
 | `ix_access_subscription_number` | `access` (`subscription_number`) | Accesos habilitados por una inscripción (auditoría). También el control de `RESTRICT` al intentar borrar una inscripción. |
@@ -291,11 +337,11 @@ El "número de socio" es la identidad unívoca del cliente. Es el dato que el us
 **2. Criterio de Privacidad frente al DNI (Privacy by Design)**
 
 Aunque el DNI es natural y único, identifica a la persona ante el Estado. Su exposición indebida en pantallas de terminales de acceso representa un riesgo de privacidad.
-Por lo tanto, el DNI se aisló con una restricción `UNIQUE NOT NULL` como clave alternativa exclusivamente para fines administrativos (legajo, facturación), pero no participa como identificador relacional en las transacciones operativas diarias.
+En el diseño normalizado mediante *Joined Table*, el DNI identifica naturalmente a la entidad física `persons(dni)` como clave primaria. Sin embargo, para salvaguardar la privacidad en el salón y terminales de autoservicio, la entidad `members` expone `member_number` como clave primaria de negocio, evitando que el DNI sea manipulado o visualizado en terminales de acceso.
 
 **3. Garantía de Canal de Contacto**
 
-Para evitar el registro de "socios fantasmas" incontactables ante vencimientos, se implementó una restricción a nivel de motor de base de datos: `CONSTRAINT chk_user_contact CHECK (email IS NOT NULL OR phone IS NOT NULL)`. Esto garantiza que se registre al menos un dato de contacto, sin hacer obligatorios ambos. La restricción comprueba que el dato exista, no que sea válido: un valor mal escrito la cumple igual (los vacíos los rechazan `chk_user_email` y `chk_user_phone`), por lo que el formato del email y del teléfono lo valida la aplicación al dar de alta al socio.
+Para evitar el registro de "personas fantasmas" incontactables ante vencimientos, se implementó una restricción a nivel de motor de base de datos en la tabla base: `CONSTRAINT chk_person_contact CHECK (email IS NOT NULL OR phone IS NOT NULL)`. Esto garantiza que se registre al menos un dato de contacto, sin hacer obligatorios ambos. La restricción comprueba que el dato exista, no que sea válido: un valor mal escrito la cumple igual (los vacíos los rechazan `chk_person_email` y `chk_person_phone`), por lo que el formato del email y del teléfono lo valida la aplicación al dar de alta al individuo.
 
 **4. Identificador Secuencial en Eventos Temporales de Auditoría (`access`)**
 
@@ -307,7 +353,7 @@ Un intento de acceso en la terminal es un evento temporal de auditoría. Se iden
 *   **Eliminación Total de Identificadores Artificiales Abstractos:** Se prescinde por completo de identificadores artificiales abstractos (como identificadores aleatorios opacos) en el modelo de datos del gimnasio, alineándose con las buenas prácticas de diseño conceptual y relacional donde priman claves naturales y correlativas legibles.
 **6. Conservación del Historial (`ON DELETE RESTRICT`)**
 
-Todas las claves foráneas del esquema se declaran con `ON DELETE RESTRICT`: el motor rechaza la eliminación de un socio o de una inscripción mientras existan inscripciones, pagos o accesos que los referencien. De este modo, un borrado accidental no puede arrastrar comprobantes de pago ni eventos de acceso, que las reglas de negocio definen como registros de auditoría. Las bajas de usuarios se resuelven de forma lógica mediante `users.active`, sin eliminación física.
+Todas las claves foráneas del esquema se declaran con `ON DELETE RESTRICT`: el motor rechaza la eliminación de una persona, un socio o una inscripción mientras existan registros dependientes que los referencien. De este modo, un borrado accidental no puede arrastrar comprobantes de pago ni eventos de acceso, que las reglas de negocio definen como registros de auditoría. Las bajas se resuelven de forma lógica (`members.status = 'INACTIVE'`, `employees.active = FALSE`), sin eliminación física.
 No se utiliza `ON DELETE SET NULL` en `access`: `member_number` es la referencia obligatoria al socio y `subscription_number` es la referencia que permite auditar qué inscripción habilitó cada acceso concedido.
 El alcance de esta restricción es proteger a los registros padre: no impide eliminar directamente una fila de `payment` o de `access`. La aplicación deberá impedir el borrado de pagos y la modificación o eliminación de accesos (Módulo Payment, regla 2; Módulo Access, regla 2). Los pagos acreditados conservarán sus datos financieros y podrán pasar a `CANCELLED` según la regla de negocio definida.
 

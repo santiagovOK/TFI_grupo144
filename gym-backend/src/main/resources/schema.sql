@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS users (
     );
 
 CREATE TABLE IF NOT EXISTS enrollment (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    subscription_number SERIAL PRIMARY KEY,
     member_number VARCHAR(20) NOT NULL REFERENCES users(member_number) ON DELETE RESTRICT,
     modality VARCHAR(20) NOT NULL CHECK (modality IN ('FREE', 'THREE', 'TWO')),
     price DECIMAL(19,2) NOT NULL,
@@ -41,8 +41,8 @@ CREATE TABLE IF NOT EXISTS enrollment (
     );
 
 CREATE TABLE IF NOT EXISTS payment (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    enrollment_id UUID NOT NULL REFERENCES enrollment(id) ON DELETE RESTRICT,
+    receipt_number SERIAL PRIMARY KEY,
+    subscription_number INTEGER NOT NULL REFERENCES enrollment(subscription_number) ON DELETE RESTRICT,
     amount DECIMAL(19,2) NOT NULL,
     currency VARCHAR(10) NOT NULL DEFAULT 'ARS' CHECK (currency IN ('ARS', 'USD')),
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PAID', 'FAILED', 'CANCELLED')),
@@ -57,17 +57,17 @@ CREATE TABLE IF NOT EXISTS payment (
     );
 
 CREATE TABLE IF NOT EXISTS access (
+    access_id SERIAL PRIMARY KEY,
     member_number VARCHAR(20) NOT NULL REFERENCES users(member_number) ON DELETE RESTRICT,
-    enrollment_id UUID REFERENCES enrollment(id) ON DELETE RESTRICT,
+    subscription_number INTEGER REFERENCES enrollment(subscription_number) ON DELETE RESTRICT,
     access_date TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) NOT NULL CHECK (status IN ('GRANTED', 'DENIED')),
     denied_reason VARCHAR(500),
-    PRIMARY KEY (member_number, access_date),
-    CONSTRAINT chk_access_logic CHECK ((status = 'GRANTED' AND enrollment_id IS NOT NULL) OR (status = 'DENIED' AND denied_reason IS NOT NULL))
+    CONSTRAINT chk_access_logic CHECK ((status = 'GRANTED' AND subscription_number IS NOT NULL) OR (status = 'DENIED' AND denied_reason IS NOT NULL))
     );
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_users_email_staff ON users (LOWER(email)) WHERE role IN ('ADMIN', 'STAFF');
 CREATE INDEX IF NOT EXISTS ix_enrollment_member_number ON enrollment (member_number);
-CREATE INDEX IF NOT EXISTS ix_payment_enrollment_id ON payment (enrollment_id);
-CREATE INDEX IF NOT EXISTS ix_access_enrollment_id ON access (enrollment_id);
+CREATE INDEX IF NOT EXISTS ix_payment_subscription_number ON payment (subscription_number);
+CREATE INDEX IF NOT EXISTS ix_access_subscription_number ON access (subscription_number);
 CREATE INDEX IF NOT EXISTS ix_access_access_date ON access (access_date);

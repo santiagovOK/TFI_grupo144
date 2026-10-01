@@ -30,12 +30,14 @@ CREATE TABLE IF NOT EXISTS members (
 CREATE TABLE IF NOT EXISTS employees (
     employee_code VARCHAR(20) PRIMARY KEY,
     dni VARCHAR(15) UNIQUE NOT NULL REFERENCES persons(dni) ON DELETE RESTRICT,
+    work_email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL CHECK (role IN ('ADMIN', 'STAFF')),
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ,
     CONSTRAINT chk_employee_code CHECK (TRIM(employee_code) <> ''),
+    CONSTRAINT chk_employee_work_email CHECK (TRIM(work_email) <> ''),
     CONSTRAINT chk_employee_password CHECK (TRIM(password) <> '')
 );
 CREATE TABLE IF NOT EXISTS plans (
@@ -97,7 +99,7 @@ CREATE TABLE IF NOT EXISTS access (
     CONSTRAINT chk_access_logic CHECK ((status = 'GRANTED' AND subscription_number IS NOT NULL) OR (status = 'DENIED' AND denied_reason IS NOT NULL))
     );
 
-CREATE UNIQUE INDEX IF NOT EXISTS ux_persons_email ON persons (LOWER(email)) WHERE email IS NOT NULL;
+CREATE INDEX IF NOT EXISTS ix_persons_email ON persons (LOWER(email)) WHERE email IS NOT NULL;
 CREATE INDEX IF NOT EXISTS ix_enrollment_member_number ON enrollment (member_number);
 CREATE INDEX IF NOT EXISTS ix_payment_subscription_number ON payment (subscription_number);
 CREATE INDEX IF NOT EXISTS ix_access_subscription_number ON access (subscription_number);

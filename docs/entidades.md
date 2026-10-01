@@ -32,6 +32,7 @@ classDiagram
 
     class Employee {
         - String employeeCode
+        - String workEmail
         - String password
         - Role role
         - Boolean active
@@ -102,7 +103,7 @@ erDiagram
         VARCHAR(15) dni PK "Identificador natural ante el Estado"
         VARCHAR(100) name "No vacío (CHECK)"
         VARCHAR(100) last_name "No vacío (CHECK)"
-        VARCHAR(255) email "Canal contacto (CHECK), único globalmente"
+        VARCHAR(255) email "Canal de contacto civil/familiar (CHECK)"
         VARCHAR(20) phone "Canal contacto (CHECK), no vacío"
         DATE birth_date
         TIMESTAMPTZ created_at
@@ -119,6 +120,7 @@ erDiagram
     employees {
         VARCHAR(20) employee_code PK "Código operativo interno"
         VARCHAR(15) dni FK "UK, Referencia a persons(dni)"
+        VARCHAR(255) work_email "UK, Credencial de login (CHECK no vacío)"
         VARCHAR(255) password "Hash BCrypt no vacío (CHECK)"
         VARCHAR(20) role "Enum Role: ADMIN, STAFF"
         BOOLEAN active
@@ -209,14 +211,14 @@ Para garantizar la solidez del modelo relacional y evitar el abuso de IDs artifi
 
 Representa los datos físicos y de contacto de cualquier individuo registrado en el sistema (socio o empleado).
 
-**Nota de Integridad y Contacto:** Centraliza la identidad legal de la persona (`dni`) y garantiza que no haya registros "fantasma" exigiendo al menos un medio de comunicación (`chk_person_contact`: email o teléfono obligatorios). El índice `ux_persons_email` asegura que un email no sea utilizado por dos personas diferentes.
+**Nota de Integridad y Contacto:** Centraliza la identidad legal de la persona (`dni`) y garantiza que no haya registros "fantasma" exigiendo al menos un medio de comunicación (`chk_person_contact`: email o teléfono obligatorios). El campo `email` actúa como canal de contacto civil y familiar (no es único, permitiendo que menores de edad o grupos familiares compartan el correo electrónico sin bloqueos). La búsqueda eficiente se optimiza mediante el índice no único `ix_persons_email`.
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `dni` | VARCHAR(15) | No | Sí (PK) | Clave primaria natural legal. No puede quedar vacío (CHECK) |
 | `name` | VARCHAR(100) | No | — | Nombre(s). No puede quedar vacío (CHECK) |
 | `last_name` | VARCHAR(100) | No | — | Apellido(s). No puede quedar vacío (CHECK) |
-| `email` | VARCHAR(255)| Sí | Sí (UK) | Canal de contacto principal. Validado por `ux_persons_email` |
+| `email` | VARCHAR(255)| Sí | — | Canal de contacto principal civil/familiar. Optimizado por `ix_persons_email` (no único, permite representación familiar) |
 | `phone` | VARCHAR(20) | Sí | — | Canal de contacto alternativo. Si se carga, no puede quedar vacío |
 | `birth_date` | DATE | Sí | — | Fecha de nacimiento |
 | `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |
@@ -245,12 +247,13 @@ Representa la especialización de una persona como cliente/socio del gimnasio.
 
 Representa la especialización de una persona como personal operativo o administrativo del gimnasio.
 
-**Nota de Autenticación y Roles:** Centraliza exclusivamente las credenciales de acceso al sistema informático (`password` encriptado con BCrypt) y el rol de seguridad asignado (`ADMIN`, `STAFF`). No contiene número de socio.
+**Nota de Autenticación y Roles:** Centraliza exclusivamente las credenciales de acceso al sistema informático (`work_email` como identificador de login con restricción de unicidad y `password` encriptado con BCrypt) y el rol de seguridad asignado (`ADMIN`, `STAFF`). No contiene número de socio.
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `employee_code` | VARCHAR(20) | No | Sí (PK) | Identificador unívoco o legajo del empleado en el gimnasio |
 | `dni` | VARCHAR(15) | No | Sí (UK/FK) | Clave foránea 1:1 a `persons.dni` (`ON DELETE RESTRICT`) |
+| `work_email` | VARCHAR(255) | No | Sí (UK) | Correo electrónico laboral y credencial de login. Restricción CHECK: no vacío |
 | `password` | VARCHAR(255)| No | — | Hash BCrypt obligatorio. No puede quedar vacío (CHECK) |
 | `role` | VARCHAR(20) | No | — | Valor del Enum `Role` (`ADMIN`, `STAFF`, restricción CHECK) |
 | `active` | BOOLEAN | No | — | Estado del usuario para control de login (por defecto `true`) |
@@ -263,6 +266,10 @@ Representa la especialización de una persona como personal operativo o administ
 Representa el catálogo de modalidades de acceso y aranceles vigentes del gimnasio (soporte de configuración de aranceles según Pantalla 5 de mockups).
 
 **Nota de Aranceles Dinámicos e Inmutabilidad Histórica:** Centraliza los precios de lista y cupos semanales. Cuando un socio contrata una inscripción (`enrollment`), esta toma el precio de lista (`current_price`) y lo congela en su campo `price`. Las futuras modificaciones de aranceles en `plans` aplican solo a nuevas contrataciones, preservando la inmutabilidad de los contratos vigentes y finalizados.
+
+**Nota de Modalidades ("Pase Libre" vs. Becados / Cortesías):**
+- **Pase Libre (`'FREE'`):** El término *"Free Pass"* o *"Pase Libre"* en la industria de gimnasios representa acceso sin límite semanal de concurrencia (`weekly_limit = NULL`), pero constituye un servicio comercial arancelado (habitualmente el plan con el abono más alto).
+- **Becas y Cortesías ($0):** Para otorgar membresías gratuitas o con descuento total (becas deportivas, convenios institucionales o pases de cortesía), no se crea un tipo especial ni se bypasséa la base de datos: se configura un registro de `Plan` con `current_price = 0.00` (garantizado por la restricción `current_price >= 0`, ej. `plan_code = 'SCHOLARSHIP'`, `name = "Pase Becado / Institucional"`). Esto genera inscripciones y recibos formales por $0.00 con total trazabilidad administrativa y contable.
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
@@ -350,7 +357,7 @@ Para garantizar la integridad de los datos a nivel conceptual, los siguientes ca
 - `OVERDUE`: Socio con cuota pendiente o período vencido; acceso temporalmente denegado en molinete.
 - `INACTIVE`: Socio dado de baja administrativa definitiva o suspendido.
 ### `Plan` como catálogo de datos, no como enum
-La categoría fija `Modality` (`FREE`, `THREE`, `TWO`) fue reemplazada por la entidad relacional `plans`, identificada por `plan_code`. Los registros de Plan contienen `name`, `weekly_limit`, `current_price` y `active`. Los ejemplos de planes no constituyen un conjunto enumerado cerrado.
+La categoría fija `Modality` (`FREE`, `THREE`, `TWO`) fue reemplazada por la entidad relacional `plans`, identificada por `plan_code`. Los registros de Plan contienen `name`, `weekly_limit`, `current_price` y `active`. Los ejemplos de planes no constituyen un conjunto enumerado cerrado. Nótese que `'FREE'` denota "Pase Libre" (sin límite semanal de accesos, `weekly_limit IS NULL`), no gratuidad económica; la gratuidad se modela formalmente con `current_price = 0.00`.
 
 ### `EnrollmentStatus` (Tabla `enrollment`)
 - `ACTIVE`: Inscripción activa y vigente en el sistema.
@@ -373,11 +380,11 @@ La categoría fija `Modality` (`FREE`, `THREE`, `TWO`) fue reemplazada por la en
 
 ## Índices
 
-PostgreSQL crea automáticamente un índice por cada clave primaria y por cada restricción `UNIQUE` (`persons.dni`, `members.member_number`, `members.dni`, `employees.employee_code`, `employees.dni`, `enrollment.subscription_number`, `payment.receipt_number`, `payment.gateway_payment_id` y `access.access_id`), y otro para la restricción de exclusión `no_overlap_enrollment`: un índice GiST sobre el socio y el rango de fechas de `enrollment`, sin las inscripciones canceladas (ver Fundamentos de Diseño Relacional, punto 9). Pero no indexa las claves foráneas. Por eso el esquema define los siguientes índices B-Tree:
+PostgreSQL crea automáticamente un índice por cada clave primaria y por cada restricción `UNIQUE` (`persons.dni`, `members.member_number`, `members.dni`, `employees.employee_code`, `employees.dni`, `employees.work_email`, `enrollment.subscription_number`, `payment.receipt_number`, `payment.gateway_payment_id` y `access.access_id`), y otro para la restricción de exclusión `no_overlap_enrollment`: un índice GiST sobre el socio y el rango de fechas de `enrollment`, sin las inscripciones canceladas (ver Fundamentos de Diseño Relacional, punto 9). Pero no indexa las claves foráneas. Por eso el esquema define los siguientes índices B-Tree:
 
 | Índice | Tabla (columna) | Consultas que acelera |
 |---|---|---|
-| `ux_persons_email` | `persons` (`LOWER(email)`), WHERE email IS NOT NULL | Búsqueda y unicidad del usuario por email al iniciar sesión (RF-01) y prevención de cuentas de personas duplicadas. |
+| `ix_persons_email` | `persons` (`LOWER(email)`), WHERE email IS NOT NULL | Búsqueda rápida por email de contacto civil/familiar (no impone unicidad para habilitar cuentas familiares y menores de edad). |
 | `ix_enrollment_member_number` | `enrollment` (`member_number`) | Historial de inscripciones en la ficha del socio y búsqueda de la inscripción vigente en cada validación de acceso. También el control de `ON DELETE RESTRICT` al intentar borrar un socio. |
 | `ix_enrollment_plan_code` | `enrollment` (`plan_code`) | Consultas de inscripciones por plan y control de integridad referencial `ON DELETE RESTRICT` al modificar planes. |
 | `ix_payment_subscription_number` | `payment` (`subscription_number`) | Pagos de una inscripción al cobrar en caja y al controlar la cuota. También el control de `RESTRICT` al intentar borrar una inscripción. |

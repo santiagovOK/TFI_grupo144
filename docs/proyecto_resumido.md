@@ -1,6 +1,6 @@
 # TUPAD - Trabajo Final Integrador - Proyecto: Gym Manager
 
-Sistema de gestión integral de gimnasio: centraliza la administración de usuarios, inscripciones, pagos y el control de accesos en la entrada.
+Sistema de gestión integral de gimnasio: centraliza la administración de socios y personal, inscripciones, pagos y el control de accesos en la entrada.
 
 ## Integrantes
 
@@ -37,8 +37,8 @@ Sistema de gestión integral de gimnasio: centraliza la administración de usuar
 ### Incluido (Alcance de la versión inicial)
 
 **1. Gestión Administrativa (Panel Web):**
-* Gestión integral de usuarios (Socio, Staff, Admin) con estados de activación.
-* Administración de inscripciones bajo modalidades de uso (Pase Libre, 2 o 3 veces por semana).
+* Gestión integral de actores (Socios y Personal: Staff, Admin) diferenciados conceptualmente bajo jerarquía de personas y con estados de activación.
+* Administración de inscripciones bajo catálogo dinámico de planes (Pase Libre, 2 o 3 veces por semana, o planes becados de arancel $0).
 * Registro manual y seguimiento de pagos asociados a cada inscripción.
 
 **2. Control de Accesos (Terminal Frontal):**
@@ -89,10 +89,10 @@ Sistema de gestión integral de gimnasio: centraliza la administración de usuar
 
 ## Objetivos
 
-* **Objetivo general:** Desarrollar un sistema de gestión de gimnasio que automatice las operaciones diarias del negocio y centralice el control de usuarios, suscripciones y acceso.
+* **Objetivo general:** Desarrollar un sistema de gestión de gimnasio que automatice las operaciones diarias del negocio y centralice el control de socios, personal, suscripciones y acceso.
 * **Objetivos específicos:**
-  * Centralizar la gestión de usuarios (registro, edición, activación/desactivación)
-  * Gestionar inscripciones con modalidades diferenciadas (acceso ilimitado, limitado a 2 o 3 veces por semana)
+  * Centralizar la gestión de socios y personal (registro, edición, activación/desactivación de empleados y gestión de membresías de socios).
+  * Gestionar inscripciones vinculadas al catálogo dinámico de planes (acceso ilimitado, 2 o 3 veces por semana, o becas institucionales).
   * Registrar y controlar pagos asociados a cada inscripción
   * Validar accesos en puerta principal mediante número de socio (preservando el DNI como dato administrativo por privacidad) con reglas de negocio.
   * La arquitectura estará pensada para escalar a funcionalidades futuras sin reestructurar sus módulos estructurales.

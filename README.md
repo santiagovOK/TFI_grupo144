@@ -2,7 +2,7 @@
 
 Versión Resumida en [proyecto resumido](docs/proyecto_resumido.md).
 
-Sistema de gestión integral de gimnasio: centraliza la administración de usuarios, inscripciones, pagos y el control de accesos en la entrada.
+Sistema de gestión integral de gimnasio: centraliza la administración de socios y personal, inscripciones, pagos y el control de accesos en la entrada.
 
 - **Estado:** En desarrollo
 - **Stack:** Spring Boot 4.x + Java 25 · React 19 + TypeScript · PostgreSQL
@@ -35,11 +35,11 @@ Los gimnasios gestionan sus operaciones de forma manual o con herramientas no in
 
 ### Objetivo general
 
-Desarrollar un sistema de gestión de gimnasio que automatice las operaciones diarias del negocio y centralice el control de usuarios, suscripciones y acceso.
+Desarrollar un sistema de gestión de gimnasio que automatice las operaciones diarias del negocio y centralice el control de socios, personal, suscripciones y acceso.
 
 ### Objetivos específicos
 
-- Centralizar la gestión de usuarios (registro, edición, activación/desactivación).
+- Centralizar la gestión de socios y personal (registro, edición, activación/desactivación de empleados y membresías de socios).
 - Gestionar inscripciones vinculadas a planes configurables mediante `plan_code`; los límites se representan en `plans.weekly_limit`.
 - Registrar y controlar pagos asociados a cada inscripción.
 - Validar accesos en la puerta principal mediante número de socio (preservando el DNI como dato administrativo por privacidad) con reglas de negocio.
@@ -224,7 +224,7 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 |---------|-------|-------------|
 | `Person` | `persons` | Datos comunes y de contacto de cualquier individuo |
 | `Member` | `members` | Socio del gimnasio (identificado por `member_number`) |
-| `Employee` | `employees` | Personal operativo o administrativo con credenciales de login |
+| `Employee` | `employees` | Personal operativo o administrativo con credenciales de login (`work_email`) |
 | `Enrollment` | `enrollment` | Inscripción con referencia `plan_code`, vigencia y snapshot histórico de precio |
 | `Access` | `access` | Registro de cada intento de ingreso validado |
 | `Payment` | `payment` | Pago asociado a una inscripción |
@@ -263,7 +263,7 @@ El detalle de los endpoints y contratos de interfaz REST se encuentra documentad
 ### Incluidas (Alcance de la versión inicial)
 
 **1. Gestión Administrativa (Panel Web):**
-- Gestión integral de usuarios (Socio, Staff, Admin) con estados de activación.
+- Gestión integral de actores (Socio, Staff, Admin) diferenciados bajo jerarquía de personas y con estados de activación.
 - Administración de inscripciones vinculadas a registros dinámicos de Plan mediante `plan_code`.
 - Registro manual y seguimiento de pagos asociados a cada inscripción.
 

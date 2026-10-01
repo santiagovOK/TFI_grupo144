@@ -21,6 +21,9 @@
    - El panel administrativo distingue visualmente en su cabecera y barra lateral entre el personal operativo de recepción (`STAFF`) y la administración general (`ADMIN`).
    - Las opciones de configuración de tarifas/planes y la emisión de comunicados masivos se reservan visualmente para el rol `ADMIN`.
 
+5. **Segregación de Credenciales de Acceso:**
+   - La pantalla de inicio de sesión (`Pantalla 0`) autentica de forma exclusiva al personal operativo y administrativo (`ADMIN` y `STAFF`) mediante su correo electrónico laboral (`work_email`) y contraseña.
+   - Los socios (`Member`) no poseen credenciales de acceso ni contraseña en esta versión, interactuando en el salón mediante su número de socio en la terminal.
 ---
 
 ## 2. Pantallas del Sistema
@@ -32,12 +35,12 @@ Puerta de entrada al panel web administrativo (`gym-frontend-admin`), securizada
 - **Estructura y Disposición:** Tarjeta central centrada en pantalla sobre fondo neutro (resolución base 1440 × 900 px).
 - **Identidad:** Logo del gimnasio, título "Gym Manager" y subtítulo "Acceso de Personal".
 - **Formulario de Autenticación:**
-  - Campo "Correo Electrónico" con validación de formato.
+  - Campo "Correo Electrónico" con validación de formato (correo laboral / `work_email` del empleado).
   - Campo "Contraseña" con visibilidad alternable.
 - **Acción Principal:** Botón "Iniciar Sesión" en azul primario de ancho completo.
 - **Manejo de Errores y Feedback:**
   - Alerta visual en banner rojo ante credenciales incorrectas (*"Credenciales inválidas"*).
-  - Alerta ante cuenta de usuario inactiva (*"Cuenta desactivada. Consulte con administración"*).
+  - Alerta ante cuenta de empleado inactiva (*"Cuenta desactivada. Consulte con administración"*).
 
 
 ![Inicio de Sesión - Login](./mockups/img/pantalla_0_login.png)

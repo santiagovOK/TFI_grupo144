@@ -37,6 +37,34 @@ classDiagram
         - Boolean active
     }
 
+    class Plan {
+        - String planCode
+        - String name
+        - Integer weeklyLimit
+        - BigDecimal currentPrice
+        - Boolean active
+    }
+
+    class Enrollment {
+        - Integer subscriptionNumber
+        - String memberNumber
+        - String planCode
+        - BigDecimal price
+        - BigDecimal discount
+        - LocalDateTime startDate
+        - LocalDateTime endDate
+        - String comments
+        - LocalDateTime createdAt
+        - LocalDateTime updatedAt
+        - EnrollmentStatus status
+    }
+
+    class EnrollmentStatus {
+        <<enumeration>>
+        ACTIVE
+        CANCELLED
+        EXPIRED
+    }
     class Role {
         <<enumeration>>
         ADMIN
@@ -50,10 +78,13 @@ classDiagram
         INACTIVE
     }
 
+
     Person <|-- Member : hereda
     Person <|-- Employee : hereda
     Employee ..> Role : utiliza
     Member ..> MemberStatus : utiliza
+    Member "1" --> "0..*" Enrollment : tiene
+    Plan "1" --> "0..*" Enrollment : rige
 ```
 
 ### Justificación del Diseño Conceptual de Actores
@@ -94,10 +125,19 @@ erDiagram
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
     }
+    plans {
+        VARCHAR(20) plan_code PK "Código nemotécnico natural (FREE, THREE_DAYS, etc.)"
+        VARCHAR(100) name "Nombre comercial del plan (CHECK no vacío)"
+        INTEGER weekly_limit "Límite semanal de accesos (nullable, no negativo si se especifica)"
+        DECIMAL current_price "Arancel de lista vigente (CHECK >= 0)"
+        BOOLEAN active "Disponibilidad para contratación"
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
     enrollment {
         INTEGER subscription_number PK "Número correlativo de suscripción (SERIAL)"
         VARCHAR(20) member_number FK "Referencia a members"
-        VARCHAR(20) modality "Enum Modality: FREE, THREE, TWO"
+        VARCHAR(20) plan_code FK "Referencia a plans(plan_code)"
         DECIMAL price "Precio pactado (CHECK >= 0)"
         DECIMAL discount "Descuento pactado (CHECK <= price)"
         TIMESTAMPTZ start_date "Inicio del período (CHECK)"
@@ -130,6 +170,7 @@ erDiagram
     }
     persons ||--|o members : "especializa en socio (0..1)"
     persons ||--|o employees : "especializa en empleado (0..1)"
+    plans ||..o{ enrollment : "rige (1:N)"
     members ||..o{ enrollment : "tiene historial (1:N)"
     members ||..o{ access : "registra intentos (1:N)"
     enrollment ||..o{ payment : "tiene pagos (1:N)"
@@ -145,7 +186,7 @@ Para garantizar la solidez del modelo relacional y evitar el abuso de IDs artifi
 |---------|-------------------------------|-----------------------|-------------------------|-------------------------------------|
 | `persons` | Sí (`dni`) | Fuerte / Natural | Clave Natural (`dni VARCHAR(15)`) | Identidad unívoca de la persona ante el Estado, asegura la unicidad física y canal de contacto de los datos personales. |
 | `members` | Sí (`member_number`) | Fuerte / Negocio | Clave Natural (`member_number VARCHAR(20)`) | Identidad operativa del cliente, credencial física y tipeo en terminales; vincula a `persons(dni)` mediante clave foránea 1:1. |
-| `employees` | Sí (`employee_code`) | Fuerte / Negocio | Clave Natural (`employee_code VARCHAR(20)`) | Código de legajo operativo del personal; vincula a `persons(dni)` mediante clave foránea 1:1 y aisla credenciales de login. |
+| `plans` | Sí (`plan_code`) | Fuerte / Negocio | Clave Natural (`plan_code VARCHAR(20)`) | Código natural que identifica cada registro de Plan y sus datos comerciales; los valores citados en esta documentación son ejemplos, no una enumeración cerrada. |
 | `access`| No (auditoría secuencial) | Evento temporal puntual | Secuencia Correlativa (`access_id SERIAL`) | Identificador secuencial de evento de auditoría de puerta; desacopla el evento y permite auditar intentos de forma independiente sin sobrecarga de identificadores artificiales ni colisiones. |
 | `enrollment` | No (período contractual) | Período contractual dependiente | Secuencia Correlativa (`subscription_number SERIAL`) | Numeración correlativa de suscripción o contrato de mostrador; evita claves subrogadas artificiales y claves compuestas mutables. |
 | `payment` | No (transaccional comercial) | Comprobante contable de caja | Secuencia Correlativa (`receipt_number SERIAL`) | Número de recibo correlativo de mostrador para trazabilidad comercial y contable (#00001, #00002). |
@@ -156,6 +197,7 @@ Para garantizar la solidez del modelo relacional y evitar el abuso de IDs artifi
 |----------|------|-------------|
 | `persons` ↔ `members` | `1:1` opcional (Joined Table) | Una persona física puede especializarse como socio activo del gimnasio. |
 | `persons` ↔ `employees` | `1:1` opcional (Joined Table) | Una persona física puede especializarse como empleado (cajero/administrador). |
+| `plans` ↔ `enrollment` | `1:N` (Uno a Muchos), no identificadora | Un plan o modalidad de arancel rige múltiples contrataciones de socios a lo largo del tiempo. |
 | `members` ↔ `enrollment` | `1:N` (Uno a Muchos), no identificadora | Un socio puede tener múltiples inscripciones a lo largo del tiempo (historial por período). |
 | `members` ↔ `access` | `1:N` (Uno a Muchos), no identificadora | Un socio puede registrar múltiples intentos de acceso (historial de accesos). |
 | `enrollment` ↔ `payment` | `1:N` (Uno a Muchos), no identificadora | Una inscripción puede registrar múltiples pagos o intentos de cobro vinculados por `subscription_number`. |
@@ -216,15 +258,32 @@ Representa la especialización de una persona como personal operativo o administ
 | `updated_at` | TIMESTAMPTZ | Sí | — | Asignado por la aplicación ante modificaciones |
 ---
 
+## Tabla: `plans`
+
+Representa el catálogo de modalidades de acceso y aranceles vigentes del gimnasio (soporte de configuración de aranceles según Pantalla 5 de mockups).
+
+**Nota de Aranceles Dinámicos e Inmutabilidad Histórica:** Centraliza los precios de lista y cupos semanales. Cuando un socio contrata una inscripción (`enrollment`), esta toma el precio de lista (`current_price`) y lo congela en su campo `price`. Las futuras modificaciones de aranceles en `plans` aplican solo a nuevas contrataciones, preservando la inmutabilidad de los contratos vigentes y finalizados.
+
+| Columna | Tipo | Nulos | Único | Observación |
+|---------|------|-------|-------|-------------|
+| `plan_code` | VARCHAR(20) | No | Sí (PK) | Código natural de negocio del Plan; los ejemplos `FREE`, `THREE_DAYS`, `TWO_DAYS` no constituyen un conjunto cerrado |
+| `name` | VARCHAR(100) | No | — | Nombre comercial del plan. Restricción CHECK: no vacío |
+| `weekly_limit` | INTEGER | Sí | — | Límite semanal de accesos. Restricción CHECK: `weekly_limit IS NULL OR weekly_limit >= 0` |
+| `current_price` | DECIMAL(19,2) | No | — | Arancel de lista vigente. Restricción CHECK: `current_price >= 0` |
+| `active` | BOOLEAN | No | — | Habilitación comercial para nuevas contrataciones (por defecto `TRUE`) |
+| `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |
+| `updated_at` | TIMESTAMPTZ | Sí | — | Asignado por la aplicación ante modificaciones |
+---
+
 ## Tabla: `enrollment`
 
-Representa la inscripción de un usuario a un plan, con su modalidad y vigencia.
+Representa el período de inscripción de un socio vinculado al plan seleccionado (`plan_code`) y a sus fechas de vigencia.
 
 **Nota de Vigencia:** cada inscripción es un período cerrado: siempre tiene fecha de inicio y de fin, y cada renovación genera una inscripción nueva. Una inscripción está vigente cuando `start_date <= momento < end_date`: el inicio se incluye y el fin no. Así, una renovación puede empezar en el mismo instante en que termina la anterior sin que se superpongan. La restricción `chk_enrollment_dates` exige que el fin sea posterior al inicio.
 
-**Nota de Cupo Semanal:** la tabla no guarda un contador de accesos. El tope surge de la modalidad (`THREE`: 3, `TWO`: 2, `FREE`: sin tope) y los accesos ya usados se cuentan en la tabla `access` (ver Fundamentos de Diseño Relacional, punto 7).
+**Nota de Cupo Semanal:** la tabla no guarda un contador de accesos. El límite se define en el plan asociado mediante `plans.weekly_limit`; los accesos usados se cuentan en la tabla `access` (ver Fundamentos de Diseño Relacional, punto 7). La restricción CHECK requiere un valor no negativo cuando `weekly_limit` está informado.
 
-**Nota de Condiciones Financieras:** cada inscripción congela el precio pactado (`price`) y el descuento concedido (`discount`) al momento del alta, asegurando la inmutabilidad histórica frente a futuros aumentos de tarifas. Las restricciones `chk_enrollment_price` y `chk_enrollment_discount` exigen que el precio sea no negativo y que el descuento no supere dicho precio.
+**Nota de Condiciones Financieras:** `enrollment.price` conserva el precio pactado como snapshot histórico del `plans.current_price` aplicado al crear la inscripción; futuros cambios de tarifa no modifican ese valor. `discount` conserva el descuento concedido. Las restricciones `chk_enrollment_price` y `chk_enrollment_discount` exigen que el precio sea no negativo y que el descuento no supere dicho precio.
 
 **Nota de Baja Lógica y Solapamiento:** la tabla implementa baja lógica mediante la columna `status` (`ACTIVE`, `CANCELLED`, `EXPIRED`). Para evitar inconsistencias operativas sin delegar la integridad exclusivamente a la aplicación, el motor de base de datos prohíbe el solapamiento de períodos vigentes para un mismo socio mediante una restricción de exclusión (`no_overlap_enrollment` vía `EXCLUDE USING gist`). Dicha restricción se aplica únicamente sobre inscripciones no canceladas (`WHERE status != 'CANCELLED'`), permitiendo registrar nuevas inscripciones sin conflictos si un período anterior fue dado de baja.
 
@@ -232,7 +291,7 @@ Representa la inscripción de un usuario a un plan, con su modalidad y vigencia.
 |---------|------|-------|-------|-------------|
 | `subscription_number` | SERIAL / INTEGER | No (generado) | Sí (PK) | Clave primaria. Número correlativo autoincremental de suscripción |
 | `member_number` | VARCHAR(20) | No | — | FK a `members.member_number` (`ON DELETE RESTRICT`) |
-| `modality` | VARCHAR(20) | No | — | Valor del Enum `Modality` (Restricción CHECK) |
+| `plan_code` | VARCHAR(20) | No | — | FK a `plans.plan_code` (`ON DELETE RESTRICT`) |
 | `price` | DECIMAL(19,2) | No | — | Precio pactado al suscribirse. Restricción CHECK: `price >= 0` |
 | `discount` | DECIMAL(19,2) | Sí | — | Descuento aplicado al suscribirse. Restricción CHECK: `discount IS NULL OR (discount >= 0 AND discount <= price)` |
 | `start_date` | TIMESTAMPTZ | No | — | Inicio del período (incluido). Restricción CHECK: anterior a `end_date` |
@@ -290,10 +349,8 @@ Para garantizar la integridad de los datos a nivel conceptual, los siguientes ca
 - `ACTIVE`: Socio con cuota y membresía al día; habilitado para acceder al gimnasio.
 - `OVERDUE`: Socio con cuota pendiente o período vencido; acceso temporalmente denegado en molinete.
 - `INACTIVE`: Socio dado de baja administrativa definitiva o suspendido.
-### `Modality` (Tabla `enrollment`)
-- `FREE`: Acceso ilimitado.
-- `THREE`: 3 accesos por semana.
-- `TWO`: 2 accesos por semana.
+### `Plan` como catálogo de datos, no como enum
+La categoría fija `Modality` (`FREE`, `THREE`, `TWO`) fue reemplazada por la entidad relacional `plans`, identificada por `plan_code`. Los registros de Plan contienen `name`, `weekly_limit`, `current_price` y `active`. Los ejemplos de planes no constituyen un conjunto enumerado cerrado.
 
 ### `EnrollmentStatus` (Tabla `enrollment`)
 - `ACTIVE`: Inscripción activa y vigente en el sistema.
@@ -322,6 +379,7 @@ PostgreSQL crea automáticamente un índice por cada clave primaria y por cada r
 |---|---|---|
 | `ux_persons_email` | `persons` (`LOWER(email)`), WHERE email IS NOT NULL | Búsqueda y unicidad del usuario por email al iniciar sesión (RF-01) y prevención de cuentas de personas duplicadas. |
 | `ix_enrollment_member_number` | `enrollment` (`member_number`) | Historial de inscripciones en la ficha del socio y búsqueda de la inscripción vigente en cada validación de acceso. También el control de `ON DELETE RESTRICT` al intentar borrar un socio. |
+| `ix_enrollment_plan_code` | `enrollment` (`plan_code`) | Consultas de inscripciones por plan y control de integridad referencial `ON DELETE RESTRICT` al modificar planes. |
 | `ix_payment_subscription_number` | `payment` (`subscription_number`) | Pagos de una inscripción al cobrar en caja y al controlar la cuota. También el control de `RESTRICT` al intentar borrar una inscripción. |
 | `ix_access_subscription_number` | `access` (`subscription_number`) | Accesos habilitados por una inscripción (auditoría). También el control de `RESTRICT` al intentar borrar una inscripción. |
 | `ix_access_access_date` | `access` (`access_date`) | Consultas por fecha sobre todos los socios: accesos del día, horarios pico del dashboard y filtros `from` / `to` de RF-17. |
@@ -359,7 +417,7 @@ El alcance de esta restricción es proteger a los registros padre: no impide eli
 
 **7. Cupo Semanal Calculado, no Almacenado**
 
-Los accesos que un socio ya usó en la semana no se guardan en una columna: se obtienen contando sus accesos `GRANTED` en la tabla `access` desde el lunes a las 00:00 de la semana en curso. El tope se deduce de la modalidad de la inscripción vigente (`THREE`: 3, `TWO`: 2, `FREE`: sin tope).
+Los accesos que un socio ya usó en la semana no se guardan en una columna: se obtienen contando sus accesos `GRANTED` en la tabla `access` desde el lunes a las 00:00 de la semana en curso. El límite aplicable se consulta en `plans.weekly_limit` a través del `plan_code` de la inscripción vigente. La restricción CHECK requiere un valor no negativo cuando el límite está informado.
 Guardar un contador en `enrollment` implicaba repetir un dato que ya existe en `access`, con el riesgo de que ambos dejen de coincidir si falla la actualización de uno de ellos. También exigía una columna con la fecha del último reinicio, nula hasta el primer lunes, y un proceso que reiniciara el contador cada semana. Con el conteo, `access` es la única fuente del dato y no queda ningún campo que mantener.
 El conteo se hace por socio y no por inscripción: si un socio renueva a mitad de semana, los accesos que ya usó esa semana siguen contando.
 

@@ -40,7 +40,7 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 ### Objetivos específicos
 
 - Centralizar la gestión de usuarios (registro, edición, activación/desactivación).
-- Gestionar inscripciones con modalidades diferenciadas (acceso ilimitado, limitado a 2 o 3 veces por semana).
+- Gestionar inscripciones vinculadas a planes configurables mediante `plan_code`; los límites se representan en `plans.weekly_limit`.
 - Registrar y controlar pagos asociados a cada inscripción.
 - Validar accesos en la puerta principal mediante número de socio (preservando el DNI como dato administrativo por privacidad) con reglas de negocio.
 - Diseñar una arquitectura escalable que permita incorporar funcionalidades futuras sin reestructurar sus módulos estructurales.
@@ -117,30 +117,34 @@ gym-manager/
 │   │   │   ├── UserController.java
 │   │   │   ├── EnrollmentController.java
 │   │   │   ├── PaymentController.java
-│   │   │   └── AccessController.java
+│   │   │   ├── AccessController.java
+│   │   │   └── PlanController.java
 │   │   ├── services/                     # Lógica de negocio (uno por módulo)
 │   │   │   ├── AuthService.java
 │   │   │   ├── UserService.java
 │   │   │   ├── EnrollmentService.java
 │   │   │   ├── PaymentService.java
-│   │   │   └── AccessService.java
+│   │   │   ├── AccessService.java
+│   │   │   └── PlanService.java
 │   │   ├── repositories/                 # Repositorios JPA (uno por entidad)
 │   │   │   ├── MemberRepository.java
 │   │   │   ├── EmployeeRepository.java
 │   │   │   ├── EnrollmentRepository.java
 │   │   │   ├── PaymentRepository.java
-│   │   │   └── AccessRepository.java
+│   │   │   ├── AccessRepository.java
+│   │   │   └── PlanRepository.java
 │   │   ├── models/                       # Modelos de dominio / Entidades
 │   │   │   ├── Person.java
 │   │   │   ├── Member.java
 │   │   │   ├── Employee.java
 │   │   │   ├── Enrollment.java
 │   │   │   ├── Payment.java
-│   │   │   └── Access.java
+│   │   │   ├── Access.java
+│   │   │   └── Plan.java
 │   │   ├── enums/                        # Enumeraciones Java
 │   │   │   ├── Role.java
 │   │   │   ├── Currency.java
-│   │   │   ├── Modality.java
+│   │   │   ├── MemberStatus.java
 │   │   │   ├── EnrollmentStatus.java
 │   │   │   ├── PaymentStatus.java
 │   │   │   └── AccessStatus.java
@@ -221,9 +225,10 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 | `Person` | `persons` | Datos comunes y de contacto de cualquier individuo |
 | `Member` | `members` | Socio del gimnasio (identificado por `member_number`) |
 | `Employee` | `employees` | Personal operativo o administrativo con credenciales de login |
-| `Enrollment` | `enrollment` | Inscripción con modalidad y vigencia |
+| `Enrollment` | `enrollment` | Inscripción con referencia `plan_code`, vigencia y snapshot histórico de precio |
 | `Access` | `access` | Registro de cada intento de ingreso validado |
 | `Payment` | `payment` | Pago asociado a una inscripción |
+| `Plan` | `plans` | Catálogo dinámico identificado por `plan_code`, con límite semanal, precio actual y estado |
 
 ### Relaciones
 
@@ -233,6 +238,7 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 - `Member` ↔ `Access`: relación uno a muchos (1:N).
 - `Enrollment` ↔ `Payment`: relación uno a muchos (1:N).
 - `Enrollment` ↔ `Access`: relación uno a muchos (1:N).
+- `Plan` ↔ `Enrollment`: relación uno a muchos (1:N); `enrollment.plan_code` referencia `plans.plan_code`.
 
 ### Enums
 
@@ -241,7 +247,6 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 | `Role` | `ADMIN`, `STAFF` |
 | `MemberStatus` | `ACTIVE`, `OVERDUE`, `INACTIVE` |
 | `Currency` | `ARS`, `USD` |
-| `Modality` | `FREE` (ilimitado), `THREE` (3 por semana), `TWO` (2 por semana) |
 | `EnrollmentStatus` | `ACTIVE`, `CANCELLED`, `EXPIRED` |
 | `AccessStatus` | `GRANTED`, `DENIED` |
 | `PaymentStatus` | `PENDING`, `PAID`, `FAILED`, `CANCELLED` |
@@ -259,7 +264,7 @@ El detalle de los endpoints y contratos de interfaz REST se encuentra documentad
 
 **1. Gestión Administrativa (Panel Web):**
 - Gestión integral de usuarios (Socio, Staff, Admin) con estados de activación.
-- Administración de inscripciones bajo modalidades de uso (Pase Libre, 2 o 3 veces por semana).
+- Administración de inscripciones vinculadas a registros dinámicos de Plan mediante `plan_code`.
 - Registro manual y seguimiento de pagos asociados a cada inscripción.
 
 **2. Control de Accesos (Terminal Frontend):**
@@ -269,7 +274,7 @@ El detalle de los endpoints y contratos de interfaz REST se encuentra documentad
 
 **3. Reportes y Estadísticas Avanzadas:**
 - Dashboard integral con métricas de asistencia y popularidad de horarios.
-- Estadísticas de ingresos monetarios por modalidad y por período.
+- Estadísticas de ingresos monetarios por Plan y por período.
 - Historial detallado de asistencias mensuales por socio.
 
 **4. Comunicaciones:** 

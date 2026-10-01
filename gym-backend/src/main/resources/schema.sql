@@ -38,11 +38,25 @@ CREATE TABLE IF NOT EXISTS employees (
     CONSTRAINT chk_employee_code CHECK (TRIM(employee_code) <> ''),
     CONSTRAINT chk_employee_password CHECK (TRIM(password) <> '')
 );
+CREATE TABLE IF NOT EXISTS plans (
+    plan_code VARCHAR(20) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    weekly_limit INTEGER,
+    current_price DECIMAL(19,2) NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ,
+    CONSTRAINT chk_plan_code CHECK (TRIM(plan_code) <> ''),
+    CONSTRAINT chk_plan_name CHECK (TRIM(name) <> ''),
+    CONSTRAINT chk_plan_current_price CHECK (current_price >= 0),
+    CONSTRAINT chk_plan_weekly_limit CHECK (weekly_limit IS NULL OR weekly_limit >= 0)
+);
+
 
 CREATE TABLE IF NOT EXISTS enrollment (
     subscription_number SERIAL PRIMARY KEY,
     member_number VARCHAR(20) NOT NULL REFERENCES members(member_number) ON DELETE RESTRICT,
-    modality VARCHAR(20) NOT NULL CHECK (modality IN ('FREE', 'THREE', 'TWO')),
+    plan_code VARCHAR(20) NOT NULL REFERENCES plans(plan_code) ON DELETE RESTRICT,
     price DECIMAL(19,2) NOT NULL,
     discount DECIMAL(19,2),
     start_date TIMESTAMPTZ NOT NULL,
@@ -88,3 +102,4 @@ CREATE INDEX IF NOT EXISTS ix_enrollment_member_number ON enrollment (member_num
 CREATE INDEX IF NOT EXISTS ix_payment_subscription_number ON payment (subscription_number);
 CREATE INDEX IF NOT EXISTS ix_access_subscription_number ON access (subscription_number);
 CREATE INDEX IF NOT EXISTS ix_access_access_date ON access (access_date);
+CREATE INDEX IF NOT EXISTS ix_enrollment_plan_code ON enrollment (plan_code);

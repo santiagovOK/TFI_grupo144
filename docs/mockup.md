@@ -13,11 +13,10 @@
    - El DNI no se solicita ni se muestra en la pantalla de la terminal pública, reservándose exclusivamente para gestiones administrativas internas en recepción.
 2. **Validación Visual de Contacto Obligatorio:**
    - En el alta y edición de socios, la interfaz exige de forma obligatoria al menos un canal de contacto válido (email o teléfono), con validación visual en formulario.
-3. **Modalidades de Acceso del Dominio:**
-   - Las interfaces reflejan con claridad las tres modalidades del sistema:
-     - `FREE`: Acceso libre e ilimitado.
-     - `THREE`: Límite de 3 accesos semanales con contador visible de accesos restantes.
-     - `TWO`: Límite de 2 accesos semanales con contador visible de accesos restantes.
+3. **Planes de Acceso del Dominio:**
+   - Las pantallas representan selecciones de Plan a partir del catálogo dinámico `plans`, identificado por `plan_code`.
+   - Los planes ilustrados (por ejemplo, `FREE`, `THREE_DAYS`, `TWO_DAYS`) son ejemplos iniciales/estáticos para representar registros de Plan, no un conjunto cerrado.
+   - Los límites semanales se representan mediante `plans.weekly_limit`.
 4. **Diferenciación de Roles y Control de Acceso (RBAC):**
    - El panel administrativo distingue visualmente en su cabecera y barra lateral entre el personal operativo de recepción (`STAFF`) y la administración general (`ADMIN`).
    - Las opciones de configuración de tarifas/planes y la emisión de comunicados masivos se reservan visualmente para el rol `ADMIN`.
@@ -59,14 +58,14 @@ Diseñada para pantalla táctil en tótem o tablet junto al molinete de entrada 
 #### Estado de Feedback: Acceso Concedido (Granted)
 - Círculo de confirmación con tilde (`✓`) sobre fondo verde claro.
 - Mensaje de bienvenida personalizado con nombre del socio.
-- Resumen de modalidad y cupo semanal restante (ej. *"Modalidad: 3 días/sem — Te quedan 2 accesos esta semana"*).
+- Resumen de Plan activo y cupo semanal restante según `plan_code` y `plans.weekly_limit`.
 - Mensaje de ingreso habilitado en pantalla (ej. *"Pase habilitado por 10 segundos"*) para supervisión visual del recepcionista (preparado para integración con relé/apertura física a futuro).
 
 ![Terminal de Acceso - Concedido](./mockups/img/terminal_acceso_concedido.png)
 
 #### Estado de Feedback: Acceso Denegado (Denied)
 - Círculo de advertencia con cruz (`✕`) sobre fondo rojo claro.
-- Motivo claro del bloqueo (ej. *"Cuota impaga o período vencido"* o *"Cupo semanal agotado"*).
+- Motivo claro del bloqueo (ej. *"Cuota impaga o período vencido"* o *"Cupo semanal alcanzado según el Plan vigente"*).
 - Instrucción clara de derivación a recepción para regularizar la situación.
 
 ![Terminal de Acceso - Denegado](./mockups/img/terminal_acceso_denegado.png)
@@ -82,7 +81,7 @@ Diseñada para el personal administrativo y operativo en puesto de recepción (r
   - Menú lateral con accesos directos: Socios, Caja / Inscripciones, Accesos, Dashboard y Configuración.
 - **Buscador Omnibox:** Búsqueda rápida e incremental por DNI, N.º de Socio, Apellido o Nombre.
 - **Tabla General de Socios:**
-  - Columnas: N.º Socio, Nombre completo, DNI, Estado de Membresía (badge Activo / Inactivo / Vencido), Modalidad actual, Acciones rápidas.
+  - Columnas: N.º Socio, Nombre completo, DNI, Estado de Membresía (badge Activo / Inactivo / Vencido), Plan actual, Acciones rápidas.
   - Filtros superiores por estado (Todos, Activos, Inactivos, Vencidos) y paginación.
   - Acciones rápidas por fila:
     - Botón "Ficha / Historial" (abre el modal de historial de asistencias).
@@ -105,7 +104,7 @@ Diseñada para el personal administrativo y operativo en puesto de recepción (r
 ### Pantalla 3: Módulo de Inscripción y Cobro en Mostrador (Caja)
 
 - **Cabecera de Operación:** Indicador del socio seleccionado (N.º Socio, Nombre, DNI) y operador a cargo del cobro.
-- **Selección de Plan y Período:** Dropdown de modalidades disponibles y definición de vigencia (período mensual cerrado).
+- **Selección de Plan y Período:** Dropdown alimentado por los registros de Plan disponibles y definición de vigencia (período mensual cerrado).
 - **Desglose de Liquidación:** Monto base del plan, recargos o descuentos si aplicaran, y total a cobrar.
 - **Medios de Cobro:**
   - Registro de pago en efectivo con campo de monto recibido y cálculo automático de vuelto.
@@ -127,8 +126,8 @@ Diseñada para la supervisión operativa y gerencial (acceso completo para `ADMI
   - Cuotas vencidas / Morosidad del padrón (socios atrasados y montos pendientes para cobranza preventiva).
 - **Gráficos Operativos:**
   - Distribución horaria de accesos (gráfico de barras identificando horas pico).
-  - Distribución de socios por modalidad (gráfico circular/dona: Libre, 3 días, 2 días).
-- **Feed de Accesos en Tiempo Real:** Lista con las últimas validaciones del molinete indicando hora, socio, modalidad y resultado.
+  - Distribución de socios por Plan según los registros asociados a `enrollment.plan_code` (la ilustración muestra ejemplos iniciales).
+- **Feed de Accesos en Tiempo Real:** Lista con las últimas validaciones del molinete indicando hora, socio, Plan asociado y resultado.
 
 ![Dashboard Administrativo](./mockups/img/pantalla_4_dashboard.png)
 - **Modal de Comunicaciones y Avisos Masivos (Exclusivo ADMIN):**
@@ -142,17 +141,17 @@ Diseñada para la supervisión operativa y gerencial (acceso completo para `ADMI
 
 ### Pantalla 5: Configuración de Aranceles por Modalidad (Exclusivo ADMIN)
 
-Módulo de administración tarifaria con acceso restringido para usuarios con rol `ADMIN`. Bajo la arquitectura de dominio del sistema, las modalidades de acceso están fijadas de forma estricta por el tipo enumerado (`FREE`, `THREE`, `TWO`), por lo que no existe un catálogo dinámico ni creación de planes arbitrarios. El administrador utiliza este panel para ajustar los aranceles base de referencia.
+La Pantalla 5 ilustra una configuración tarifaria para usuarios con rol `ADMIN`. En el modelo actual, el catálogo de planes es dinámico y se representa mediante registros de `Plan` (`plans`), identificados por `plan_code`; no está limitado a un enum cerrado. Las opciones que aparecen en las imágenes son ejemplos iniciales/estáticos de registros de Plan para ilustrar la interfaz, no un catálogo exhaustivo. Las imágenes referenciadas y el canvas de Pen.dev permanecen sin cambios.
 
-- **Catálogo de Modalidades y Aranceles:**
-  - Visualización de las 3 modalidades del dominio (`Pase Libre`, `3 Días / Semana`, `2 Días / Semana`).
-  - Código enum en base de datos (`modality_type`).
-  - Regla de acceso y tope semanal (acceso ilimitado, 3 días o 2 días semanales).
-  - Arancel base de referencia actual y estado activo.
+- **Catálogo de Planes y Aranceles:**
+  - La ilustración muestra tres ejemplos (`Pase Libre`, `3 Días / Semana`, `2 Días / Semana`), no un límite sobre los planes configurables.
+  - Código natural `plan_code` y datos de catálogo como `name`, `weekly_limit`, `current_price` y `active`.
+  - Límite semanal de accesos definido por `weekly_limit`.
 - **Panel de Ajuste de Arancel de Referencia:**
-  - Selección de la modalidad fija a configurar.
-  - Actualización del importe base sugerido para nuevas inscripciones.
-  - Regla de inmutabilidad financiera (RF-09 / RF-14): los cambios de arancel aplican exclusivamente hacia adelante como valor de referencia al momento de inscribir socios (`enrollment`), garantizando que los cobros ya efectuados y suscripciones previas permanezcan inmutables.
+  - Selección del registro de Plan a configurar.
+  - Actualización del precio actual (`current_price`) como referencia para nuevas inscripciones.
+  - `enrollment.price` conserva el snapshot histórico del precio aplicado al alta; cambios posteriores del catálogo no reescriben el historial.
+  - Precio actual y estado activo del registro seleccionado.
 
 ![Configuración de Aranceles por Modalidad](./mockups/img/pantalla_5_configuracion.png)
 ---

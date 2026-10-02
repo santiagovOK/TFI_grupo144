@@ -131,7 +131,7 @@ erDiagram
         VARCHAR(20) plan_code PK "Código nemotécnico natural (FREE, THREE_DAYS, etc.)"
         VARCHAR(100) name "Nombre comercial del plan (CHECK no vacío)"
         INTEGER weekly_limit "Límite semanal de accesos (nullable, no negativo si se especifica)"
-        DECIMAL current_price "Arancel de lista vigente (CHECK >= 0)"
+        DECIMAL(19,2) current_price "Arancel de lista vigente (CHECK >= 0)"
         BOOLEAN active "Disponibilidad para contratación"
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
@@ -140,8 +140,8 @@ erDiagram
         INTEGER subscription_number PK "Número correlativo de suscripción (SERIAL)"
         VARCHAR(20) member_number FK "Referencia a members"
         VARCHAR(20) plan_code FK "Referencia a plans(plan_code)"
-        DECIMAL price "Precio pactado (CHECK >= 0)"
-        DECIMAL discount "Descuento pactado (CHECK <= price)"
+        DECIMAL(19,2) price "Precio pactado (CHECK >= 0)"
+        DECIMAL(19,2) discount "Descuento pactado (CHECK <= price)"
         TIMESTAMPTZ start_date "Inicio del período (CHECK)"
         TIMESTAMPTZ end_date "Fin del período (CHECK)"
         VARCHAR(500) comments
@@ -152,13 +152,13 @@ erDiagram
     payment {
         INTEGER receipt_number PK "Número de recibo correlativo de caja (SERIAL)"
         INTEGER subscription_number FK "Referencia a enrollment(subscription_number)"
-        DECIMAL amount "Precisión 19,2"
+        DECIMAL(19,2) amount "Importe cobrado (CHECK > 0)"
         VARCHAR(10) currency "Enum Currency: ARS, USD"
         VARCHAR(20) status "Enum PaymentStatus: PENDING, PAID, FAILED, CANCELLED"
         VARCHAR(50) payment_method "Método de cobro"
         VARCHAR(100) gateway_payment_id UK "Id de pasarela (MP)"
         VARCHAR(500) comments
-        DECIMAL discount "Precisión 19,2"
+        DECIMAL(19,2) discount "Descuento del pago (CHECK <= amount)"
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
     }
@@ -321,6 +321,7 @@ Representa el período de inscripción de un socio vinculado al plan seleccionad
 Registra cada intento de ingreso validado en la terminal de acceso.
 
 | Columna | Tipo | Nulos | Único | Observación |
+|---------|------|-------|-------|-------------|
 | `access_id` | SERIAL / INTEGER | No (generado) | Sí (PK) | Clave primaria secuencial de auditoría temporal |
 | `member_number` | VARCHAR(20) | No | — | FK a `members.member_number` (`ON DELETE RESTRICT`) |
 | `subscription_number` | INTEGER | Sí | — | FK a `enrollment.subscription_number` (`ON DELETE RESTRICT`). Obligatorio si el acceso es `GRANTED`, opcional si es `DENIED` (`chk_access_logic`) |

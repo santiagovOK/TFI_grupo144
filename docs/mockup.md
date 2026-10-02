@@ -129,7 +129,7 @@ Diseñada para la supervisión operativa y gerencial (acceso completo para `ADMI
   - Cuotas vencidas / Morosidad del padrón (socios atrasados y montos pendientes para cobranza preventiva).
 - **Gráficos Operativos:**
   - Distribución horaria de accesos (gráfico de barras identificando horas pico).
-  - Distribución de socios por Plan según los registros asociados a `enrollment.plan_code` (la ilustración muestra ejemplos iniciales).
+  - Distribución de socios por Plan según los registros asociados a `subscriptions.plan_code` (la ilustración muestra ejemplos iniciales).
 - **Feed de Accesos en Tiempo Real:** Lista con las últimas validaciones del molinete indicando hora, socio, Plan asociado y resultado.
 
 ![Dashboard Administrativo](./mockups/img/pantalla_4_dashboard.png)
@@ -152,8 +152,8 @@ La Pantalla 5 ilustra una configuración tarifaria para usuarios con rol `ADMIN`
   - Límite semanal de accesos definido por `weekly_limit`.
 - **Panel de Ajuste de Arancel de Referencia:**
   - Selección del registro de Plan a configurar.
-  - Actualización del precio actual (`current_price`) como referencia para nuevas inscripciones.
-  - `enrollment.price` conserva el snapshot histórico del precio aplicado al alta; cambios posteriores del catálogo no reescriben el historial.
+  - Actualización del precio actual (`current_price`) como referencia para nuevas suscripciones.
+  - `subscriptions.price` conserva el snapshot histórico del precio aplicado al alta; cambios posteriores del catálogo no reescriben el historial.
   - Precio actual y estado activo del registro seleccionado.
 
 ![Configuración de Aranceles por Modalidad](./mockups/img/pantalla_5_configuracion.png)

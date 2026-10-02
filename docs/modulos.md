@@ -46,42 +46,42 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 4. **Segregación Semántica de Email:** El correo electrónico civil y de contacto (`persons.email`) no es único y está destinado a la comunicación familiar, permitiendo que menores de edad compartan el correo de sus tutores sin generar conflictos (`409 Conflict`). En contrapartida, la credencial de login y autenticación reside de forma unívoca y obligatoria en el correo corporativo del empleado (`employees.work_email`), garantizando cuentas de acceso individuales, no transferibles y trazables.
 5. **Sumar un rol a una persona existente:** Al dar de alta un socio o un empleado, si el DNI ya está registrado en `persons` se usa esa persona y solo se crea el rol nuevo, sin duplicar sus datos personales ni modificarlos. Por ejemplo, una profesora que ya es empleada puede darse de alta como socia con su mismo DNI. Una persona no puede tener dos veces el mismo rol (`members.dni` y `employees.dni` son únicos).
 
-### 1.3. Módulo Enrollment (`EnrollmentController`, `EnrollmentService`)
+### 1.3. Módulo Subscriptions (`SubscriptionController`, `SubscriptionService`)
 
-- **Objetivos:** Gestionar los períodos de inscripción de los socios, vinculando el plan seleccionado mediante `plan_code`, estableciendo la vigencia temporal (`start_date`, `end_date`) y consultando `plans.weekly_limit` para el cupo semanal.
-- **Entidades involucradas:** `Enrollment` (`enrollment`), `Member` (`members`), `Plan` (`plans`).
+- **Objetivos:** Gestionar los períodos de suscripción de los socios, vinculando el plan seleccionado mediante `plan_code`, estableciendo la vigencia temporal (`start_date`, `end_date`) y consultando `plans.weekly_limit` para el cupo semanal.
+- **Entidades involucradas:** `Subscription` (`subscriptions`), `Member` (`members`), `Plan` (`plans`).
 - **Contratos de Interfaz REST:**
 
 | RF | Método | Endpoint | Descripción | Request Body / Parámetros | Códigos de Respuesta |
 |---|---|---|---|---|---|
-| **RF-07** | `GET` | `/api/enrollments` | Lista inscripciones paginadas, permitiendo filtrar por socio (`member_number`) o estado de vigencia. | Query params: `page`, `size`, `member_number`, `active` | `200 OK`. |
-| **RF-08** | `GET` | `/api/enrollments/{id}` | Recupera la información detallada de una inscripción específica por su identificador (`subscription_number`). | Path param: `id` (Integer) | `200 OK`, `404 Not Found`. |
-| **RF-09** | `POST` | `/api/enrollments` | Da de alta una nueva inscripción para un socio activo, vinculando el plan elegido (`plan_code`), rango de fechas y condiciones comerciales congeladas (precio y descuento). | `{"member_number": "1001", "plan_code": "THREE_DAYS", "price": 15000.00, "discount": 0.00, "start_date": "...", "end_date": "..."}` | `201 Created`, `400 Bad Request` (fechas incoherentes, precio/descuento inválidos, plan o socio inexistente/inactivo), `409 Conflict` (se superpone con otra inscripción del socio). |
-| **RF-10** | `PUT` | `/api/enrollments/{id}` | Modifica parámetros de la inscripción (ej. extensión de vigencia o cambio de plan). | Path param: `id`. Body con atributos modificables. | `200 OK`, `400 Bad Request`, `404 Not Found`, `409 Conflict` (se superpone con otra inscripción del socio). |
-| **RF-11** | `DELETE` | `/api/enrollments/{id}` | Realiza la baja lógica de la inscripción (actualiza `status = 'CANCELLED'`), preservando el historial de pagos y accesos asociados. | Path param: `id` | `204 No Content`, `404 Not Found`. |
+| **RF-07** | `GET` | `/api/subscriptions` | Lista suscripciones paginadas, permitiendo filtrar por socio (`member_number`) o estado de vigencia. | Query params: `page`, `size`, `member_number`, `active` | `200 OK`. |
+| **RF-08** | `GET` | `/api/subscriptions/{id}` | Recupera la información detallada de una suscripción específica por su identificador (`subscription_number`). | Path param: `id` (Integer) | `200 OK`, `404 Not Found`. |
+| **RF-09** | `POST` | `/api/subscriptions` | Da de alta una nueva suscripción para un socio activo, vinculando el plan elegido (`plan_code`), rango de fechas y condiciones comerciales congeladas (precio y descuento). | `{"member_number": "1001", "plan_code": "THREE_DAYS", "price": 15000.00, "discount": 0.00, "start_date": "...", "end_date": "..."}` | `201 Created`, `400 Bad Request` (fechas incoherentes, precio/descuento inválidos, plan o socio inexistente/inactivo), `409 Conflict` (se superpone con otra suscripción del socio). |
+| **RF-10** | `PUT` | `/api/subscriptions/{id}` | Modifica parámetros de la suscripción (ej. extensión de vigencia o cambio de plan). | Path param: `id`. Body con atributos modificables. | `200 OK`, `400 Bad Request`, `404 Not Found`, `409 Conflict` (se superpone con otra suscripción del socio). |
+| **RF-11** | `DELETE` | `/api/subscriptions/{id}` | Realiza la baja lógica de la suscripción (actualiza `status = 'CANCELLED'`), preservando el historial de pagos y accesos asociados. | Path param: `id` | `204 No Content`, `404 Not Found`. |
 
 **Reglas de Negocio Formales:**
-1. **Historial, Vigencia y No Solapamiento:** Un socio puede poseer múltiples registros de inscripción (1:N) a modo de historial. El motor de base de datos prohíbe que existan dos inscripciones activas con fechas superpuestas mediante una restricción de exclusión (`no_overlap_enrollment` con `EXCLUDE USING gist`), evaluada exclusivamente sobre registros con `status != 'CANCELLED'`.
+1. **Historial, Vigencia y No Solapamiento:** Un socio puede poseer múltiples registros de suscripción (1:N) a modo de historial. El motor de base de datos prohíbe que existan dos suscripciones activas con fechas superpuestas mediante una restricción de exclusión (`no_overlap_subscriptions` con `EXCLUDE USING gist`), evaluada exclusivamente sobre registros con `status != 'CANCELLED'`.
 2. **Cupo Semanal:** el límite se consulta en el plan asociado (`plans.weekly_limit`) y el uso se calcula contando los accesos `GRANTED` del socio en la semana en curso. La restricción de base de datos requiere un valor no negativo cuando el límite está informado. No se almacena un contador.
-3. **Congelamiento de Condiciones Comerciales:** `enrollment.price` conserva un snapshot histórico del `plans.current_price` aplicado al crear la inscripción, junto con el descuento concedido (`discount`). Los cambios posteriores en el catálogo no alteran los valores históricos del registro.
-4. **Baja Lógica y Conservación de Auditoría:** La cancelación de una membresía (`DELETE /api/enrollments/{id}`, RF-11) opera como una baja lógica actualizando su estado a `CANCELLED`. De esta forma se respeta la integridad referencial (`ON DELETE RESTRICT`) frente a pagos (`payment`) o registros de acceso (`access`) preexistentes, al tiempo que se libera inmediatamente el rango temporal para permitir la inscripción de un nuevo período sin bloqueos.
+3. **Congelamiento de Condiciones Comerciales:** `subscriptions.price` conserva un snapshot histórico del `plans.current_price` aplicado al crear la suscripción, junto con el descuento concedido (`discount`). Los cambios posteriores en el catálogo no alteran los valores históricos del registro.
+4. **Baja Lógica y Conservación de Auditoría:** La cancelación de una membresía (`DELETE /api/subscriptions/{id}`, RF-11) opera como una baja lógica actualizando su estado a `CANCELLED`. De esta forma se respeta la integridad referencial (`ON DELETE RESTRICT`) frente a pagos (`payment`) o registros de acceso (`access`) preexistentes, al tiempo que se libera inmediatamente el rango temporal para permitir la suscripción de un nuevo período sin bloqueos.
 ---
 
 ### 1.4. Módulo Payment (`PaymentController`, `PaymentService`)
 
-- **Objetivos:** Registrar y supervisar los pagos efectuados por los socios para cancelar sus inscripciones. Soporta múltiples transacciones por inscripción (abonos parciales o renovaciones), distintos métodos de pago y estados transaccionales (`PENDING`, `PAID`, `FAILED`, `CANCELLED`), preparando la arquitectura para la integración de pasarelas como Mercado Pago.
-- **Entidades involucradas:** `Payment` (`payment`), `Enrollment` (`enrollment`).
+- **Objetivos:** Registrar y supervisar los pagos efectuados por los socios para cancelar sus suscripciones. Soporta múltiples transacciones por suscripción (abonos parciales o renovaciones), distintos métodos de pago y estados transaccionales (`PENDING`, `PAID`, `FAILED`, `CANCELLED`), preparando la arquitectura para la integración de pasarelas como Mercado Pago.
+- **Entidades involucradas:** `Payment` (`payment`), `Subscription` (`subscriptions`).
 - **Contratos de Interfaz REST:**
 
 | RF | Método | Endpoint | Descripción | Request Body / Parámetros | Códigos de Respuesta |
 |---|---|---|---|---|---|
-| **RF-12** | `GET` | `/api/payments` | Consulta listado de pagos registrados con paginación y filtros por inscripción (`enrollment_id`), estado o rango de fechas. | Query params: `page`, `size`, `enrollment_id`, `status` | `200 OK`. |
+| **RF-12** | `GET` | `/api/payments` | Consulta listado de pagos registrados con paginación y filtros por suscripción (`subscription_number`), estado o rango de fechas. | Query params: `page`, `size`, `subscription_number`, `status` | `200 OK`. |
 | **RF-13** | `GET` | `/api/payments/{id}` | Obtiene los datos detallados de un comprobante de pago por su número de recibo (`receipt_number`). | Path param: `id` (Integer) | `200 OK`, `404 Not Found`. |
-| **RF-14** | `POST` | `/api/payments` | Registra un nuevo cobro asociado a una inscripción. | `{"enrollment_id": "...", "amount": 25000.00, "discount": 0.00, "currency": "ARS", "payment_method": "CASH", "status": "PAID"}` | `201 Created`, `400 Bad Request` (monto inválido `<= 0`, descuento mayor al monto o inscripción inexistente). |
+| **RF-14** | `POST` | `/api/payments` | Registra un nuevo cobro asociado a una suscripción. | `{"subscription_number": 1520, "amount": 25000.00, "discount": 0.00, "currency": "ARS", "payment_method": "CASH", "status": "PAID"}` | `201 Created`, `400 Bad Request` (monto inválido `<= 0`, descuento mayor al monto o suscripción inexistente). |
 | **RF-15** | `PUT` | `/api/payments/{id}` | Actualiza el estado de una transacción o referencia externa (ej. confirmación de webhook de pago). | Path param: `id`. Body con nuevo estado o datos de conciliación. | `200 OK`, `404 Not Found`. |
 
 **Reglas de Negocio Formales:**
-1. **Integridad Transaccional:** Todo registro de cobro debe referenciar de forma obligatoria a una inscripción existente (`enrollment_id`); no se admiten pagos "huérfanos".
+1. **Integridad Transaccional:** Todo registro de cobro debe referenciar de forma obligatoria a una suscripción existente (`subscription_number`); no se admiten pagos "huérfanos".
 2. **Idempotencia y Auditoría:** Los pagos registrados con estado `PAID` son inmutables. Ante un error, el pago se marca como `CANCELLED` para preservar la auditoría financiera, sin eliminarlo (DELETE) de la base de datos.
 3. **Validación de Montos:** Todo pago debe tener un monto estrictamente positivo (`amount > 0`) y, en caso de aplicar descuento, este debe ser no negativo y no superar el monto de la transacción (`0 <= discount <= amount`).
 ---
@@ -90,18 +90,18 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 
 - **Objetivos:** Servir como motor transaccional de validación de ingresos en tiempo real en la entrada del gimnasio y mantener el registro histórico inmutable de auditoría de cada intento de acceso.
 - **Criterio de diseño:** Dado que cada acceso constituye un evento de auditoría en una serie temporal (identificado por el número correlativo `access_id`), **no se exponen operaciones CRUD planas** (`PUT` o `DELETE`). Los registros de acceso son inmutables y no se editan ni eliminan manualmente.
-- **Entidades involucradas:** `Access` (`access`), `Member` (`members`), `Enrollment` (`enrollment`), `Plan` (`plans`).
+- **Entidades involucradas:** `Access` (`access`), `Member` (`members`), `Subscription` (`subscriptions`), `Plan` (`plans`).
 - **Contratos de Interfaz REST:**
 
 | RF | Método | Endpoint | Descripción | Request Body / Parámetros | Códigos de Respuesta |
 |---|---|---|---|---|---|
-| **RF-16** | `POST` | `/api/access/validate` | **Operación central de negocio.** Recibe la identificación del socio (`member_number`), evalúa existencia y activación, cuota al día, vigencia de la inscripción y cupo semanal del Plan; persiste el intento en `access`. El uso semanal se obtiene contando accesos `GRANTED` y el límite proviene de `plans.weekly_limit`. | `{"member_number": "1001"}` | `200 OK` (`GRANTED` o `DENIED`), `400 Bad Request`. |
+| **RF-16** | `POST` | `/api/access/validate` | **Operación central de negocio.** Recibe la identificación del socio (`member_number`), evalúa existencia y activación, cuota al día, vigencia de la suscripción y cupo semanal del Plan; persiste el intento en `access`. El uso semanal se obtiene contando accesos `GRANTED` y el límite proviene de `plans.weekly_limit`. | `{"member_number": "1001"}` | `200 OK` (`GRANTED` o `DENIED`), `400 Bad Request`. |
 | **RF-17** | `GET` | `/api/access` | Consulta el registro histórico de accesos para reportes, auditoría y análisis de afluencia. Permite filtrar por rango de fechas, socio (`member_number`) y resultado (`GRANTED` / `DENIED`). | Query params: `page`, `size`, `member_number`, `status`, `from`, `to` | `200 OK` (listado paginado). |
 
 **Reglas de Negocio Formales:**
-1. **Motor de Decisión:** el sistema denegará automáticamente el acceso (`DENIED`) si el socio está inactivo, no posee una inscripción vigente en la fecha actual, no tiene la cuota al día, o si ya consumió el cupo semanal de su plan. El cupo se determina mediante `plans.weekly_limit`. Si el número de socio ingresado no existe en el sistema, la validación se rechaza inmediatamente sin persistir el intento en la base de datos (para preservar la integridad referencial), registrando el evento únicamente en los logs de seguridad de la aplicación.
+1. **Motor de Decisión:** el sistema denegará automáticamente el acceso (`DENIED`) si el socio está inactivo, no posee una suscripción vigente en la fecha actual, no tiene la cuota al día, o si ya consumió el cupo semanal de su plan. El cupo se determina mediante `plans.weekly_limit`. Si el número de socio ingresado no existe en el sistema, la validación se rechaza inmediatamente sin persistir el intento en la base de datos (para preservar la integridad referencial), registrando el evento únicamente en los logs de seguridad de la aplicación.
 2. **Inmutabilidad de Auditoría:** Cada intento de acceso es un evento histórico inmutable. No se exponen operaciones para actualizar o borrar registros de `access`.
-3. **Determinación de Cuota al Día:** Para conceder el acceso (`GRANTED`), el socio debe tener la cuota al día en su inscripción vigente. Se considera al día si la suma de los montos (`amount`) de todos los pagos con estado `PAID` asociados a dicha inscripción cubre el saldo neto pactado: $\sum \text{amount}_{\text{PAID}} \ge (\text{price} - \text{discount})$. Si la inscripción no tiene descuento (`discount` nulo), se toma como 0. Si una inscripción no registra pagos en `payment`, la suma computa como `$0.00`. Por lo tanto, si el saldo neto pactado es `$0.00` (caso de planes becados con `price = 0.00` o bonificaciones del 100% donde `discount = price`), la condición matemática se satisface automáticamente ($0.00 \ge 0.00$) y el acceso es concedido (`GRANTED`) sin requerir comprobantes de pago. Si el saldo pactado es mayor a `$0.00` y la suma de pagos acreditados es insuficiente, el acceso se deniega (`DENIED`) por cuota impaga.
+3. **Determinación de Cuota al Día:** Para conceder el acceso (`GRANTED`), el socio debe tener la cuota al día en su suscripción vigente. Se considera al día si la suma de los montos (`amount`) de todos los pagos con estado `PAID` asociados a dicha suscripción cubre el saldo neto pactado: $\sum \text{amount}_{\text{PAID}} \ge (\text{price} - \text{discount})$. Si la suscripción no tiene descuento (`discount` nulo), se toma como 0. Si una suscripción no registra pagos en `payment`, la suma computa como `$0.00`. Por lo tanto, si el saldo neto pactado es `$0.00` (caso de planes becados con `price = 0.00` o bonificaciones del 100% donde `discount = price`), la condición matemática se satisface automáticamente ($0.00 \ge 0.00$) y el acceso es concedido (`GRANTED`).
 ---
 
 ### 1.6. Módulo Plans (`PlanController`, `PlanService`)
@@ -118,8 +118,8 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 | **RF-24** | `PUT` | `/api/plans/{plan_code}` | Actualiza arancel vigente (`current_price`), cupo semanal o estado de activación de un plan. | Path param: `plan_code`. Body con nuevos valores. | `200 OK`, `400 Bad Request`, `404 Not Found`. |
 
 **Reglas de Negocio Formales:**
-1. **Inmutabilidad de Contratos Previos:** Modificar el precio de lista (`current_price`) de un plan no altera bajo ningún concepto las suscripciones ya emitidas (`enrollment.price` congelado al momento del alta).
-2. **Conservación Referencial:** Un plan con inscripciones históricas no puede ser borrado físicamente de la base de datos (`ON DELETE RESTRICT`). Las bajas se gestionan de forma lógica mediante el atributo `active = false`.
+1. **Inmutabilidad de Contratos Previos:** Modificar el precio de lista (`current_price`) de un plan no altera bajo ningún concepto las suscripciones ya emitidas (`subscriptions.price` congelado al momento del alta).
+2. **Conservación Referencial:** Un plan con suscripciones históricas no puede ser borrado físicamente de la base de datos (`ON DELETE RESTRICT`). Las bajas se gestionan de forma lógica mediante el atributo `active = false`.
 
 ## 2. Módulos de Frontend Panel Administrativo (`gym-frontend-admin`)
 
@@ -127,16 +127,16 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 - **Objetivos:** Proveer al administrador y personal autorizado una vista integral y ejecutiva del estado operativo del gimnasio.
 - **Funcionalidades documentadas:**
   - Métricas de afluencia diaria y semanal en base al módulo Access.
-  - Horarios pico y distribución de visitas según el Plan contratado, mediante `enrollment.plan_code` y datos de `plans`.
+  - Horarios pico y distribución de visitas según el Plan contratado, mediante `subscriptions.plan_code` y datos de `plans`.
   - Resumen financiero de ingresos mensuales y cobros pendientes del módulo Payment.
-  - Total de socios activos y alertas de inscripciones próximas a vencer.
+  - Total de socios activos y alertas de suscripciones próximas a vencer.
 - Estas funcionalidades son requisitos de diseño, no evidencia de que la pantalla o sus endpoints estén implementados.
 
 ### 2.2. Módulo ABM (Gestión Administrativa) (RF-19)
 - **Objetivos:** Centralizar las operaciones de administración del sistema mediante interfaces responsivas y securizadas por JWT.
 - **Funcionalidades documentadas:**
   - **Gestión de Socios y Personal:** Altas, modificaciones, visualización de fichas individuales y gestión de estados consumiendo `/api/members` y `/api/employees`.
-  - **Gestión de Inscripciones:** Asignación de planes mediante `plan_code`, prórrogas y monitoreo de vigencia consumiendo los contratos `/api/enrollments`.
+  - **Gestión de Suscripciones:** Asignación de planes mediante `plan_code`, prórrogas y monitoreo de vigencia consumiendo los contratos `/api/subscriptions`.
   - **Gestión de Cobros:** Registro manual de pagos, emisión de comprobantes internos y seguimiento de estados transaccionales consumiendo `/api/payments`.
   - **Monitor de Accesos:** Vista y reportes históricos de ingresos y rechazos consumiendo `/api/access`.
   - **Configuración Tarifaria y Planes (Pantalla 5 de mockups):** Administración dinámica de Plan (`plan_code`, `weekly_limit`, `current_price`, `active`) mediante los contratos `/api/plans`.
@@ -152,7 +152,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
   - Interfaz de entrada para ingresar el número de socio (`member_number`) mediante teclado numérico o lector de credenciales (preservando el DNI como dato administrativo por privacidad).
   - Consumo del endpoint de negocio `POST /api/access/validate`.
   - **GRANTED (Aprobado):** Nombre del socio, Plan vigente, accesos que le quedan en la semana y mensaje de bienvenida.
-  - **DENIED (Rechazado):** Mensaje explicativo claro (ej. "Inscripción vencida", "Límite semanal alcanzado", "Socio inactivo") solicitando acercarse al mostrador administrativo.
+  - **DENIED (Rechazado):** Mensaje explicativo claro (ej. "Suscripción vencida", "Límite semanal alcanzado", "Socio inactivo") solicitando acercarse al mostrador administrativo.
 
 ---
 
@@ -168,14 +168,14 @@ Esta matriz vincula de forma directa los Requerimientos Funcionales (RF) detalla
 | **RF-04** | Registro de nuevos socios | `POST /api/members` | DNI protegido operativamente. Email o teléfono obligatorios. |
 | **RF-05** | Modificación de datos de socios | `PUT /api/members/{member_number}` | Clave natural `member_number` inmutable. |
 | **RF-06** | Baja/Alta lógica de socios | `POST /api/members/{member_number}/status` | Actualiza estado (`ACTIVE` / `INACTIVE`) sin borrar historial inmutable. |
-| **RF-07** | Listado histórico de inscripciones | `GET /api/enrollments` | Soporta filtros de vigencia. |
-| **RF-08** | Consulta de detalle de inscripción | `GET /api/enrollments/{id}` | - |
-| **RF-09** | Alta de planes / membresías | `POST /api/enrollments` | Prohibido solapar fechas de vigencia para un mismo usuario. Congela precio base pactado y descuento. |
-| **RF-10** | Modificación de vigencia o Plan | `PUT /api/enrollments/{id}` | - |
-| **RF-11** | Cancelación lógica de membresía | `DELETE /api/enrollments/{id}` | Baja lógica (`status = 'CANCELLED'`) que preserva integridad referencial y libera el rango temporal de solapamiento. |
+| **RF-07** | Listado histórico de suscripciones | `GET /api/subscriptions` | Soporta filtros de vigencia. |
+| **RF-08** | Consulta de detalle de suscripción | `GET /api/subscriptions/{id}` | - |
+| **RF-09** | Alta de planes / membresías | `POST /api/subscriptions` | Prohibido solapar fechas de vigencia para un mismo usuario. Congela precio base pactado y descuento. |
+| **RF-10** | Modificación de vigencia o Plan | `PUT /api/subscriptions/{id}` | - |
+| **RF-11** | Cancelación lógica de membresía | `DELETE /api/subscriptions/{id}` | Baja lógica (`status = 'CANCELLED'`) que preserva integridad referencial y libera el rango temporal de solapamiento. |
 | **RF-12** | Auditoría y lista general de pagos | `GET /api/payments` | - |
 | **RF-13** | Consulta de comprobante específico | `GET /api/payments/{id}` | - |
-| **RF-14** | Registro de abonos y comprobantes | `POST /api/payments` | No admite transacciones huérfanas sin referenciar a `enrollment_id`. Valida `amount > 0` y descuento válido. |
+| **RF-14** | Registro de abonos y comprobantes | `POST /api/payments` | No admite transacciones huérfanas sin referenciar a `subscription_number`. Valida `amount > 0` y descuento válido. |
 | **RF-15** | Conciliación transaccional (Webhooks) | `PUT /api/payments/{id}` | Registros `PAID` son financieramente inmutables (se marcan `CANCELLED` ante error). |
 | **RF-16** | Validación de ingreso en terminal | `POST /api/access/validate` | Rechazo automático por inactividad, plan vencido, tope semanal alcanzado o cuota impaga ($\sum \text{amount}_{\text{PAID}} < \text{price} - \text{discount}$). |
 | **RF-17** | Historial de auditoría de ingresos | `GET /api/access` | Estrictamente lectura. Operaciones CRUD (`PUT`/`DELETE`) inhabilitadas. |
@@ -185,4 +185,4 @@ Esta matriz vincula de forma directa los Requerimientos Funcionales (RF) detalla
 | **RF-21** | Catálogo general de planes | `GET /api/plans` | Lista registros del catálogo `plans` con sus datos. |
 | **RF-22** | Consulta de plan por código | `GET /api/plans/{plan_code}` | Consulta por clave natural `plan_code`. |
 | **RF-23** | Creación de nuevos planes | `POST /api/plans` | Exclusivo `ADMIN`. Valida código único y restricciones documentadas de datos. |
-| **RF-24** | Modificación de datos de planes | `PUT /api/plans/{plan_code}` | Actualiza datos del catálogo; los cambios de precio no alteran los snapshots históricos en `enrollment.price`. |
+| **RF-24** | Modificación de datos de planes | `PUT /api/plans/{plan_code}` | Actualiza datos del catálogo; los cambios de precio no alteran los snapshots históricos en `subscriptions.price`. |

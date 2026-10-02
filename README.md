@@ -103,20 +103,20 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 | `Person` | `persons` | Datos comunes y de contacto de cualquier individuo |
 | `Member` | `members` | Socio del gimnasio (identificado por `member_number`) |
 | `Employee` | `employees` | Personal operativo o administrativo con credenciales de login (`work_email`) |
-| `Enrollment` | `enrollment` | Inscripción con referencia `plan_code`, vigencia y snapshot histórico de precio |
+| `Subscription` | `subscriptions` | Suscripción con referencia `plan_code`, vigencia y snapshot histórico de precio |
 | `Access` | `access` | Registro de cada intento de ingreso validado |
-| `Payment` | `payment` | Pago asociado a una inscripción |
+| `Payment` | `payment` | Pago asociado a una suscripción |
 | `Plan` | `plans` | Catálogo dinámico identificado por `plan_code`, con límite semanal, precio actual y estado |
 
 ### Relaciones
 
 - `Person` ↔ `Member`: rol opcional de una persona (1:1).
 - `Person` ↔ `Employee`: rol opcional de una persona (1:1). Una misma persona puede ser socia y empleada.
-- `Member` ↔ `Enrollment`: relación uno a muchos (1:N).
+- `Member` ↔ `Subscription`: relación uno a muchos (1:N).
 - `Member` ↔ `Access`: relación uno a muchos (1:N).
-- `Enrollment` ↔ `Payment`: relación uno a muchos (1:N).
-- `Enrollment` ↔ `Access`: relación uno a muchos (1:N).
-- `Plan` ↔ `Enrollment`: relación uno a muchos (1:N); `enrollment.plan_code` referencia `plans.plan_code`.
+- `Subscription` ↔ `Payment`: relación uno a muchos (1:N).
+- `Subscription` ↔ `Access`: relación uno a muchos (1:N).
+- `Plan` ↔ `Subscription`: relación uno a muchos (1:N); `subscriptions.plan_code` referencia `plans.plan_code`.
 
 ### Enums
 
@@ -125,7 +125,7 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 | `Role` | `ADMIN`, `STAFF` |
 | `MemberStatus` | `ACTIVE`, `OVERDUE`, `INACTIVE` |
 | `Currency` | `ARS`, `USD` |
-| `EnrollmentStatus` | `ACTIVE`, `CANCELLED`, `EXPIRED` |
+| `SubscriptionStatus` | `ACTIVE`, `CANCELLED`, `EXPIRED` |
 | `AccessStatus` | `GRANTED`, `DENIED` |
 | `PaymentStatus` | `PENDING`, `PAID`, `FAILED`, `CANCELLED` |
 
@@ -186,7 +186,7 @@ dropdb gym_prueba                # borra la base de prueba
 - [ ] Implementar `AuthService` + `AuthController` (login con credenciales + JWT).
 - [ ] Implementar `MemberService` + `MemberController` y `EmployeeService` + `EmployeeController` (gestión de socios y personal).
 - [ ] Implementar `PlanService` + `PlanController` (catálogo de modalidades y aranceles).
-- [ ] Implementar `EnrollmentService` + `EnrollmentController` (CRUD, control de historial 1:N y validación de vigencia).
+- [ ] Implementar `SubscriptionService` + `SubscriptionController` (CRUD, control de historial 1:N y validación de vigencia).
 - [ ] Implementar `PaymentService` + `PaymentController` (registro de pagos, métodos de cobro, estados transaccionales y moneda).
 - [ ] Implementar `AccessService` + `AccessController` (reglas de negocio, conteo semanal).
 
@@ -302,7 +302,7 @@ gym-manager/
 │   │   │   ├── AuthController.java
 │   │   │   ├── MemberController.java
 │   │   │   ├── EmployeeController.java
-│   │   │   ├── EnrollmentController.java
+│   │   │   ├── SubscriptionController.java
 │   │   │   ├── PaymentController.java
 │   │   │   ├── AccessController.java
 │   │   │   └── PlanController.java
@@ -310,14 +310,14 @@ gym-manager/
 │   │   │   ├── AuthService.java
 │   │   │   ├── MemberService.java
 │   │   │   ├── EmployeeService.java
-│   │   │   ├── EnrollmentService.java
+│   │   │   ├── SubscriptionService.java
 │   │   │   ├── PaymentService.java
 │   │   │   ├── AccessService.java
 │   │   │   └── PlanService.java
 │   │   ├── repositories/                 # Repositorios JPA (uno por entidad)
 │   │   │   ├── MemberRepository.java
 │   │   │   ├── EmployeeRepository.java
-│   │   │   ├── EnrollmentRepository.java
+│   │   │   ├── SubscriptionRepository.java
 │   │   │   ├── PaymentRepository.java
 │   │   │   ├── AccessRepository.java
 │   │   │   └── PlanRepository.java
@@ -325,7 +325,7 @@ gym-manager/
 │   │   │   ├── Person.java
 │   │   │   ├── Member.java
 │   │   │   ├── Employee.java
-│   │   │   ├── Enrollment.java
+│   │   │   ├── Subscription.java
 │   │   │   ├── Payment.java
 │   │   │   ├── Access.java
 │   │   │   └── Plan.java
@@ -333,7 +333,7 @@ gym-manager/
 │   │   │   ├── Role.java
 │   │   │   ├── Currency.java
 │   │   │   ├── MemberStatus.java
-│   │   │   ├── EnrollmentStatus.java
+│   │   │   ├── SubscriptionStatus.java
 │   │   │   ├── PaymentStatus.java
 │   │   │   └── AccessStatus.java
 │   │   └── dto/                          # Objetos de request/response
@@ -341,7 +341,7 @@ gym-manager/
 │   │       ├── MemberDTO.java
 │   │       ├── EmployeeDTO.java
 │   │       ├── PlanDTO.java
-│   │       ├── EnrollmentDTO.java
+│   │       ├── SubscriptionDTO.java
 │   │       └── PaymentDTO.java
 │   ├── src/main/resources/
 │   │   ├── application.yml               # Configuración principal
@@ -371,7 +371,7 @@ gym-manager/
 │   │   │   ├── Dashboard.tsx
 │   │   │   ├── Members.tsx
 │   │   │   ├── Employees.tsx
-│   │   │   ├── Enrollments.tsx
+│   │   │   ├── Subscriptions.tsx
 │   │   │   ├── Payments.tsx
 │   │   │   ├── Accesses.tsx
 │   │   │   └── Plans.tsx

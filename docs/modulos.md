@@ -25,7 +25,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 
 ### 1.2. Módulo Actors: Members & Employees (`MemberController`, `EmployeeController`)
 
-- **Objetivos:** Administrar el ciclo de vida de los actores del sistema. Diferencia conceptualmente la gestión de socios deportivos (`Member`) del personal administrativo y operativo (`Employee`), compartiendo la entidad base `Person` para sus datos personales y legales.
+- **Objetivos:** Administrar el ciclo de vida de los actores del sistema. Diferencia conceptualmente la gestión de socios deportivos (`Member`) del personal administrativo y operativo (`Employee`). Los dos son roles de una `Person`, que guarda los datos personales y legales; una misma persona puede tener uno o los dos.
 - **Entidades involucradas:** `Person` (`persons`), `Member` (`members`), `Employee` (`employees`).
 - **Contratos de Interfaz REST:**
 

@@ -269,7 +269,7 @@ El detalle de los endpoints y contratos de interfaz REST se encuentra documentad
 ### Incluidas (Alcance de la versión inicial)
 
 **1. Gestión Administrativa (Panel Web):**
-- Gestión integral de actores (Socio, Staff, Admin) diferenciados bajo jerarquía de personas y con estados de activación.
+- Gestión integral de actores (Socio, Staff, Admin) como roles de una misma persona y con estados de activación.
 - Administración de inscripciones vinculadas a registros dinámicos de Plan mediante `plan_code`.
 - Registro manual y seguimiento de pagos asociados a cada inscripción.
 

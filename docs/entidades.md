@@ -16,7 +16,7 @@ classDiagram
 
     class Person {
         - String dni
-        - String firstName
+        - String name
         - String lastName
         - String email
         - String phone

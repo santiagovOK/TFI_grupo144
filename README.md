@@ -2,7 +2,7 @@
 
 Versión Resumida en [proyecto resumido](docs/proyecto_resumido.md).
 
-Sistema de gestión integral de gimnasio: centraliza la administración de usuarios, inscripciones, pagos y el control de accesos en la entrada.
+Sistema de gestión integral de gimnasio: centraliza la administración de socios y personal, inscripciones, pagos y el control de accesos en la entrada.
 
 - **Estado:** En desarrollo
 - **Stack:** Spring Boot 4.x + Java 25 · React 19 + TypeScript · PostgreSQL
@@ -35,12 +35,12 @@ Los gimnasios gestionan sus operaciones de forma manual o con herramientas no in
 
 ### Objetivo general
 
-Desarrollar un sistema de gestión de gimnasio que automatice las operaciones diarias del negocio y centralice el control de usuarios, suscripciones y acceso.
+Desarrollar un sistema de gestión de gimnasio que automatice las operaciones diarias del negocio y centralice el control de socios, personal, suscripciones y acceso.
 
 ### Objetivos específicos
 
-- Centralizar la gestión de usuarios (registro, edición, activación/desactivación).
-- Gestionar inscripciones con modalidades diferenciadas (acceso ilimitado, limitado a 2 o 3 veces por semana).
+- Centralizar la gestión de socios y personal (registro, edición, activación/desactivación de empleados y membresías de socios).
+- Gestionar inscripciones vinculadas a planes configurables mediante `plan_code`; los límites se representan en `plans.weekly_limit`.
 - Registrar y controlar pagos asociados a cada inscripción.
 - Validar accesos en la puerta principal mediante número de socio (preservando el DNI como dato administrativo por privacidad) con reglas de negocio.
 - Diseñar una arquitectura escalable que permita incorporar funcionalidades futuras sin reestructurar sus módulos estructurales.
@@ -114,36 +114,47 @@ gym-manager/
 │   │   │   └── OpenApiConfig.java
 │   │   ├── controllers/                  # Endpoints REST (uno por módulo)
 │   │   │   ├── AuthController.java
-│   │   │   ├── UserController.java
+│   │   │   ├── MemberController.java
+│   │   │   ├── EmployeeController.java
 │   │   │   ├── EnrollmentController.java
 │   │   │   ├── PaymentController.java
-│   │   │   └── AccessController.java
+│   │   │   ├── AccessController.java
+│   │   │   └── PlanController.java
 │   │   ├── services/                     # Lógica de negocio (uno por módulo)
 │   │   │   ├── AuthService.java
-│   │   │   ├── UserService.java
+│   │   │   ├── MemberService.java
+│   │   │   ├── EmployeeService.java
 │   │   │   ├── EnrollmentService.java
 │   │   │   ├── PaymentService.java
-│   │   │   └── AccessService.java
+│   │   │   ├── AccessService.java
+│   │   │   └── PlanService.java
 │   │   ├── repositories/                 # Repositorios JPA (uno por entidad)
-│   │   │   ├── UserRepository.java
+│   │   │   ├── MemberRepository.java
+│   │   │   ├── EmployeeRepository.java
 │   │   │   ├── EnrollmentRepository.java
 │   │   │   ├── PaymentRepository.java
-│   │   │   └── AccessRepository.java
+│   │   │   ├── AccessRepository.java
+│   │   │   └── PlanRepository.java
 │   │   ├── models/                       # Modelos de dominio / Entidades
-│   │   │   ├── User.java
+│   │   │   ├── Person.java
+│   │   │   ├── Member.java
+│   │   │   ├── Employee.java
 │   │   │   ├── Enrollment.java
 │   │   │   ├── Payment.java
-│   │   │   └── Access.java
+│   │   │   ├── Access.java
+│   │   │   └── Plan.java
 │   │   ├── enums/                        # Enumeraciones Java
 │   │   │   ├── Role.java
 │   │   │   ├── Currency.java
-│   │   │   ├── Modality.java
+│   │   │   ├── MemberStatus.java
 │   │   │   ├── EnrollmentStatus.java
 │   │   │   ├── PaymentStatus.java
 │   │   │   └── AccessStatus.java
 │   │   └── dto/                          # Objetos de request/response
 │   │       ├── LoginRequest.java
-│   │       ├── UserDTO.java
+│   │       ├── MemberDTO.java
+│   │       ├── EmployeeDTO.java
+│   │       ├── PlanDTO.java
 │   │       ├── EnrollmentDTO.java
 │   │       └── PaymentDTO.java
 │   ├── src/main/resources/
@@ -172,10 +183,12 @@ gym-manager/
 │   │   ├── pages/
 │   │   │   ├── Login.tsx
 │   │   │   ├── Dashboard.tsx
-│   │   │   ├── Users.tsx
+│   │   │   ├── Members.tsx
+│   │   │   ├── Employees.tsx
 │   │   │   ├── Enrollments.tsx
 │   │   │   ├── Payments.tsx
-│   │   │   └── Accesses.tsx
+│   │   │   ├── Accesses.tsx
+│   │   │   └── Plans.tsx
 │   │   ├── hooks/
 │   │   │   ├── useAuth.ts
 │   │   │   └── useApi.ts
@@ -215,29 +228,34 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 
 | Entidad | Tabla | Descripción |
 |---------|-------|-------------|
-| `User` | `users` | Socio, personal o administrador del gimnasio |
-| `Enrollment` | `enrollment` | Inscripción con modalidad y vigencia |
+| `Person` | `persons` | Datos comunes y de contacto de cualquier individuo |
+| `Member` | `members` | Socio del gimnasio (identificado por `member_number`) |
+| `Employee` | `employees` | Personal operativo o administrativo con credenciales de login (`work_email`) |
+| `Enrollment` | `enrollment` | Inscripción con referencia `plan_code`, vigencia y snapshot histórico de precio |
 | `Access` | `access` | Registro de cada intento de ingreso validado |
 | `Payment` | `payment` | Pago asociado a una inscripción |
+| `Plan` | `plans` | Catálogo dinámico identificado por `plan_code`, con límite semanal, precio actual y estado |
 
 ### Relaciones
 
-- `User` ↔ `Enrollment`: relación uno a muchos (1:N).
-- `User` ↔ `Access`: relación uno a muchos (1:N).
+- `Person` ↔ `Member`: especialización uno a uno opcional (1:1, Joined Table).
+- `Person` ↔ `Employee`: especialización uno a uno opcional (1:1, Joined Table).
+- `Member` ↔ `Enrollment`: relación uno a muchos (1:N).
+- `Member` ↔ `Access`: relación uno a muchos (1:N).
 - `Enrollment` ↔ `Payment`: relación uno a muchos (1:N).
 - `Enrollment` ↔ `Access`: relación uno a muchos (1:N).
+- `Plan` ↔ `Enrollment`: relación uno a muchos (1:N); `enrollment.plan_code` referencia `plans.plan_code`.
 
 ### Enums
 
 | Enum | Valores |
 |------|---------|
-| `Role` | `ADMIN`, `STAFF`, `USER` |
+| `Role` | `ADMIN`, `STAFF` |
+| `MemberStatus` | `ACTIVE`, `OVERDUE`, `INACTIVE` |
 | `Currency` | `ARS`, `USD` |
-| `Modality` | `FREE` (ilimitado), `THREE` (3 por semana), `TWO` (2 por semana) |
 | `EnrollmentStatus` | `ACTIVE`, `CANCELLED`, `EXPIRED` |
 | `AccessStatus` | `GRANTED`, `DENIED` |
 | `PaymentStatus` | `PENDING`, `PAID`, `FAILED`, `CANCELLED` |
-
 ---
 
 ## Endpoints REST
@@ -251,8 +269,8 @@ El detalle de los endpoints y contratos de interfaz REST se encuentra documentad
 ### Incluidas (Alcance de la versión inicial)
 
 **1. Gestión Administrativa (Panel Web):**
-- Gestión integral de usuarios (Socio, Staff, Admin) con estados de activación.
-- Administración de inscripciones bajo modalidades de uso (Pase Libre, 2 o 3 veces por semana).
+- Gestión integral de actores (Socio, Staff, Admin) diferenciados bajo jerarquía de personas y con estados de activación.
+- Administración de inscripciones vinculadas a registros dinámicos de Plan mediante `plan_code`.
 - Registro manual y seguimiento de pagos asociados a cada inscripción.
 
 **2. Control de Accesos (Terminal Frontend):**
@@ -262,7 +280,7 @@ El detalle de los endpoints y contratos de interfaz REST se encuentra documentad
 
 **3. Reportes y Estadísticas Avanzadas:**
 - Dashboard integral con métricas de asistencia y popularidad de horarios.
-- Estadísticas de ingresos monetarios por modalidad y por período.
+- Estadísticas de ingresos monetarios por Plan y por período.
 - Historial detallado de asistencias mensuales por socio.
 
 **4. Comunicaciones:** 
@@ -392,7 +410,7 @@ npm run dev          # Development server :3002
 - [ ] Configurar `build.gradle` con dependencias (Spring Boot 4.x, JPA, Lombok, JWT, Validation, OpenAPI 3.x).
 - [ ] Configurar `settings.gradle` con grupo y nombre del proyecto.
 - [ ] Configurar `application.yml` (DB connection, server port, security settings).
-- [ ] Crear entidades JPA (4 entidades + 6 enums).
+- [ ] Crear entidades JPA (7 entidades + 6 enums).
 - [ ] Crear DTOs para request/response.
 - [x] Crear `schema.sql` manual en PostgreSQL (CREATE TABLES).
 - [ ] Configurar Spring Security: habilitar JWT, deshabilitar HTTP basic auth.
@@ -409,7 +427,8 @@ npm run dev          # Development server :3002
 <summary>Ver Fase 2: Backend — Business Logic</summary>
 
 - [ ] Implementar `AuthService` + `AuthController` (login con credenciales + JWT).
-- [ ] Implementar `UserService` + `UserController` (CRUD completo, activar/desactivar).
+- [ ] Implementar `MemberService` + `MemberController` y `EmployeeService` + `EmployeeController` (gestión de socios y personal).
+- [ ] Implementar `PlanService` + `PlanController` (catálogo de modalidades y aranceles).
 - [ ] Implementar `EnrollmentService` + `EnrollmentController` (CRUD, control de historial 1:N y validación de vigencia).
 - [ ] Implementar `PaymentService` + `PaymentController` (registro de pagos, métodos de cobro, estados transaccionales y moneda).
 - [ ] Implementar `AccessService` + `AccessController` (reglas de negocio, conteo semanal).
@@ -445,8 +464,8 @@ npm run dev          # Development server :3002
 - [ ] Configurar React Router v6 para navegación entre páginas.
 - [ ] Crear contexto de autenticación (`AuthContext`).
 - [ ] Implementar Login page con form y validación.
-- [ ] Dashboard con resumen de usuarios, inscripciones, pagos.
-- [ ] Páginas CRUD: Usuarios, Inscripciones, Pagos.
+- [ ] Dashboard con resumen de socios, personal, inscripciones, pagos.
+- [ ] Páginas CRUD: Socios, Personal, Inscripciones, Pagos, Planes.
 - [ ] Consumo de API del Spring Boot vía Axios.
 - [ ] Manejo de errores y loading states.
 
@@ -476,7 +495,7 @@ La autenticación y autorización se gestionan con **Spring Security + JWT**.
 - **`JwtTokenProvider`**: genera y valida los tokens de acceso.
 - **`JwtAuthenticationFilter`**: intercepta las peticiones HTTP y valida el JWT.
 - **BCrypt**: las contraseñas se almacenan como hash (`BCryptPasswordEncoder`).
-- **Roles**: `ADMIN`, `STAFF`, `USER` controlan el acceso a los endpoints mediante `@PreAuthorize`.
+- **Roles**: `ADMIN` y `STAFF` controlan el acceso a los endpoints mediante `@PreAuthorize`.
 
 > **Datos sensibles:** en producción reemplazar `[PASSWORD_DE_POSTGRESQL]` y `[JWT_SECRET_KEY]` por valores reales. Generar el secret JWT con una clave aleatoria de 32+ caracteres, por ejemplo `openssl rand -hex 32`.
 

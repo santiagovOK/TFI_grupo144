@@ -283,9 +283,9 @@ Todo lo de esta sección es el plan para la etapa de implementación. Todavía n
 +-------------------------------------------------------------+
 ```
 
-### Estructura del Proyecto (prevista)
+### Estructura del Proyecto
 
-Hoy el repositorio tiene solo `gym-backend/src/main/resources/schema.sql`, las carpetas vacías del backend y la documentación en `docs/`. El resto de los archivos se crea en la etapa de implementación.
+Hoy el repositorio tiene solo `gym-backend/src/main/resources/schema.sql`, las carpetas vacías del backend y la documentación en `docs/`.
 
 <details>
 <summary>Ver estructura del proyecto</summary>
@@ -406,7 +406,7 @@ gym-manager/
 
 ### Seguridad
 
-Diseño previsto para la etapa de implementación (todavía no hay código): la autenticación y autorización se van a gestionar con **Spring Security + JWT**.
+La autenticación y autorización se van a gestionar con **Spring Security + JWT**.
 
 - **`JwtTokenProvider`**: genera y valida los tokens de acceso.
 - **`JwtAuthenticationFilter`**: intercepta las peticiones HTTP y valida el JWT.
@@ -414,8 +414,6 @@ Diseño previsto para la etapa de implementación (todavía no hay código): la 
 - **Roles**: `ADMIN` y `STAFF` controlan el acceso a los endpoints mediante `@PreAuthorize`.
 
 ### Comandos de Desarrollo
-
-Estos comandos son para la etapa de implementación. Todavía no existen el proyecto Gradle ni los frontend, así que hoy no se pueden ejecutar.
 
 #### Backend (Gradle)
 
@@ -453,14 +451,14 @@ npm run dev          # Development server :3002
 
 ### Instalación y Configuración
 
-#### Requisitos previos (etapa de implementación)
+#### Requisitos previos
 
 - Java 25 (LTS)
 - PostgreSQL 13 o superior
 - Node.js (para los frontend)
 - Gradle (se gestiona vía wrapper `./gradlew`)
 
-#### Pasos (etapa de implementación)
+#### Pasos
 
 1. Clonar el repositorio.
 2. Crear una base de datos PostgreSQL vacía y ejecutar `schema.sql` para crear el esquema. El script está pensado para una base nueva: como usa `IF NOT EXISTS`, volver a ejecutarlo sobre una base existente no modifica las tablas ya creadas.

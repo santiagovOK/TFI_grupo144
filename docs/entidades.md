@@ -1,7 +1,7 @@
 # Modelo de Datos del Dominio (Conceptual y Relacional)
 
 Documentación técnica del modelo de datos del sistema, estructurada en dos niveles de abstracción:
-1. **Modelo Conceptual de Dominio (UML):** Representación orientada a objetos de las clases de negocio, su jerarquía de herencia y atributos sin detalles de persistencia relacional.
+1. **Modelo Conceptual de Dominio (UML):** Representación orientada a objetos de las clases de negocio, sus relaciones y atributos sin detalles de persistencia relacional.
 2. **Modelo Relacional (DER):** Esquema físico en base de datos PostgreSQL, especificando tablas, claves primarias/foráneas, tipos de datos y restricciones.
 
 ---
@@ -15,7 +15,6 @@ classDiagram
     direction TB
 
     class Person {
-        <<abstract>>
         - String dni
         - String firstName
         - String lastName
@@ -80,8 +79,8 @@ classDiagram
     }
 
 
-    Person <|-- Member : hereda
-    Person <|-- Employee : hereda
+    Person "1" *-- "0..1" Member : socio
+    Person "1" *-- "0..1" Employee : empleado
     Employee ..> Role : utiliza
     Member ..> MemberStatus : utiliza
     Member "1" --> "0..*" Enrollment : tiene
@@ -89,7 +88,7 @@ classDiagram
 ```
 
 ### Justificación del Diseño Conceptual de Actores
-* **Herencia `Person <|-- Member` y `Person <|-- Employee`:** Se desacoplan los roles y responsabilidades de los actores. Los empleados no son socios del gimnasio (no poseen `memberNumber` ni contratan suscripciones), y los socios no poseen credenciales de acceso al sistema administrativo (`password` ni `role`).
+* **Socio y empleado como roles de una persona:** `Person` guarda los datos de cualquier persona y `Member` y `Employee` son roles que puede tener o no. Una persona puede tener uno, el otro o los dos, por ejemplo la profe que también entrena en el gimnasio, y puede sumar o dejar un rol con el tiempo sin dejar de ser la misma persona. Por eso no se usa herencia: la herencia es fija y un cambio de rol obligaría a cambiar de clase. Se dibuja como composición porque el rol se crea para una persona y no existe sin ella.
 * **Seguridad y Privacidad:** Las credenciales de autenticación quedan estrictamente contenidas en `Employee`. `Member` solo expone atributos de membresía deportiva (`memberNumber`, `joinDate`, `status`).
 * **Tipado:** Los atributos siguen las convenciones y tipos estándar de Java (`String`, `LocalDate`, `LocalDateTime`, tipos de enums), prescindiendo de tipos físicos de almacenamiento como `VARCHAR` o `TIMESTAMPTZ`.
 
@@ -170,8 +169,8 @@ erDiagram
         VARCHAR(20) status "Enum AccessStatus: GRANTED, DENIED"
         VARCHAR(500) denied_reason "Obligatorio si es denegado (CHECK)"
     }
-    persons ||--|o members : "especializa en socio (0..1)"
-    persons ||--|o employees : "especializa en empleado (0..1)"
+    persons ||--|o members : "rol de socio (0..1)"
+    persons ||--|o employees : "rol de empleado (0..1)"
     plans ||..o{ enrollment : "rige (1:N)"
     members ||..o{ enrollment : "tiene historial (1:N)"
     members ||..o{ access : "registra intentos (1:N)"
@@ -197,8 +196,8 @@ Para garantizar la solidez del modelo relacional y evitar el abuso de IDs artifi
 
 | Relación | Tipo | Descripción |
 |----------|------|-------------|
-| `persons` ↔ `members` | `1:1` opcional (Joined Table) | Una persona física puede especializarse como socio activo del gimnasio. |
-| `persons` ↔ `employees` | `1:1` opcional (Joined Table) | Una persona física puede especializarse como empleado (cajero/administrador). |
+| `persons` ↔ `members` | `1:1` opcional | Una persona puede tener el rol de socio del gimnasio. |
+| `persons` ↔ `employees` | `1:1` opcional | Una persona puede tener el rol de empleado (cajero/administrador), incluso si también es socia. |
 | `plans` ↔ `enrollment` | `1:N` (Uno a Muchos), no identificadora | Un plan o modalidad de arancel rige múltiples contrataciones de socios a lo largo del tiempo. |
 | `members` ↔ `enrollment` | `1:N` (Uno a Muchos), no identificadora | Un socio puede tener múltiples inscripciones a lo largo del tiempo (historial por período). |
 | `members` ↔ `access` | `1:N` (Uno a Muchos), no identificadora | Un socio puede registrar múltiples intentos de acceso (historial de accesos). |
@@ -228,7 +227,7 @@ Representa los datos físicos y de contacto de cualquier individuo registrado en
 
 ## Tabla: `members`
 
-Representa la especialización de una persona como cliente/socio del gimnasio.
+Representa el rol de socio de una persona en el gimnasio.
 
 **Nota de Privacidad y Negocio:** El socio opera en terminales y mostrador mediante su `member_number`, protegiendo el `dni` civil. Esta tabla no posee contraseñas ni roles administrativos, desacoplando completamente la membresía deportiva de la seguridad del sistema.
 
@@ -245,7 +244,7 @@ Representa la especialización de una persona como cliente/socio del gimnasio.
 
 ## Tabla: `employees`
 
-Representa la especialización de una persona como personal operativo o administrativo del gimnasio.
+Representa el rol de empleado de una persona, como personal operativo o administrativo del gimnasio.
 
 **Nota de Autenticación y Roles:** Centraliza exclusivamente las credenciales de acceso al sistema informático (`work_email` como identificador de login con restricción física de unicidad insensible a mayúsculas asegurada por el índice funcional `ux_employees_work_email`, y `password` encriptado con BCrypt) y el rol de seguridad asignado (`ADMIN`, `STAFF`). No contiene número de socio.
 
@@ -403,7 +402,7 @@ El "número de socio" es la identidad unívoca del cliente. Es el dato que el us
 **2. Criterio de Privacidad frente al DNI (Privacy by Design)**
 
 Aunque el DNI es natural y único, identifica a la persona ante el Estado. Su exposición indebida en pantallas de terminales de acceso representa un riesgo de privacidad.
-En el diseño normalizado mediante *Joined Table*, el DNI identifica naturalmente a la entidad física `persons(dni)` como clave primaria. Sin embargo, para salvaguardar la privacidad en el salón y terminales de autoservicio, la entidad `members` expone `member_number` como clave primaria de negocio, evitando que el DNI sea manipulado o visualizado en terminales de acceso.
+En el diseño normalizado, el DNI identifica naturalmente a la entidad física `persons(dni)` como clave primaria. Sin embargo, para salvaguardar la privacidad en el salón y terminales de autoservicio, la entidad `members` expone `member_number` como clave primaria de negocio, evitando que el DNI sea manipulado o visualizado en terminales de acceso.
 
 **3. Garantía de Canal de Contacto**
 

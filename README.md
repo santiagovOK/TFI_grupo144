@@ -16,20 +16,6 @@ Sistema de gestión integral de gimnasio: centraliza la administración de socio
 
 **Tutor**: Sebastián Bruselario
 
-## Enlaces del Proyecto
-
-* **Repositorio de GitHub:** [Gym Manager - Grupo 144](https://github.com/santiagovOK/TFI_grupo144.git)
-* **Documentación de la API (Swagger):** *(Próximamente - Fase de Desarrollo)*
-* **Despliegue en la nube:** *(Próximamente - Entrega Final)*
-* **Mockups interactivos (Pen.dev):** [Lienzo de pantallas en vivo](https://app.pen.dev/s/XTE4g4iJ2m6UI0SEn_EB-jrnqsraz2sCoa6JK_mOk_A)
-
-## Documentos de diseño
-
-* [docs/entidades.md](docs/entidades.md): diagrama de clases UML, DER, diccionario de datos y justificación de las claves.
-* [docs/modulos.md](docs/modulos.md): requerimientos funcionales, contratos REST y reglas de negocio de cada módulo.
-* [docs/mockup.md](docs/mockup.md): especificación de las pantallas.
-* [schema.sql](gym-backend/src/main/resources/schema.sql): script DDL de la base de datos PostgreSQL.
-
 ---
 
 ## Descripción del Proyecto
@@ -92,6 +78,19 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 - **Integración con WhatsApp:** Envío de notificaciones a través de WhatsApp (se excluye en V1 por la mayor complejidad de su API, dejando solo Email en esta primera iteración).
 
 **Nota sobre escalabilidad:** Aunque estas funcionalidades no se implementan en la primera versión, la base arquitectónica está diseñada para soportarlas a futuro sin reestructuraciones mayores.
+
+---
+
+## Documentación y enlaces
+
+* [docs/entidades.md](docs/entidades.md): diagrama de clases UML, DER, diccionario de datos y justificación de las claves.
+* [docs/modulos.md](docs/modulos.md): requerimientos funcionales, contratos REST y reglas de negocio de cada módulo.
+* [docs/mockup.md](docs/mockup.md): especificación de las pantallas.
+* [schema.sql](gym-backend/src/main/resources/schema.sql): script DDL de la base de datos PostgreSQL.
+* **Mockups interactivos (Pen.dev):** [Lienzo de pantallas en vivo](https://app.pen.dev/s/XTE4g4iJ2m6UI0SEn_EB-jrnqsraz2sCoa6JK_mOk_A)
+* **Repositorio de GitHub:** [Gym Manager - Grupo 144](https://github.com/santiagovOK/TFI_grupo144.git)
+* **Documentación de la API (Swagger):** *(Próximamente - Fase de Desarrollo)*
+* **Despliegue en la nube:** *(Próximamente - Entrega Final)*
 
 ---
 
@@ -307,12 +306,6 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 | `EnrollmentStatus` | `ACTIVE`, `CANCELLED`, `EXPIRED` |
 | `AccessStatus` | `GRANTED`, `DENIED` |
 | `PaymentStatus` | `PENDING`, `PAID`, `FAILED`, `CANCELLED` |
----
-
-## Endpoints REST
-
-El detalle de los endpoints y contratos de interfaz REST se encuentra documentado en [docs/modulos.md](docs/modulos.md).
-
 ---
 
 ## Comandos de Desarrollo

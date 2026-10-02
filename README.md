@@ -16,13 +16,20 @@ Sistema de gestión integral de gimnasio: centraliza la administración de socio
 
 **Tutor**: Sebastián Bruselario
 
-## 🔗 Enlaces del Proyecto
+## Enlaces del Proyecto
 
 * **Repositorio de GitHub:** [Gym Manager - Grupo 144](https://github.com/santiagovOK/TFI_grupo144.git)
 * **Documentación de la API (Swagger):** *(Próximamente - Fase de Desarrollo)*
 * **Despliegue en la nube:** *(Próximamente - Entrega Final)*
 * **Mockups interactivos (Pen.dev):** [Lienzo de pantallas en vivo](https://app.pen.dev/s/XTE4g4iJ2m6UI0SEn_EB-jrnqsraz2sCoa6JK_mOk_A)
-* **Especificación de Mockups (UX/UI):** [docs/mockup.md](docs/mockup.md)
+
+## Documentos de diseño
+
+* [docs/entidades.md](docs/entidades.md): diagrama de clases UML, DER, diccionario de datos y justificación de las claves.
+* [docs/modulos.md](docs/modulos.md): requerimientos funcionales, contratos REST y reglas de negocio de cada módulo.
+* [docs/mockup.md](docs/mockup.md): especificación de las pantallas.
+* [schema.sql](gym-backend/src/main/resources/schema.sql): script DDL de la base de datos PostgreSQL.
+
 ---
 
 ## Descripción del Proyecto

@@ -413,8 +413,6 @@ Diseño previsto para la etapa de implementación (todavía no hay código): la 
 - **BCrypt**: las contraseñas se almacenan como hash (`BCryptPasswordEncoder`).
 - **Roles**: `ADMIN` y `STAFF` controlan el acceso a los endpoints mediante `@PreAuthorize`.
 
-> **Datos sensibles:** en producción reemplazar `[PASSWORD_DE_POSTGRESQL]` y `[JWT_SECRET_KEY]` por valores reales. Generar el secret JWT con una clave aleatoria de 32+ caracteres, por ejemplo `openssl rand -hex 32`.
-
 ### Comandos de Desarrollo
 
 Estos comandos son para la etapa de implementación. Todavía no existen el proyecto Gradle ni los frontend, así que hoy no se pueden ejecutar.

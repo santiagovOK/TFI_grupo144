@@ -1,7 +1,5 @@
 # TUPAD - Trabajo Final Integrador - Proyecto: Gym Manager
 
-Versión Resumida en [proyecto resumido](docs/proyecto_resumido.md).
-
 Sistema de gestión integral de gimnasio: centraliza la administración de socios y personal, inscripciones, pagos y el control de accesos en la entrada.
 
 - **Estado:** En desarrollo

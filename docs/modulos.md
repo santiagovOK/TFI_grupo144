@@ -88,7 +88,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 ### 1.5. Módulo Access (`AccessController`, `AccessService`)
 
 - **Objetivos:** Servir como motor transaccional de validación de ingresos en tiempo real en la entrada del gimnasio y mantener el registro histórico inmutable de auditoría de cada intento de acceso.
-- **Criterio de diseño:** Dado que cada acceso constituye un evento de auditoría en una serie temporal (identificado por la clave compuesta `member_number` + `access_date`), **no se exponen operaciones CRUD planas** (`PUT` o `DELETE`). Los registros de acceso son inmutables y no se editan ni eliminan manualmente.
+- **Criterio de diseño:** Dado que cada acceso constituye un evento de auditoría en una serie temporal (identificado por el número correlativo `access_id`), **no se exponen operaciones CRUD planas** (`PUT` o `DELETE`). Los registros de acceso son inmutables y no se editan ni eliminan manualmente.
 - **Entidades involucradas:** `Access` (`access`), `Member` (`members`), `Enrollment` (`enrollment`), `Plan` (`plans`).
 - **Contratos de Interfaz REST:**
 

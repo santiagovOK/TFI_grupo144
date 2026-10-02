@@ -420,9 +420,21 @@ dropdb gym_prueba                # borra la base de prueba
 
 ---
 
-## Roadmap de Implementación
+## Roadmap
 
-## Fase 1: Backend Spring Boot — Base
+### Fase 0: Análisis y diseño (en curso)
+
+- [x] Propuesta del proyecto, stack y plan de trabajo.
+- [x] Mockups de las pantallas.
+- [x] Primera versión del esquema (`schema.sql`), las entidades y los módulos.
+- [ ] Corrección del modelo según las observaciones del tutor del 29/09 ([issue #19](https://github.com/santiagovOK/TFI_grupo144/issues/19)).
+- [ ] Diagrama de clases UML y DER finales.
+- [ ] Especificación completa de los módulos: requerimientos, permisos y reglas de negocio.
+- [ ] Aprobación del modelo por el tutor antes de empezar a programar.
+
+---
+
+### Fase 1: Backend Spring Boot — Base
 
 <details>
 <summary>Ver Fase 1: Backend Spring Boot — Base</summary>
@@ -433,7 +445,6 @@ dropdb gym_prueba                # borra la base de prueba
 - [ ] Configurar `application.yml` (DB connection, server port, security settings).
 - [ ] Crear entidades JPA (7 entidades + 6 enums).
 - [ ] Crear DTOs para request/response.
-- [x] Crear `schema.sql` manual en PostgreSQL (CREATE TABLES).
 - [ ] Configurar Spring Security: habilitar JWT, deshabilitar HTTP basic auth.
 - [ ] Crear `JwtTokenProvider` (generar/validar tokens).
 - [ ] Crear `JwtAuthenticationFilter` (interceptar requests y validar JWT).
@@ -442,7 +453,7 @@ dropdb gym_prueba                # borra la base de prueba
 
 ---
 
-## Fase 2: Backend — Business Logic
+### Fase 2: Backend — Business Logic
 
 <details>
 <summary>Ver Fase 2: Backend — Business Logic</summary>
@@ -458,7 +469,7 @@ dropdb gym_prueba                # borra la base de prueba
 
 ---
 
-## Fase 3: Backend — Seguridad y Documentación
+### Fase 3: Backend — Seguridad y Documentación
 
 <details>
 <summary>Ver Fase 3: Backend — Seguridad y Documentación</summary>
@@ -474,7 +485,7 @@ dropdb gym_prueba                # borra la base de prueba
 
 ---
 
-## Fase 4: Frontend Admin (React)
+### Fase 4: Frontend Admin (React)
 
 <details>
 <summary>Ver Fase 4: Frontend Admin (React)</summary>
@@ -494,7 +505,7 @@ dropdb gym_prueba                # borra la base de prueba
 
 ---
 
-## Fase 5: Frontend Access (React)
+### Fase 5: Frontend Access (React)
 
 <details>
 <summary>Ver Fase 5: Frontend Access (React)</summary>

@@ -65,7 +65,7 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 - Cobertura de tests unitarios y de integración.
 
 **6. Integración Financiera:**
-- Pasarelas de pago automatizadas (Mercado Pago) o cobros recurrentes automáticos.
+- Cobro de cuotas con Mercado Pago.
 
 ### Excluidas (Fuera de alcance para esta iteración)
 

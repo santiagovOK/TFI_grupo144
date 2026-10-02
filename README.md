@@ -105,7 +105,9 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 
 ---
 
-## Estructura del Proyecto (tentativa)
+## Estructura del Proyecto (prevista)
+
+Hoy el repositorio tiene solo `gym-backend/src/main/resources/schema.sql`, las carpetas vacías del backend y la documentación en `docs/`. El resto de los archivos se crea en la etapa de implementación.
 
 <details>
 <summary>Ver estructura del proyecto</summary>

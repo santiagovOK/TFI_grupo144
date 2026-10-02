@@ -317,6 +317,8 @@ El detalle de los endpoints y contratos de interfaz REST se encuentra documentad
 
 ## Comandos de Desarrollo
 
+Estos comandos son para la etapa de implementación. Todavía no existen el proyecto Gradle ni los frontend, así que hoy no se pueden ejecutar.
+
 ### Backend (Gradle)
 
 ```bash
@@ -355,14 +357,25 @@ npm run dev          # Development server :3002
 
 ## Instalación y Configuración
 
-### Requisitos previos
+### Probar el esquema de la base de datos
+
+Es lo único que se puede ejecutar hoy. Solo hace falta PostgreSQL 13 o superior:
+
+```bash
+createdb gym_prueba
+psql -d gym_prueba -f gym-backend/src/main/resources/schema.sql
+psql -d gym_prueba -c '\dt'      # lista las tablas creadas
+dropdb gym_prueba                # borra la base de prueba
+```
+
+### Requisitos previos (etapa de implementación)
 
 - Java 25 (LTS)
 - PostgreSQL 13 o superior
 - Node.js (para los frontend)
 - Gradle (se gestiona vía wrapper `./gradlew`)
 
-### Pasos
+### Pasos (etapa de implementación)
 
 1. Clonar el repositorio.
 2. Crear una base de datos PostgreSQL vacía y ejecutar `schema.sql` para crear el esquema. El script está pensado para una base nueva: como usa `IF NOT EXISTS`, volver a ejecutarlo sobre una base existente no modifica las tablas ya creadas.

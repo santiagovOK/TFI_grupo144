@@ -45,7 +45,7 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 ### Objetivos específicos
 
 - Centralizar la gestión de socios y personal (registro, edición, activación/desactivación de empleados y membresías de socios).
-- Gestionar inscripciones vinculadas a planes configurables mediante `plan_code`; los límites se representan en `plans.weekly_limit`.
+- Gestionar inscripciones vinculadas a planes configurables, cada uno con su precio y, si corresponde, un límite de días por semana.
 - Registrar y controlar pagos asociados a cada inscripción.
 - Validar accesos en la puerta principal mediante número de socio (preservando el DNI como dato administrativo por privacidad) con reglas de negocio.
 - Diseñar una arquitectura escalable que permita incorporar funcionalidades futuras sin reestructurar sus módulos estructurales.

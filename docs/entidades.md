@@ -127,7 +127,7 @@ erDiagram
         VARCHAR(20) plan_code PK "Código nemotécnico natural (FREE, THREE_DAYS, etc.)"
         VARCHAR(100) name "Nombre comercial del plan (CHECK no vacío)"
         INTEGER weekly_limit "Límite semanal de accesos (nullable, no negativo si se especifica)"
-        DECIMAL current_price "Arancel de lista vigente (CHECK >= 0)"
+        DECIMAL(19,2) current_price "Arancel de lista vigente (CHECK >= 0)"
         BOOLEAN active "Disponibilidad para contratación"
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
@@ -136,8 +136,8 @@ erDiagram
         INTEGER subscription_number PK "Número correlativo de suscripción (SERIAL)"
         VARCHAR(20) member_number FK "Referencia a members"
         VARCHAR(20) plan_code FK "Referencia a plans(plan_code)"
-        DECIMAL price "Precio pactado (CHECK >= 0)"
-        DECIMAL discount "Descuento pactado (CHECK <= price)"
+        DECIMAL(19,2) price "Precio pactado (CHECK >= 0)"
+        DECIMAL(19,2) discount "Descuento pactado (CHECK <= price)"
         TIMESTAMPTZ start_date "Inicio del período (CHECK)"
         TIMESTAMPTZ end_date "Fin del período (CHECK)"
         VARCHAR(500) comments
@@ -148,13 +148,13 @@ erDiagram
     payment {
         INTEGER receipt_number PK "Número de recibo correlativo de caja (SERIAL)"
         INTEGER subscription_number FK "Referencia a enrollment(subscription_number)"
-        DECIMAL amount "Precisión 19,2"
+        DECIMAL(19,2) amount "Importe cobrado (CHECK > 0)"
         VARCHAR(10) currency "Enum Currency: ARS, USD"
         VARCHAR(20) status "Enum PaymentStatus: PENDING, PAID, FAILED, CANCELLED"
         VARCHAR(50) payment_method "Método de cobro"
         VARCHAR(100) gateway_payment_id UK "Id de pasarela (MP)"
         VARCHAR(500) comments
-        DECIMAL discount "Precisión 19,2"
+        DECIMAL(19,2) discount "Descuento del pago (CHECK <= amount)"
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
     }
@@ -178,16 +178,22 @@ erDiagram
 **Notación del diagrama:** la línea punteada representa una relación no identificadora (el hijo tiene su propia clave primaria y solo referencia al padre).
 ## Justificación de Claves
 
-Para garantizar la solidez del modelo relacional y evitar el abuso de IDs artificiales, se aplicaron los siguientes criterios de selección de claves primarias:
+Cada clave primaria se eligió según cómo identifica el gimnasio a esa cosa en la práctica. No se usan UUID. Hay dos casos:
 
-| Entidad | ¿Posee Clave Natural Estable? | Naturaleza Conceptual | Tipo de PK Seleccionada | Justificación Académica y Operativa |
-|---------|-------------------------------|-----------------------|-------------------------|-------------------------------------|
-| `persons` | Sí (`dni`) | Fuerte / Natural | Clave Natural (`dni VARCHAR(15)`) | Identidad unívoca de la persona ante el Estado, asegura la unicidad física y canal de contacto de los datos personales. |
-| `members` | Sí (`member_number`) | Fuerte / Negocio | Clave Natural (`member_number VARCHAR(20)`) | Identidad operativa del cliente, credencial física y tipeo en terminales; vincula a `persons(dni)` mediante clave foránea 1:1. |
-| `plans` | Sí (`plan_code`) | Fuerte / Negocio | Clave Natural (`plan_code VARCHAR(20)`) | Código natural que identifica cada registro de Plan y sus datos comerciales; los valores citados en esta documentación son ejemplos, no una enumeración cerrada. |
-| `access`| No (auditoría secuencial) | Evento temporal puntual | Secuencia Correlativa (`access_id SERIAL`) | Identificador secuencial de evento de auditoría de puerta; desacopla el evento y permite auditar intentos de forma independiente sin sobrecarga de identificadores artificiales ni colisiones. |
-| `enrollment` | No (período contractual) | Período contractual dependiente | Secuencia Correlativa (`subscription_number SERIAL`) | Numeración correlativa de suscripción o contrato de mostrador; evita claves subrogadas artificiales y claves compuestas mutables. |
-| `payment` | No (transaccional comercial) | Comprobante contable de caja | Secuencia Correlativa (`receipt_number SERIAL`) | Número de recibo correlativo de mostrador para trazabilidad comercial y contable (#00001, #00002). |
+- **Clave natural:** el dato ya existe en el negocio y no se repite (DNI, número de socio, código de empleado, código de plan).
+- **Número correlativo (`SERIAL`):** para suscripciones, cobros e ingresos no hay un dato propio que los identifique, así que la base los numera 1, 2, 3... Es una clave sustituta (el equivalente del `AUTO_INCREMENT` de MySQL), pero tiene un uso en el negocio: es el número con el que se nombra esa suscripción, ese recibo o ese ingreso.
+
+| Tabla | Clave primaria | Tipo de clave | Por qué |
+|-------|----------------|---------------|---------|
+| `persons` | `dni VARCHAR(15)` | Natural | Es el documento con el que se identifica a cualquier persona y no se repite. |
+| `members` | `member_number VARCHAR(20)` | Natural del negocio | Es el número que el socio da en recepción y escribe en la terminal. El DNI queda como clave foránea única hacia `persons`. |
+| `employees` | `employee_code VARCHAR(20)` | Natural del negocio | Es el código o legajo interno del empleado. El DNI queda como clave foránea única hacia `persons` y el login se hace con `work_email`. |
+| `plans` | `plan_code VARCHAR(20)` | Natural del negocio | Es el código corto de cada plan (por ejemplo `THREE_DAYS`); los valores citados son ejemplos, no una lista cerrada. |
+| `enrollment` | `subscription_number SERIAL` | Correlativo (sustituta) | Un socio tiene muchas suscripciones a lo largo del tiempo. Socio + fecha de inicio no alcanza como clave, porque una suscripción cancelada y la que la reemplaza pueden empezar el mismo día. El número permite hablar de "la suscripción 1520" en caja. |
+| `payment` | `receipt_number SERIAL` | Correlativo (sustituta) | Funciona como el número de recibo del talonario de caja. |
+| `access` | `access_id SERIAL` | Correlativo (sustituta) | Cada intento en la terminal es un evento. El socio y la hora no alcanzan como clave, porque dos intentos pueden registrarse con la misma hora. |
+
+El número correlativo lo genera la base y puede tener saltos (por ejemplo, si una operación falla antes de guardarse). Sirve para identificar el registro, pero no es una numeración fiscal.
 
 ## Relaciones
 
@@ -311,6 +317,7 @@ Representa el período de inscripción de un socio vinculado al plan seleccionad
 Registra cada intento de ingreso validado en la terminal de acceso.
 
 | Columna | Tipo | Nulos | Único | Observación |
+|---------|------|-------|-------|-------------|
 | `access_id` | SERIAL / INTEGER | No (generado) | Sí (PK) | Clave primaria secuencial de auditoría temporal |
 | `member_number` | VARCHAR(20) | No | — | FK a `members.member_number` (`ON DELETE RESTRICT`) |
 | `subscription_number` | INTEGER | Sí | — | FK a `enrollment.subscription_number` (`ON DELETE RESTRICT`). Obligatorio si el acceso es `GRANTED`, opcional si es `DENIED` (`chk_access_logic`) |
@@ -390,11 +397,11 @@ PostgreSQL crea automáticamente un índice por cada clave primaria y por cada r
 
 ## Fundamentos de Diseño Relacional
 
-Para el modelado de esta base de datos, se aplicaron estrictos criterios de diseño relacional, priorizando el uso de claves naturales y compuestas sobre la asignación automática de identificadores subrogados, salvo en casos donde la mutabilidad o la integración externa lo requieran.
+Se priorizan las claves naturales del negocio. Donde no existe una, se usa un número correlativo (ver Justificación de Claves).
 
-**1. Uso de Claves Naturales y Secuencias de Negocio frente a Identificadores Artificiales**
+**1. El número de socio como clave del socio**
 
-El "número de socio" es la identidad unívoca del cliente. Es el dato que el usuario digita en la terminal de acceso. Utilizar `member_number` como PK elimina la sobrecarga de mantener dos identificadores únicos concurrentes (un identificador artificial + el número de socio), simplificando drásticamente las consultas (JOIN) con las tablas dependientes.
+El número de socio identifica al socio en el gimnasio: es el dato que da en recepción y escribe en la terminal de acceso. Usar `member_number` como clave primaria evita tener dos identificadores únicos para lo mismo (un `id` inventado y el número de socio), y las tablas que referencian al socio guardan directamente ese número.
 
 **2. Criterio de Privacidad frente al DNI (Privacy by Design)**
 
@@ -407,12 +414,12 @@ Para evitar el registro de "personas fantasmas" incontactables ante vencimientos
 
 **4. Identificador Secuencial en Eventos Temporales de Auditoría (`access`)**
 
-Un intento de acceso en la terminal es un evento temporal de auditoría. Se identifica mediante una secuencia correlativa de auditoría (`access_id SERIAL`), lo que independiza la identidad del registro de los datos ingresados y permite registrar eventos con precisión temporal sin colisiones ni sobrecarga de identificadores artificiales. La inmutabilidad del registro la asegura la aplicación, que no expone operaciones de modificación ni de borrado (Módulo Access, regla 2).
+Un intento de acceso en la terminal es un evento. Se identifica con un número correlativo (`access_id SERIAL`) porque no tiene un dato propio que lo distinga: el socio y la hora no alcanzan, ya que dos intentos pueden registrarse con la misma hora. La inmutabilidad del registro la asegura la aplicación, que no expone operaciones de modificación ni de borrado (Módulo Access, regla 2).
 
-**5. Identificadores Correlativos de Mostrador frente a Identificadores Artificiales (`subscription_number` y `receipt_number`)**
-*   **En `enrollment` (Correlativo de Suscripción):** En el funcionamiento real de un gimnasio, los contratos o inscripciones no son identificados por cadenas hexadecimales abstractas. Se utiliza un número correlativo humano (`subscription_number SERIAL`) que proporciona una identidad inmutable para el contrato y sus extensiones sin requerir identificadores artificiales complejos ni PKs compuestas mutables basadas en fechas.
+**5. Números correlativos de suscripción y de recibo (`subscription_number` y `receipt_number`)**
+*   **En `enrollment` (número de suscripción):** Cada suscripción se identifica con un número correlativo (`subscription_number SERIAL`) que recepción puede usar para referirse a ella. Se eligió en lugar de una clave compuesta de socio + fecha de inicio, que además de no ser única (ver Justificación de Claves) habría que repetir en cada pago y cada acceso.
 *   **En `payment` (Recibo Comercial):** Todo cobro en mostrador genera un comprobante o recibo con numeración correlativa (`receipt_number SERIAL`), facilitando la rendición de caja y el entendimiento para el cliente. Para la integración con pasarelas de pago externas (ej. Mercado Pago), el id de transacción que devuelve la pasarela se guarda en `gateway_payment_id`, que es `UNIQUE`: la base no permite registrar dos veces el mismo pago de Mercado Pago. Además, como un pago `PAID` no se modifica (regla 2 del módulo Payment), una notificación repetida no cambia un pago ya acreditado.
-*   **Eliminación Total de Identificadores Artificiales Abstractos:** Se prescinde por completo de identificadores artificiales abstractos (como identificadores aleatorios opacos) en el modelo de datos del gimnasio, alineándose con las buenas prácticas de diseño conceptual y relacional donde priman claves naturales y correlativas legibles.
+*   **Sin UUID:** El modelo no usa identificadores aleatorios como UUID. En el gimnasio nadie identifica a un socio, un recibo o un ingreso con un código de 36 caracteres; por eso se usan claves naturales o números correlativos.
 **6. Conservación del Historial (`ON DELETE RESTRICT`)**
 
 Todas las claves foráneas del esquema se declaran con `ON DELETE RESTRICT`: el motor rechaza la eliminación de una persona, un socio o una inscripción mientras existan registros dependientes que los referencien. De este modo, un borrado accidental no puede arrastrar comprobantes de pago ni eventos de acceso, que las reglas de negocio definen como registros de auditoría. Las bajas se resuelven de forma lógica (`members.status = 'INACTIVE'`, `employees.active = FALSE`), sin eliminación física.

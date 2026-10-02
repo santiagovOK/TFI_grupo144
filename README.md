@@ -111,15 +111,6 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 
 ---
 
-## Plan de Trabajo / Hoja de Ruta
-
-- **1.ª Entrega (30/08):** Propuesta de proyecto, plan de trabajo (stack tecnológico y plataformas) y repositorio GitHub. *Entregada.*
-- **2.ª Entrega (27/09):** Diseño de arquitectura, esquema de la base de datos y lista de módulos a desarrollar. *Entregada. Las observaciones del tutor del 29/09 están en corrección ([issue #19](https://github.com/santiagovOK/TFI_grupo144/issues/19)).*
-- **Entrega Final (14/11):** Repositorio completo (código, BD), despliegue online funcionando, documentación escrita y video explicativo.
-- **Defensa Oral:** Presentación ante el comité.
-
----
-
 ## Arquitectura
 
 ```
@@ -416,6 +407,13 @@ npm run dev          # Development server :3002
 
 ## Roadmap
 
+### Entregas
+
+- **1.ª Entrega (30/08):** Propuesta de proyecto, plan de trabajo (stack tecnológico y plataformas) y repositorio GitHub. *Entregada.*
+- **2.ª Entrega (27/09):** Diseño de arquitectura, esquema de la base de datos y lista de módulos a desarrollar. *Entregada. Las observaciones del tutor del 29/09 están en corrección ([issue #19](https://github.com/santiagovOK/TFI_grupo144/issues/19)).*
+- **Entrega Final (14/11):** Repositorio completo (código, BD), despliegue online funcionando, documentación escrita y video explicativo.
+- **Defensa Oral:** Presentación ante el comité.
+
 ### Fase 0: Análisis y diseño (en curso)
 
 - [x] Propuesta del proyecto, stack y plan de trabajo.
@@ -425,8 +423,6 @@ npm run dev          # Development server :3002
 - [ ] Diagrama de clases UML y DER finales.
 - [ ] Especificación completa de los módulos: requerimientos, permisos y reglas de negocio.
 - [ ] Aprobación del modelo por el tutor antes de empezar a programar.
-
----
 
 ### Fase 1: Backend Spring Boot — Base
 
@@ -445,8 +441,6 @@ npm run dev          # Development server :3002
 
 </details>
 
----
-
 ### Fase 2: Backend — Business Logic
 
 <details>
@@ -461,8 +455,6 @@ npm run dev          # Development server :3002
 
 </details>
 
----
-
 ### Fase 3: Backend — Seguridad y Documentación
 
 <details>
@@ -476,8 +468,6 @@ npm run dev          # Development server :3002
 - [ ] Tests de integración con REST Assured.
 
 </details>
-
----
 
 ### Fase 4: Frontend Admin (React)
 
@@ -496,8 +486,6 @@ npm run dev          # Development server :3002
 - [ ] Manejo de errores y loading states.
 
 </details>
-
----
 
 ### Fase 5: Frontend Access (React)
 

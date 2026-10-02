@@ -3,8 +3,6 @@
 Sistema de gestión integral de gimnasio: centraliza la administración de socios y personal, inscripciones, pagos y el control de accesos en la entrada.
 
 - **Estado:** Análisis y diseño. Todavía no hay código: el repositorio tiene el esquema de la base de datos, los diagramas y la especificación de módulos.
-- **Stack:** Spring Boot 4.x + Java 25 · React 19 + TypeScript · PostgreSQL
-- **Arquitectura:** Backend REST con autenticación JWT · Frontend dividido en panel administrativo y terminal de acceso
 
 ## Integrantes
 
@@ -94,7 +92,158 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 
 ---
 
-## Stack Tecnológico
+## Modelo de Datos
+
+Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada entidad, sus atributos y las relaciones está documentado en [`docs/entidades.md`](docs/entidades.md).
+
+### Entidades
+
+| Entidad | Tabla | Descripción |
+|---------|-------|-------------|
+| `Person` | `persons` | Datos comunes y de contacto de cualquier individuo |
+| `Member` | `members` | Socio del gimnasio (identificado por `member_number`) |
+| `Employee` | `employees` | Personal operativo o administrativo con credenciales de login (`work_email`) |
+| `Enrollment` | `enrollment` | Inscripción con referencia `plan_code`, vigencia y snapshot histórico de precio |
+| `Access` | `access` | Registro de cada intento de ingreso validado |
+| `Payment` | `payment` | Pago asociado a una inscripción |
+| `Plan` | `plans` | Catálogo dinámico identificado por `plan_code`, con límite semanal, precio actual y estado |
+
+### Relaciones
+
+- `Person` ↔ `Member`: rol opcional de una persona (1:1).
+- `Person` ↔ `Employee`: rol opcional de una persona (1:1). Una misma persona puede ser socia y empleada.
+- `Member` ↔ `Enrollment`: relación uno a muchos (1:N).
+- `Member` ↔ `Access`: relación uno a muchos (1:N).
+- `Enrollment` ↔ `Payment`: relación uno a muchos (1:N).
+- `Enrollment` ↔ `Access`: relación uno a muchos (1:N).
+- `Plan` ↔ `Enrollment`: relación uno a muchos (1:N); `enrollment.plan_code` referencia `plans.plan_code`.
+
+### Enums
+
+| Enum | Valores |
+|------|---------|
+| `Role` | `ADMIN`, `STAFF` |
+| `MemberStatus` | `ACTIVE`, `OVERDUE`, `INACTIVE` |
+| `Currency` | `ARS`, `USD` |
+| `EnrollmentStatus` | `ACTIVE`, `CANCELLED`, `EXPIRED` |
+| `AccessStatus` | `GRANTED`, `DENIED` |
+| `PaymentStatus` | `PENDING`, `PAID`, `FAILED`, `CANCELLED` |
+
+### Probar el esquema de la base de datos
+
+Es lo único que se puede ejecutar hoy. Solo hace falta PostgreSQL 13 o superior:
+
+```bash
+createdb gym_prueba
+psql -d gym_prueba -f gym-backend/src/main/resources/schema.sql
+psql -d gym_prueba -c '\dt'      # lista las tablas creadas
+dropdb gym_prueba                # borra la base de prueba
+```
+
+---
+
+## Roadmap
+
+### Entregas
+
+- **1.ª Entrega (30/08):** Propuesta de proyecto, plan de trabajo (stack tecnológico y plataformas) y repositorio GitHub. *Entregada.*
+- **2.ª Entrega (27/09):** Diseño de arquitectura, esquema de la base de datos y lista de módulos a desarrollar. *Entregada. Las observaciones del tutor del 29/09 están en corrección ([issue #19](https://github.com/santiagovOK/TFI_grupo144/issues/19)).*
+- **Entrega Final (14/11):** Repositorio completo (código, BD), despliegue online funcionando, documentación escrita y video explicativo.
+- **Defensa Oral:** Presentación ante el comité.
+
+### Fase 0: Análisis y diseño (en curso)
+
+- [x] Propuesta del proyecto, stack y plan de trabajo.
+- [x] Mockups de las pantallas.
+- [x] Primera versión del esquema (`schema.sql`), las entidades y los módulos.
+- [ ] Corrección del modelo según las observaciones del tutor del 29/09 ([issue #19](https://github.com/santiagovOK/TFI_grupo144/issues/19)).
+- [ ] Diagrama de clases UML y DER finales.
+- [ ] Especificación completa de los módulos: requerimientos, permisos y reglas de negocio.
+- [ ] Aprobación del modelo por el tutor antes de empezar a programar.
+
+### Fase 1: Backend Spring Boot — Base
+
+<details>
+<summary>Ver Fase 1: Backend Spring Boot — Base</summary>
+
+- [ ] Crear proyecto con Gradle (Spring Initializr o `gradle init`).
+- [ ] Configurar `build.gradle` con dependencias (Spring Boot 4.x, JPA, Lombok, JWT, Validation, OpenAPI 3.x).
+- [ ] Configurar `settings.gradle` con grupo y nombre del proyecto.
+- [ ] Configurar `application.yml` (DB connection, server port, security settings).
+- [ ] Crear entidades JPA (7 entidades + 6 enums).
+- [ ] Crear DTOs para request/response.
+- [ ] Configurar Spring Security: habilitar JWT, deshabilitar HTTP basic auth.
+- [ ] Crear `JwtTokenProvider` (generar/validar tokens).
+- [ ] Crear `JwtAuthenticationFilter` (interceptar requests y validar JWT).
+
+</details>
+
+### Fase 2: Backend — Business Logic
+
+<details>
+<summary>Ver Fase 2: Backend — Business Logic</summary>
+
+- [ ] Implementar `AuthService` + `AuthController` (login con credenciales + JWT).
+- [ ] Implementar `MemberService` + `MemberController` y `EmployeeService` + `EmployeeController` (gestión de socios y personal).
+- [ ] Implementar `PlanService` + `PlanController` (catálogo de modalidades y aranceles).
+- [ ] Implementar `EnrollmentService` + `EnrollmentController` (CRUD, control de historial 1:N y validación de vigencia).
+- [ ] Implementar `PaymentService` + `PaymentController` (registro de pagos, métodos de cobro, estados transaccionales y moneda).
+- [ ] Implementar `AccessService` + `AccessController` (reglas de negocio, conteo semanal).
+
+</details>
+
+### Fase 3: Backend — Seguridad y Documentación
+
+<details>
+<summary>Ver Fase 3: Backend — Seguridad y Documentación</summary>
+
+- [ ] Configurar Swagger/OpenAPI 3.x (`springdoc-openapi-starter-webmvc-ui`).
+- [ ] Implementar interceptor global para validación de JWT.
+- [ ] Configurar roles y permisos en endpoints (`@PreAuthorize`).
+- [ ] Setup de logging (SLF4J + Logback).
+- [ ] Tests unitarios con JUnit 5 + Mockito.
+- [ ] Tests de integración con REST Assured.
+
+</details>
+
+### Fase 4: Frontend Admin (React)
+
+<details>
+<summary>Ver Fase 4: Frontend Admin (React)</summary>
+
+- [ ] Setup proyecto Vite + React 19+ + TypeScript.
+- [ ] Configurar Chakra UI como librería de componentes.
+- [ ] Configurar Tailwind CSS para estilos custom.
+- [ ] Configurar React Router v6 para navegación entre páginas.
+- [ ] Crear contexto de autenticación (`AuthContext`).
+- [ ] Implementar Login page con form y validación.
+- [ ] Dashboard con resumen de socios, personal, inscripciones, pagos.
+- [ ] Páginas CRUD: Socios, Personal, Inscripciones, Pagos, Planes.
+- [ ] Consumo de API del Spring Boot vía Axios.
+- [ ] Manejo de errores y loading states.
+
+</details>
+
+### Fase 5: Frontend Access (React)
+
+<details>
+<summary>Ver Fase 5: Frontend Access (React)</summary>
+
+- [ ] Setup proyecto Vite + React (más simple que el admin).
+- [ ] Componente de ingreso del número de socio (teclado numérico).
+- [ ] Lógica de acceso con reglas de negocio del backend.
+- [ ] Feedback visual claro (acceso permitido / negado).
+- [ ] Consumo de API para verificar acceso.
+
+</details>
+
+---
+
+## Implementación prevista
+
+Todo lo de esta sección es el plan para la etapa de implementación. Todavía no hay código.
+
+### Stack Tecnológico
 
 | Capa | Tecnología |
 |------|-----------|
@@ -109,9 +258,7 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 | **Build tool (Backend)** | Gradle |
 | **Plataforma de despliegue** | Render (Backend) · Vercel (Frontend) · Neon (PostgreSQL) |
 
----
-
-## Arquitectura
+### Arquitectura
 
 ```
 +-------------------------------------------------------------+
@@ -136,9 +283,7 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 +-------------------------------------------------------------+
 ```
 
----
-
-## Estructura del Proyecto (prevista)
+### Estructura del Proyecto (prevista)
 
 Hoy el repositorio tiene solo `gym-backend/src/main/resources/schema.sql`, las carpetas vacías del backend y la documentación en `docs/`. El resto de los archivos se crea en la etapa de implementación.
 
@@ -259,63 +404,22 @@ gym-manager/
 
 </details>
 
----
+### Seguridad
 
-## Modelo de Datos
+Diseño previsto para la etapa de implementación (todavía no hay código): la autenticación y autorización se van a gestionar con **Spring Security + JWT**.
 
-Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada entidad, sus atributos y las relaciones está documentado en [`docs/entidades.md`](docs/entidades.md).
+- **`JwtTokenProvider`**: genera y valida los tokens de acceso.
+- **`JwtAuthenticationFilter`**: intercepta las peticiones HTTP y valida el JWT.
+- **BCrypt**: las contraseñas se almacenan como hash (`BCryptPasswordEncoder`).
+- **Roles**: `ADMIN` y `STAFF` controlan el acceso a los endpoints mediante `@PreAuthorize`.
 
-### Entidades
+> **Datos sensibles:** en producción reemplazar `[PASSWORD_DE_POSTGRESQL]` y `[JWT_SECRET_KEY]` por valores reales. Generar el secret JWT con una clave aleatoria de 32+ caracteres, por ejemplo `openssl rand -hex 32`.
 
-| Entidad | Tabla | Descripción |
-|---------|-------|-------------|
-| `Person` | `persons` | Datos comunes y de contacto de cualquier individuo |
-| `Member` | `members` | Socio del gimnasio (identificado por `member_number`) |
-| `Employee` | `employees` | Personal operativo o administrativo con credenciales de login (`work_email`) |
-| `Enrollment` | `enrollment` | Inscripción con referencia `plan_code`, vigencia y snapshot histórico de precio |
-| `Access` | `access` | Registro de cada intento de ingreso validado |
-| `Payment` | `payment` | Pago asociado a una inscripción |
-| `Plan` | `plans` | Catálogo dinámico identificado por `plan_code`, con límite semanal, precio actual y estado |
-
-### Relaciones
-
-- `Person` ↔ `Member`: rol opcional de una persona (1:1).
-- `Person` ↔ `Employee`: rol opcional de una persona (1:1). Una misma persona puede ser socia y empleada.
-- `Member` ↔ `Enrollment`: relación uno a muchos (1:N).
-- `Member` ↔ `Access`: relación uno a muchos (1:N).
-- `Enrollment` ↔ `Payment`: relación uno a muchos (1:N).
-- `Enrollment` ↔ `Access`: relación uno a muchos (1:N).
-- `Plan` ↔ `Enrollment`: relación uno a muchos (1:N); `enrollment.plan_code` referencia `plans.plan_code`.
-
-### Enums
-
-| Enum | Valores |
-|------|---------|
-| `Role` | `ADMIN`, `STAFF` |
-| `MemberStatus` | `ACTIVE`, `OVERDUE`, `INACTIVE` |
-| `Currency` | `ARS`, `USD` |
-| `EnrollmentStatus` | `ACTIVE`, `CANCELLED`, `EXPIRED` |
-| `AccessStatus` | `GRANTED`, `DENIED` |
-| `PaymentStatus` | `PENDING`, `PAID`, `FAILED`, `CANCELLED` |
-
-### Probar el esquema de la base de datos
-
-Es lo único que se puede ejecutar hoy. Solo hace falta PostgreSQL 13 o superior:
-
-```bash
-createdb gym_prueba
-psql -d gym_prueba -f gym-backend/src/main/resources/schema.sql
-psql -d gym_prueba -c '\dt'      # lista las tablas creadas
-dropdb gym_prueba                # borra la base de prueba
-```
-
----
-
-## Comandos de Desarrollo
+### Comandos de Desarrollo
 
 Estos comandos son para la etapa de implementación. Todavía no existen el proyecto Gradle ni los frontend, así que hoy no se pueden ejecutar.
 
-### Backend (Gradle)
+#### Backend (Gradle)
 
 ```bash
 # Instalar dependencias y compilar
@@ -334,7 +438,7 @@ Estos comandos son para la etapa de implementación. Todavía no existen el proy
 ./gradlew bootJar
 ```
 
-### Frontend Admin
+#### Frontend Admin
 
 ```bash
 npm install
@@ -342,25 +446,23 @@ npm run dev          # Development server :3001
 npm run build        # Build para producción
 ```
 
-### Frontend Access
+#### Frontend Access
 
 ```bash
 npm install
 npm run dev          # Development server :3002
 ```
 
----
+### Instalación y Configuración
 
-## Instalación y Configuración
-
-### Requisitos previos (etapa de implementación)
+#### Requisitos previos (etapa de implementación)
 
 - Java 25 (LTS)
 - PostgreSQL 13 o superior
 - Node.js (para los frontend)
 - Gradle (se gestiona vía wrapper `./gradlew`)
 
-### Pasos (etapa de implementación)
+#### Pasos (etapa de implementación)
 
 1. Clonar el repositorio.
 2. Crear una base de datos PostgreSQL vacía y ejecutar `schema.sql` para crear el esquema. El script está pensado para una base nueva: como usa `IF NOT EXISTS`, volver a ejecutarlo sobre una base existente no modifica las tablas ya creadas.
@@ -394,7 +496,7 @@ npm run dev          # Development server :3002
 4. Ejecutar el backend con `./gradlew bootRun`.
 5. Iniciar los frontend con `npm run dev` en cada subproyecto.
 
-### Variables a reemplazar en producción
+#### Variables a reemplazar en producción
 
 | Variable | Placeholder | Qué poner |
 |----------|-------------|-----------|
@@ -403,119 +505,7 @@ npm run dev          # Development server :3002
 | `gym` (username) | Nombre de usuario | Cambiar si se prefiere otro |
 | `localhost:5432` | Host de la DB | Cambiar por el host/servidor de PostgreSQL |
 
----
-
-## Roadmap
-
-### Entregas
-
-- **1.ª Entrega (30/08):** Propuesta de proyecto, plan de trabajo (stack tecnológico y plataformas) y repositorio GitHub. *Entregada.*
-- **2.ª Entrega (27/09):** Diseño de arquitectura, esquema de la base de datos y lista de módulos a desarrollar. *Entregada. Las observaciones del tutor del 29/09 están en corrección ([issue #19](https://github.com/santiagovOK/TFI_grupo144/issues/19)).*
-- **Entrega Final (14/11):** Repositorio completo (código, BD), despliegue online funcionando, documentación escrita y video explicativo.
-- **Defensa Oral:** Presentación ante el comité.
-
-### Fase 0: Análisis y diseño (en curso)
-
-- [x] Propuesta del proyecto, stack y plan de trabajo.
-- [x] Mockups de las pantallas.
-- [x] Primera versión del esquema (`schema.sql`), las entidades y los módulos.
-- [ ] Corrección del modelo según las observaciones del tutor del 29/09 ([issue #19](https://github.com/santiagovOK/TFI_grupo144/issues/19)).
-- [ ] Diagrama de clases UML y DER finales.
-- [ ] Especificación completa de los módulos: requerimientos, permisos y reglas de negocio.
-- [ ] Aprobación del modelo por el tutor antes de empezar a programar.
-
-### Fase 1: Backend Spring Boot — Base
-
-<details>
-<summary>Ver Fase 1: Backend Spring Boot — Base</summary>
-
-- [ ] Crear proyecto con Gradle (Spring Initializr o `gradle init`).
-- [ ] Configurar `build.gradle` con dependencias (Spring Boot 4.x, JPA, Lombok, JWT, Validation, OpenAPI 3.x).
-- [ ] Configurar `settings.gradle` con grupo y nombre del proyecto.
-- [ ] Configurar `application.yml` (DB connection, server port, security settings).
-- [ ] Crear entidades JPA (7 entidades + 6 enums).
-- [ ] Crear DTOs para request/response.
-- [ ] Configurar Spring Security: habilitar JWT, deshabilitar HTTP basic auth.
-- [ ] Crear `JwtTokenProvider` (generar/validar tokens).
-- [ ] Crear `JwtAuthenticationFilter` (interceptar requests y validar JWT).
-
-</details>
-
-### Fase 2: Backend — Business Logic
-
-<details>
-<summary>Ver Fase 2: Backend — Business Logic</summary>
-
-- [ ] Implementar `AuthService` + `AuthController` (login con credenciales + JWT).
-- [ ] Implementar `MemberService` + `MemberController` y `EmployeeService` + `EmployeeController` (gestión de socios y personal).
-- [ ] Implementar `PlanService` + `PlanController` (catálogo de modalidades y aranceles).
-- [ ] Implementar `EnrollmentService` + `EnrollmentController` (CRUD, control de historial 1:N y validación de vigencia).
-- [ ] Implementar `PaymentService` + `PaymentController` (registro de pagos, métodos de cobro, estados transaccionales y moneda).
-- [ ] Implementar `AccessService` + `AccessController` (reglas de negocio, conteo semanal).
-
-</details>
-
-### Fase 3: Backend — Seguridad y Documentación
-
-<details>
-<summary>Ver Fase 3: Backend — Seguridad y Documentación</summary>
-
-- [ ] Configurar Swagger/OpenAPI 3.x (`springdoc-openapi-starter-webmvc-ui`).
-- [ ] Implementar interceptor global para validación de JWT.
-- [ ] Configurar roles y permisos en endpoints (`@PreAuthorize`).
-- [ ] Setup de logging (SLF4J + Logback).
-- [ ] Tests unitarios con JUnit 5 + Mockito.
-- [ ] Tests de integración con REST Assured.
-
-</details>
-
-### Fase 4: Frontend Admin (React)
-
-<details>
-<summary>Ver Fase 4: Frontend Admin (React)</summary>
-
-- [ ] Setup proyecto Vite + React 19+ + TypeScript.
-- [ ] Configurar Chakra UI como librería de componentes.
-- [ ] Configurar Tailwind CSS para estilos custom.
-- [ ] Configurar React Router v6 para navegación entre páginas.
-- [ ] Crear contexto de autenticación (`AuthContext`).
-- [ ] Implementar Login page con form y validación.
-- [ ] Dashboard con resumen de socios, personal, inscripciones, pagos.
-- [ ] Páginas CRUD: Socios, Personal, Inscripciones, Pagos, Planes.
-- [ ] Consumo de API del Spring Boot vía Axios.
-- [ ] Manejo de errores y loading states.
-
-</details>
-
-### Fase 5: Frontend Access (React)
-
-<details>
-<summary>Ver Fase 5: Frontend Access (React)</summary>
-
-- [ ] Setup proyecto Vite + React (más simple que el admin).
-- [ ] Componente de ingreso del número de socio (teclado numérico).
-- [ ] Lógica de acceso con reglas de negocio del backend.
-- [ ] Feedback visual claro (acceso permitido / negado).
-- [ ] Consumo de API para verificar acceso.
-
-</details>
-
----
-
-## Seguridad
-
-Diseño previsto para la etapa de implementación (todavía no hay código): la autenticación y autorización se van a gestionar con **Spring Security + JWT**.
-
-- **`JwtTokenProvider`**: genera y valida los tokens de acceso.
-- **`JwtAuthenticationFilter`**: intercepta las peticiones HTTP y valida el JWT.
-- **BCrypt**: las contraseñas se almacenan como hash (`BCryptPasswordEncoder`).
-- **Roles**: `ADMIN` y `STAFF` controlan el acceso a los endpoints mediante `@PreAuthorize`.
-
-> **Datos sensibles:** en producción reemplazar `[PASSWORD_DE_POSTGRESQL]` y `[JWT_SECRET_KEY]` por valores reales. Generar el secret JWT con una clave aleatoria de 32+ caracteres, por ejemplo `openssl rand -hex 32`.
-
----
-
-## Tecnologías a aprender y reforzar
+### Tecnologías a aprender y reforzar
 
 | Categoría | Tecnologías |
 |-----------|-------------|

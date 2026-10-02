@@ -306,6 +306,18 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 | `EnrollmentStatus` | `ACTIVE`, `CANCELLED`, `EXPIRED` |
 | `AccessStatus` | `GRANTED`, `DENIED` |
 | `PaymentStatus` | `PENDING`, `PAID`, `FAILED`, `CANCELLED` |
+
+### Probar el esquema de la base de datos
+
+Es lo único que se puede ejecutar hoy. Solo hace falta PostgreSQL 13 o superior:
+
+```bash
+createdb gym_prueba
+psql -d gym_prueba -f gym-backend/src/main/resources/schema.sql
+psql -d gym_prueba -c '\dt'      # lista las tablas creadas
+dropdb gym_prueba                # borra la base de prueba
+```
+
 ---
 
 ## Comandos de Desarrollo
@@ -349,17 +361,6 @@ npm run dev          # Development server :3002
 ---
 
 ## Instalación y Configuración
-
-### Probar el esquema de la base de datos
-
-Es lo único que se puede ejecutar hoy. Solo hace falta PostgreSQL 13 o superior:
-
-```bash
-createdb gym_prueba
-psql -d gym_prueba -f gym-backend/src/main/resources/schema.sql
-psql -d gym_prueba -c '\dt'      # lista las tablas creadas
-dropdb gym_prueba                # borra la base de prueba
-```
 
 ### Requisitos previos (etapa de implementación)
 

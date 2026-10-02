@@ -508,9 +508,9 @@ npm run dev          # Development server :3002
 | **Java Enterprise** | Spring Boot 4.x, JPA/Hibernate, Gradle, Lombok, Spring Security |
 | **React** | Hooks (useState, useEffect, useRef), Context API, React Router v6, Chakra UI, Tailwind CSS |
 | **TypeScript** | Interfaces, generics, async/await en frontend |
-| **PostgreSQL** | JPA queries, relationships, constraints |
+| **PostgreSQL** | DDL, claves primarias y foráneas, restricciones `CHECK` y `UNIQUE`, índices, `SERIAL`, `TIMESTAMPTZ` y restricción de exclusión (`EXCLUDE` con `btree_gist`) |
 | **Testing** | JUnit 5, Mockito, REST Assured |
-| **DevOps básico** | Gradle build, Docker deployment, environment config |
+| **DevOps básico** | Gradle build, Docker (para desplegar el backend en Render), variables de entorno |
 
 ---
 

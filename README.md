@@ -238,8 +238,8 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 
 ### Relaciones
 
-- `Person` ↔ `Member`: especialización uno a uno opcional (1:1, Joined Table).
-- `Person` ↔ `Employee`: especialización uno a uno opcional (1:1, Joined Table).
+- `Person` ↔ `Member`: rol opcional de una persona (1:1).
+- `Person` ↔ `Employee`: rol opcional de una persona (1:1). Una misma persona puede ser socia y empleada.
 - `Member` ↔ `Enrollment`: relación uno a muchos (1:N).
 - `Member` ↔ `Access`: relación uno a muchos (1:N).
 - `Enrollment` ↔ `Payment`: relación uno a muchos (1:N).

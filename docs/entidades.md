@@ -47,15 +47,11 @@ classDiagram
 
     class Enrollment {
         - Integer subscriptionNumber
-        - String memberNumber
-        - String planCode
         - BigDecimal price
         - BigDecimal discount
         - LocalDateTime startDate
         - LocalDateTime endDate
         - String comments
-        - LocalDateTime createdAt
-        - LocalDateTime updatedAt
         - EnrollmentStatus status
     }
 
@@ -90,6 +86,7 @@ classDiagram
 ### Justificación del Diseño Conceptual de Actores
 * **Socio y empleado como roles de una persona:** `Person` guarda los datos de cualquier persona y `Member` y `Employee` son roles que puede tener o no. Una persona puede tener uno, el otro o los dos, por ejemplo la profe que también entrena en el gimnasio, y puede sumar o dejar un rol con el tiempo sin dejar de ser la misma persona. Por eso no se usa herencia: la herencia es fija y un cambio de rol obligaría a cambiar de clase. Se dibuja como composición porque el rol se crea para una persona y no existe sin ella.
 * **Seguridad y Privacidad:** Las credenciales de autenticación quedan estrictamente contenidas en `Employee`. `Member` solo expone atributos de membresía deportiva (`memberNumber`, `joinDate`, `status`).
+* **Relaciones como líneas, no como atributos:** `Enrollment` no lleva `memberNumber` ni `planCode` porque a qué socio y a qué plan pertenece ya lo muestran las líneas `tiene` y `rige`. Las claves foráneas y las fechas de registro (`created_at`, `updated_at`) son detalles de las tablas y aparecen en el DER.
 * **Tipado:** Los atributos siguen las convenciones y tipos estándar de Java (`String`, `LocalDate`, `LocalDateTime`, tipos de enums), prescindiendo de tipos físicos de almacenamiento como `VARCHAR` o `TIMESTAMPTZ`.
 
 ---

@@ -2,7 +2,7 @@
 
 Sistema de gestión integral de gimnasio: centraliza la administración de socios y personal, inscripciones, pagos y el control de accesos en la entrada.
 
-- **Estado:** En desarrollo
+- **Estado:** Análisis y diseño. Todavía no hay código: el repositorio tiene el esquema de la base de datos, los diagramas y la especificación de módulos.
 - **Stack:** Spring Boot 4.x + Java 25 · React 19 + TypeScript · PostgreSQL
 - **Arquitectura:** Backend REST con autenticación JWT · Frontend dividido en panel administrativo y terminal de acceso
 

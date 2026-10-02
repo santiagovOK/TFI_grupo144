@@ -522,7 +522,7 @@ dropdb gym_prueba                # borra la base de prueba
 
 ## Seguridad
 
-La autenticación y autorización se gestionan con **Spring Security + JWT**.
+Diseño previsto para la etapa de implementación (todavía no hay código): la autenticación y autorización se van a gestionar con **Spring Security + JWT**.
 
 - **`JwtTokenProvider`**: genera y valida los tokens de acceso.
 - **`JwtAuthenticationFilter`**: intercepta las peticiones HTTP y valida el JWT.

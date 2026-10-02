@@ -37,7 +37,7 @@ Sistema de gestión integral de gimnasio: centraliza la administración de socio
 ### Incluido (Alcance de la versión inicial)
 
 **1. Gestión Administrativa (Panel Web):**
-* Gestión integral de actores (Socios y Personal: Staff, Admin) diferenciados conceptualmente bajo jerarquía de personas y con estados de activación.
+* Gestión integral de actores (Socios y Personal: Staff, Admin) como roles de una misma persona y con estados de activación.
 * Administración de inscripciones bajo catálogo dinámico de planes (Pase Libre, 2 o 3 veces por semana, o planes becados de arancel $0).
 * Registro manual y seguimiento de pagos asociados a cada inscripción.
 

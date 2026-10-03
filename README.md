@@ -71,7 +71,7 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 
 - **Área Deportiva:** Planes de entrenamiento, rutinas personalizadas o seguimiento de métricas corporales *(el foco es puramente administrativo)*.
 - **Perfil Social:** Perfiles extendidos con fotos, metas de fitness y nivel de experiencia.
-- **Hardware / IoT:** Control automatizado de puertas físicas o puertas magnéticas.*(la terminal aprueba en pantalla, el pase físico es supervisado)*.
+- **Hardware / IoT:** Control automatizado de puertas o cerraduras magnéticas *(la terminal aprueba en pantalla, el pase físico es supervisado)*.
 - **Comunicaciones Transaccionales/Marketing:** Mensajes de bienvenida, comprobantes de pago automáticos, alertas de inactividad para fidelización y recuperación de contraseñas *(no aplica en V1 ya que los socios no poseen credenciales)*.
 - **Integración con WhatsApp:** Envío de notificaciones a través de WhatsApp (se excluye en V1 por la mayor complejidad de su API, dejando solo Email en esta primera iteración).
 

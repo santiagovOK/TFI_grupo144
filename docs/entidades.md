@@ -149,7 +149,7 @@ erDiagram
         VARCHAR(20) employee_code FK "Referencia a employees(employee_code); vacío solo en Mercado Pago"
         DECIMAL(19,2) amount "Importe cobrado en pesos (CHECK > 0)"
         VARCHAR(20) status "Enum PaymentStatus: PENDING, PAID, FAILED, CANCELLED"
-        VARCHAR(50) payment_method "Método de cobro"
+        VARCHAR(50) payment_method "Enum PaymentMethod: CASH, MERCADO_PAGO"
         VARCHAR(100) gateway_payment_id UK "Id de pasarela (MP)"
         VARCHAR(500) comments
         TIMESTAMPTZ created_at
@@ -339,7 +339,7 @@ Registra un pago asociado a una suscripción.
 | `employee_code` | VARCHAR(20) | Sí | — | FK a `employees.employee_code` (`ON DELETE RESTRICT`). Empleado que cobró en caja. Restricción `chk_payment_employee`: solo puede quedar vacío si `payment_method = 'MERCADO_PAGO'` |
 | `amount` | DECIMAL(19,2) | No | — | Monto del pago en pesos argentinos. Restricción CHECK: `amount > 0` |
 | `status` | VARCHAR(20) | No | — | Valor del Enum `PaymentStatus` (Por defecto `PENDING`, restricción CHECK) |
-| `payment_method` | VARCHAR(50) | Sí | — | Método de pago (ej. `CASH`, `MERCADO_PAGO`) |
+| `payment_method` | VARCHAR(50) | No | — | Valor del Enum `PaymentMethod` (`CASH`, `MERCADO_PAGO`). Restricción `chk_payment_method` |
 | `gateway_payment_id` | VARCHAR(100) | Sí | Sí (UK) | Id devuelto por la pasarela de pagos |
 | `comments` | VARCHAR(500) | Sí | — | |
 | `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |
@@ -365,6 +365,12 @@ La categoría fija `Modality` (`FREE`, `THREE`, `TWO`) fue reemplazada por la en
 ### `SubscriptionStatus` (Tabla `subscriptions`)
 - `ACTIVE`: Suscripción no cancelada; su vigencia se determina dinámicamente comparando el momento actual con `start_date` y `end_date`.
 - `CANCELLED`: Suscripción dada de baja lógica. Deniega inmediatamente el acceso en la terminal y preserva los pagos `PAID` inmutables en `payment` (sin reintegros automáticos), liberando el rango temporal para nuevas suscripciones.
+
+### `PaymentMethod` (Tabla `payment`)
+- `CASH`: Efectivo en el mostrador.
+- `MERCADO_PAGO`: Pago con Mercado Pago, con el QR en caja o por cuenta del socio.
+
+Si se suma otro medio de cobro, se agrega a la lista de `chk_payment_method`.
 
 ### `PaymentStatus` (Tabla `payment`)
 - `PENDING`: Pago pendiente de confirmación.

@@ -128,6 +128,7 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 | `SubscriptionStatus` | `ACTIVE`, `CANCELLED` |
 | `AccessStatus` | `GRANTED`, `DENIED` |
 | `PaymentStatus` | `PENDING`, `PAID`, `FAILED`, `CANCELLED` |
+| `PaymentMethod` | `CASH`, `MERCADO_PAGO` |
 
 ### Probar el esquema de la base de datos
 
@@ -170,7 +171,7 @@ dropdb gym_prueba                # borra la base de prueba
 - [ ] Configurar `build.gradle` con dependencias (Spring Boot 4.x, JPA, Lombok, JWT, Validation, OpenAPI 3.x).
 - [ ] Configurar `settings.gradle` con grupo y nombre del proyecto.
 - [ ] Configurar `application.yml` (DB connection, server port, security settings).
-- [ ] Crear entidades JPA (7 entidades + 5 enums).
+- [ ] Crear entidades JPA (7 entidades + 6 enums).
 - [ ] Crear DTOs para request/response.
 - [ ] Configurar Spring Security: habilitar JWT, deshabilitar HTTP basic auth.
 - [ ] Crear `JwtTokenProvider` (generar/validar tokens).
@@ -334,6 +335,7 @@ gym-manager/
 │   │   │   ├── MemberStatus.java
 │   │   │   ├── SubscriptionStatus.java
 │   │   │   ├── PaymentStatus.java
+│   │   │   ├── PaymentMethod.java
 │   │   │   └── AccessStatus.java
 │   │   └── dto/                          # Objetos de request/response
 │   │       ├── LoginRequest.java

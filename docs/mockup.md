@@ -44,6 +44,7 @@ Puerta de entrada al panel web administrativo (`gym-frontend-admin`), securizada
 
 
 ![Inicio de Sesión - Login](./mockups/img/pantalla_0_login.png)
+
 ---
 
 ### Pantalla 1: Terminal de Acceso (Autogestión)
@@ -159,6 +160,7 @@ La Pantalla 5 ilustra una configuración tarifaria para usuarios con rol `ADMIN`
   - Precio actual y estado activo del registro seleccionado.
 
 ![Configuración de Aranceles por Modalidad](./mockups/img/pantalla_5_configuracion.png)
+
 ---
 
 ## 3. Formato de Entregables y Estructura en el Repositorio

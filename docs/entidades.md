@@ -157,7 +157,8 @@ erDiagram
     }
     access_logs {
         INTEGER access_id PK "Secuencial de auditoría temporal (SERIAL)"
-        VARCHAR(20) member_number FK "Referencia obligatoria a members"
+        VARCHAR(20) entered_member_number "Número tipeado en la terminal (CHECK no vacío)"
+        VARCHAR(20) member_number FK "Referencia a members; nulo si el número no existe"
         INTEGER subscription_number FK "Referencia a subscriptions(subscription_number)"
         TIMESTAMPTZ access_time "Momento exacto del intento"
         VARCHAR(20) status "Enum AccessStatus: GRANTED, DENIED"
@@ -167,7 +168,7 @@ erDiagram
     persons ||--|o employees : "rol de empleado (0..1)"
     plans ||..o{ subscriptions : "rige (1:N)"
     members ||..o{ subscriptions : "tiene historial (1:N)"
-    members ||..o{ access_logs : "registra intentos (1:N)"
+    members |o..o{ access_logs : "registra intentos (1:N)"
     subscriptions ||..o{ payment : "tiene pagos (1:N)"
     employees |o..o{ payment : "cobra (1:N)"
     subscriptions |o..o{ access_logs : "asocia accesos concedidos (1:N)"
@@ -201,7 +202,7 @@ El número correlativo lo genera la base y puede tener saltos (por ejemplo, si u
 | `persons` ↔ `employees` | `1:1` opcional | Una persona puede tener el rol de empleado (cajero/administrador), incluso si también es socia. |
 | `plans` ↔ `subscriptions` | `1:N` (Uno a Muchos), no identificadora | Un plan o modalidad de arancel rige múltiples contrataciones de socios a lo largo del tiempo. |
 | `members` ↔ `subscriptions` | `1:N` (Uno a Muchos), no identificadora | Un socio puede tener múltiples suscripciones a lo largo del tiempo (historial por período). |
-| `members` ↔ `access_logs` | `1:N` (Uno a Muchos), no identificadora | Un socio puede registrar múltiples intentos de acceso (historial de accesos). |
+| `members` ↔ `access_logs` | `1:N` (Uno a Muchos), no identificadora | Un socio puede registrar múltiples intentos de acceso (historial de accesos). La referencia es opcional: un intento con un número que no existe se guarda sin socio. |
 | `subscriptions` ↔ `payment` | `1:N` (Uno a Muchos), no identificadora | Una suscripción puede registrar múltiples pagos o intentos de cobro vinculados por `subscription_number`. |
 | `employees` ↔ `payment` | `1:N` (Uno a Muchos), no identificadora | Un empleado puede cobrar muchos pagos en caja. El pago guarda quién lo cobró en `employee_code` (opcional). Todo cobro en el mostrador lo guarda, también si se paga con el QR de Mercado Pago; solo queda vacío en un pago de Mercado Pago que el socio hace por su cuenta, sin pasar por caja. |
 | `subscriptions` ↔ `access_logs` | `1:N` (Uno a Muchos), no identificadora | Una suscripción asocia los accesos concedidos durante su vigencia a través de `subscription_number` (opcional; nulo si el acceso fue denegado sin suscripción activa). |
@@ -319,7 +320,8 @@ Registra cada intento de ingreso validado en la terminal de acceso.
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `access_id` | SERIAL / INTEGER | No (generado) | Sí (PK) | Clave primaria secuencial de auditoría temporal |
-| `member_number` | VARCHAR(20) | No | — | FK a `members.member_number` (`ON DELETE RESTRICT`) |
+| `entered_member_number` | VARCHAR(20) | No | — | Número que se tipeó en la terminal, exista o no. No puede quedar vacío (`chk_access_entered`) |
+| `member_number` | VARCHAR(20) | Sí | — | FK a `members.member_number` (`ON DELETE RESTRICT`). Vacío si el número tipeado no corresponde a ningún socio |
 | `subscription_number` | INTEGER | Sí | — | FK a `subscriptions.subscription_number` (`ON DELETE RESTRICT`). Obligatorio si el acceso es `GRANTED`, opcional si es `DENIED` (`chk_access_logic`) |
 | `access_time` | TIMESTAMPTZ | No | — | Momento exacto del intento. Por defecto `CURRENT_TIMESTAMP` |
 | `status` | VARCHAR(20) | No | — | Valor del Enum `AccessStatus` (Sin valor por defecto, restricción CHECK) |

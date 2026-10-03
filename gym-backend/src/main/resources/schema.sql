@@ -91,12 +91,14 @@ CREATE TABLE IF NOT EXISTS payment (
 
 CREATE TABLE IF NOT EXISTS access_logs (
     access_id SERIAL PRIMARY KEY,
-    member_number VARCHAR(20) NOT NULL REFERENCES members(member_number) ON DELETE RESTRICT,
+    entered_member_number VARCHAR(20) NOT NULL, -- Lo que se tipeó en la terminal, exista o no
+    member_number VARCHAR(20) REFERENCES members(member_number) ON DELETE RESTRICT, -- Vacío si el número no existe
     subscription_number INTEGER REFERENCES subscriptions(subscription_number) ON DELETE RESTRICT,
     access_time TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) NOT NULL CHECK (status IN ('GRANTED', 'DENIED')),
     denied_reason VARCHAR(500),
-    CONSTRAINT chk_access_logic CHECK ((status = 'GRANTED' AND subscription_number IS NOT NULL) OR (status = 'DENIED' AND denied_reason IS NOT NULL))
+    CONSTRAINT chk_access_logic CHECK ((status = 'GRANTED' AND subscription_number IS NOT NULL) OR (status = 'DENIED' AND denied_reason IS NOT NULL)),
+    CONSTRAINT chk_access_entered CHECK (TRIM(entered_member_number) <> '')
     );
 
 CREATE INDEX IF NOT EXISTS ix_persons_email ON persons (LOWER(email)) WHERE email IS NOT NULL;

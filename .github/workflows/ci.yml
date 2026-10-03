@@ -23,7 +23,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U gym -d gym"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -35,6 +35,7 @@ jobs:
 
       # 2. Prueba que schema.sql ejecute sin errores en PostgreSQL real
       - name: Validar ejecución de schema.sql
+        env:
+          PGPASSWORD: gym_password
         run: |
-          PGPASSWORD=gym_password psql -h localhost -U gym -d gym -f gym-backend/src/main/resources/schema.sql
-
+          psql -v ON_ERROR_STOP=1 -h localhost -U gym -d gym -f gym-backend/src/main/resources/schema.sql

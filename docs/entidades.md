@@ -59,7 +59,6 @@ classDiagram
         <<enumeration>>
         ACTIVE
         CANCELLED
-        EXPIRED
     }
     class Role {
         <<enumeration>>
@@ -70,7 +69,6 @@ classDiagram
     class MemberStatus {
         <<enumeration>>
         ACTIVE
-        OVERDUE
         INACTIVE
     }
 
@@ -108,7 +106,7 @@ erDiagram
     members {
         VARCHAR(20) member_number PK "Clave natural de negocio"
         VARCHAR(15) dni FK "UK, Referencia a persons(dni)"
-        VARCHAR(20) status "Enum MemberStatus: ACTIVE, OVERDUE, INACTIVE"
+        VARCHAR(20) status "Enum MemberStatus: ACTIVE, INACTIVE"
         TIMESTAMPTZ join_date "Fecha de afiliación"
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
@@ -141,7 +139,7 @@ erDiagram
         TIMESTAMPTZ start_date "Inicio del período (CHECK)"
         TIMESTAMPTZ end_date "Fin del período (CHECK)"
         VARCHAR(500) comments
-        VARCHAR(20) status "Enum SubscriptionStatus: ACTIVE, CANCELLED, EXPIRED"
+        VARCHAR(20) status "Enum SubscriptionStatus: ACTIVE, CANCELLED"
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
     }
@@ -239,7 +237,7 @@ Representa el rol de socio de una persona en el gimnasio.
 |---------|------|-------|-------|-------------|
 | `member_number` | VARCHAR(20) | No | Sí (PK) | Clave natural de negocio utilizada en terminales de acceso |
 | `dni` | VARCHAR(15) | No | Sí (UK/FK) | Clave foránea 1:1 a `persons.dni` (`ON DELETE RESTRICT`) |
-| `status` | VARCHAR(20) | No | — | Valor del Enum `MemberStatus` (`ACTIVE`, `OVERDUE`, `INACTIVE`) |
+| `status` | VARCHAR(20) | No | — | Valor del Enum `MemberStatus` (`ACTIVE`, `INACTIVE`) |
 | `join_date` | TIMESTAMPTZ | No | — | Fecha y hora de alta de la membresía |
 | `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |
 | `updated_at` | TIMESTAMPTZ | Sí | — | Asignado por la aplicación ante modificaciones |
@@ -295,7 +293,7 @@ Representa el período de suscripción de un socio vinculado al plan seleccionad
 
 **Nota de Condiciones Financieras:** `subscriptions.price` conserva el precio pactado como snapshot histórico del `plans.current_price` aplicado al crear la suscripción; futuros cambios de tarifa no modifican ese valor. `discount` conserva el descuento concedido. Las restricciones `chk_subscription_price` y `chk_subscription_discount` exigen que el precio sea no negativo y que el descuento no supere dicho precio (`0 <= discount <= price`). Si `price = 0.00` o `discount = price` (bonificación total del 100%), el saldo exigible es $0.00 y no se crean registros en `payment`.
 
-**Nota de Baja Lógica, Cancelación y Solapamiento (AC5):** la tabla implementa baja lógica mediante la columna `status` (`ACTIVE`, `CANCELLED`, `EXPIRED`). Cuando una suscripción es cancelada (`status = 'CANCELLED'`), el socio queda inmediatamente inhabilitado para ingresar al gimnasio en terminales de acceso. Los comprobantes vinculados en la tabla `payment` con estado `PAID` permanecen inmutables como `PAID` para auditoría y balance de caja, sin sufrir cancelaciones ni reintegros automáticos. Asimismo, el motor de base de datos prohíbe el solapamiento de períodos vigentes para un mismo socio mediante una restricción de exclusión `no_overlap_subscriptions` (`EXCLUDE USING gist`), evaluada únicamente sobre suscripciones no canceladas (`WHERE status != 'CANCELLED'`), permitiendo registrar nuevas suscripciones sin conflictos si un período anterior fue dado de baja.
+**Nota de Baja Lógica, Cancelación y Solapamiento (AC5):** la tabla implementa baja lógica mediante la columna `status` (`ACTIVE`, `CANCELLED`). Cuando una suscripción es cancelada (`status = 'CANCELLED'`), el socio queda inmediatamente inhabilitado para ingresar al gimnasio en terminales de acceso. El vencimiento temporal se determina dinámicamente a partir de `start_date` y `end_date`; no requiere una transición persistida de estado. Los comprobantes vinculados en la tabla `payment` con estado `PAID` permanecen inmutables como `PAID` para auditoría y balance de caja, sin sufrir cancelaciones ni reintegros automáticos. Asimismo, el motor de base de datos prohíbe el solapamiento de períodos vigentes para un mismo socio mediante una restricción de exclusión `no_overlap_subscriptions` (`EXCLUDE USING gist`), evaluada únicamente sobre suscripciones no canceladas.
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
@@ -307,7 +305,7 @@ Representa el período de suscripción de un socio vinculado al plan seleccionad
 | `start_date` | TIMESTAMPTZ | No | — | Inicio del período (incluido). Restricción CHECK: anterior a `end_date` |
 | `end_date` | TIMESTAMPTZ | No | — | Fin del período (excluido). Restricción CHECK: posterior a `start_date` |
 | `comments` | VARCHAR(500) | Sí | — | |
-| `status` | VARCHAR(20) | No | — | Valor del Enum `SubscriptionStatus` (Por defecto `ACTIVE`, restricción CHECK) |
+| `status` | VARCHAR(20) | No | — | Valor del Enum `SubscriptionStatus` (por defecto `ACTIVE`; permite `ACTIVE`, `CANCELLED`) |
 | `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |
 | `updated_at` | TIMESTAMPTZ | Sí | — | Sin actualización automática en la base. La aplicación deberá asignarlo al modificar el registro |
 ---
@@ -358,16 +356,15 @@ Para garantizar la integridad de los datos a nivel conceptual, los siguientes ca
 - `STAFF`: Personal operativo (instructores, recepcionistas, cajeros).
 
 ### `MemberStatus` (Tabla `members`)
-- `ACTIVE`: Socio con cuota y membresía al día; habilitado para acceder al gimnasio.
-- `OVERDUE`: Socio con deuda exigible registrada. Este estado no se asigna automáticamente por el vencimiento de una suscripción.
-- `INACTIVE`: Socio dado de baja administrativa definitiva o suspendido.
+- `ACTIVE`: Socio habilitado administrativamente. La deuda y la vigencia de sus suscripciones se evalúan dinámicamente al validar el acceso (RF-16); no se almacena un estado de mora.
+- `INACTIVE`: Socio dado de baja administrativa o suspendido.
+
 ### `Plan` como catálogo de datos, no como enum
 La categoría fija `Modality` (`FREE`, `THREE`, `TWO`) fue reemplazada por la entidad relacional `plans`, identificada por `plan_code`. Los registros de Plan contienen `name`, `weekly_limit`, `current_price` y `active`. Los ejemplos de planes no constituyen un conjunto enumerado cerrado. Nótese que `'FREE'` denota "Pase Libre" (sin límite semanal de accesos, `weekly_limit IS NULL`), no gratuidad económica; la gratuidad se modela formalmente con `current_price = 0.00`.
 
 ### `SubscriptionStatus` (Tabla `subscriptions`)
-- `ACTIVE`: Suscripción activa y vigente en el sistema.
-- `CANCELLED`: Suscripción cancelada / dada de baja lógica. Deniega inmediatamente el acceso en la terminal de acceso, preserva los pagos `PAID` inmutables en `payment` (sin reintegros automáticos) y libera el rango temporal para nuevas suscripciones.
-- `EXPIRED`: Suscripción cuyo período de vigencia ha finalizado.
+- `ACTIVE`: Suscripción no cancelada; su vigencia se determina dinámicamente comparando el momento actual con `start_date` y `end_date`.
+- `CANCELLED`: Suscripción dada de baja lógica. Deniega inmediatamente el acceso en la terminal y preserva los pagos `PAID` inmutables en `payment` (sin reintegros automáticos), liberando el rango temporal para nuevas suscripciones.
 
 ### `Currency` (Tabla `payment`)
 - `ARS`: Peso argentino.

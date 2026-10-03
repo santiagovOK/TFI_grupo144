@@ -123,9 +123,9 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 | Enum | Valores |
 |------|---------|
 | `Role` | `ADMIN`, `STAFF` |
-| `MemberStatus` | `ACTIVE`, `OVERDUE`, `INACTIVE` |
+| `MemberStatus` | `ACTIVE`, `INACTIVE` |
 | `Currency` | `ARS`, `USD` |
-| `SubscriptionStatus` | `ACTIVE`, `CANCELLED`, `EXPIRED` |
+| `SubscriptionStatus` | `ACTIVE`, `CANCELLED` |
 | `AccessStatus` | `GRANTED`, `DENIED` |
 | `PaymentStatus` | `PENDING`, `PAID`, `FAILED`, `CANCELLED` |
 

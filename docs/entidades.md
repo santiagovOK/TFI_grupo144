@@ -151,7 +151,6 @@ erDiagram
         VARCHAR(50) payment_method "Método de cobro"
         VARCHAR(100) gateway_payment_id UK "Id de pasarela (MP)"
         VARCHAR(500) comments
-        DECIMAL(19,2) discount "Descuento del pago (CHECK <= amount)"
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
     }
@@ -339,7 +338,6 @@ Registra un pago asociado a una suscripción.
 | `payment_method` | VARCHAR(50) | Sí | — | Método de pago (ej. tarjeta, mercadopago) |
 | `gateway_payment_id` | VARCHAR(100) | Sí | Sí (UK) | Id devuelto por la pasarela de pagos |
 | `comments` | VARCHAR(500) | Sí | — | |
-| `discount` | DECIMAL(19,2) | Sí | — | Descuento aplicado en el pago. Restricción CHECK: `discount IS NULL OR (discount >= 0 AND discount <= amount)` |
 | `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |
 | `updated_at` | TIMESTAMPTZ | Sí | — | Sin actualización automática en la base. La aplicación deberá asignarlo al modificar el registro |
 

@@ -81,11 +81,9 @@ CREATE TABLE IF NOT EXISTS payment (
     payment_method VARCHAR(50),
     gateway_payment_id VARCHAR(100) UNIQUE,
     comments VARCHAR(500),
-    discount DECIMAL(19,2),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ,
-    CONSTRAINT chk_payment_amount CHECK (amount > 0),
-    CONSTRAINT chk_payment_discount CHECK (discount IS NULL OR (discount >= 0 AND discount <= amount))
+    CONSTRAINT chk_payment_amount CHECK (amount > 0)
     );
 
 CREATE TABLE IF NOT EXISTS access (

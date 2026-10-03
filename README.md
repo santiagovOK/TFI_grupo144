@@ -1,6 +1,6 @@
 # TUPAD - Trabajo Final Integrador - Proyecto: Gym Manager
 
-Sistema de gestión integral de gimnasio: centraliza la administración de socios y personal, inscripciones, pagos y el control de accesos en la entrada.
+Sistema de gestión integral de gimnasio: centraliza la administración de socios y personal, suscripciones, pagos y el control de accesos en la entrada.
 
 - **Estado:** Análisis y diseño. Todavía no hay código: el repositorio tiene el esquema de la base de datos, los diagramas y la especificación de módulos.
 
@@ -18,7 +18,7 @@ Sistema de gestión integral de gimnasio: centraliza la administración de socio
 
 ## Descripción del Proyecto
 
-Los gimnasios gestionan sus operaciones de forma manual o con herramientas no integrales: planillas para usuarios, registros en papel para accesos, libros contables para pagos, sin un sistema centralizado. Esto genera falta de control sobre quién accede y cuándo, dificultad para gestionar inscripciones, pagos manuales sin auditoría e imposibilidad de tomar decisiones basadas en datos de uso.
+Los gimnasios gestionan sus operaciones de forma manual o con herramientas no integrales: planillas para usuarios, registros en papel para accesos, libros contables para pagos, sin un sistema centralizado. Esto genera falta de control sobre quién accede y cuándo, dificultad para gestionar suscripciones, pagos manuales sin auditoría e imposibilidad de tomar decisiones basadas en datos de uso.
 
 **Gym Manager** es un proyecto de **inventiva propia** que consiste en una plataforma web full-stack para centralizar la gestión de un gimnasio: incluye un panel de administración para el personal y una terminal de acceso en la puerta principal para validar entradas por número de socio.
 
@@ -29,8 +29,8 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 ### Objetivos específicos
 
 - Centralizar la gestión de socios y personal (registro, edición, activación/desactivación de empleados y membresías de socios).
-- Gestionar inscripciones vinculadas a planes configurables, cada uno con su precio y, si corresponde, un límite de días por semana.
-- Registrar y controlar pagos asociados a cada inscripción.
+- Gestionar suscripciones vinculadas a planes configurables, cada uno con su precio y, si corresponde, un límite de días por semana.
+- Registrar y controlar pagos asociados a cada suscripción.
 - Validar accesos en la puerta principal mediante número de socio (preservando el DNI como dato administrativo por privacidad) con reglas de negocio.
 - Diseñar una arquitectura escalable que permita incorporar funcionalidades futuras sin reestructurar sus módulos estructurales.
 
@@ -42,8 +42,8 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 
 **1. Gestión Administrativa (Panel Web):**
 - Gestión integral de actores (Socio, Staff, Admin) como roles de una misma persona y con estados de activación.
-- Administración de inscripciones vinculadas a registros dinámicos de Plan mediante `plan_code`.
-- Registro manual y seguimiento de pagos asociados a cada inscripción.
+- Administración de suscripciones vinculadas a registros dinámicos de Plan mediante `plan_code`.
+- Registro manual y seguimiento de pagos asociados a cada suscripción.
 
 **2. Control de Accesos (Terminal Frontend):**
 - Validación de ingreso mediante número de socio (preservando el DNI como dato administrativo por privacidad) en tiempo real.
@@ -217,8 +217,8 @@ dropdb gym_prueba                # borra la base de prueba
 - [ ] Configurar React Router v6 para navegación entre páginas.
 - [ ] Crear contexto de autenticación (`AuthContext`).
 - [ ] Implementar Login page con form y validación.
-- [ ] Dashboard con resumen de socios, personal, inscripciones, pagos.
-- [ ] Páginas CRUD: Socios, Personal, Inscripciones, Pagos, Planes.
+- [ ] Dashboard con resumen de socios, personal, suscripciones, pagos.
+- [ ] Páginas CRUD: Socios, Personal, Suscripciones, Pagos, Planes.
 - [ ] Consumo de API del Spring Boot vía Axios.
 - [ ] Manejo de errores y loading states.
 

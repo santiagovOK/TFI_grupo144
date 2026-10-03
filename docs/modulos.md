@@ -173,14 +173,14 @@ Esta matriz vincula de forma directa los Requerimientos Funcionales (RF) detalla
 | **RF-06** | Baja/Alta lógica de socios | `POST /api/members/{member_number}/status` | Actualiza estado (`ACTIVE` / `INACTIVE`) sin borrar historial inmutable. |
 | **RF-07** | Listado histórico de suscripciones | `GET /api/subscriptions` | Soporta filtros de vigencia. |
 | **RF-08** | Consulta de detalle de suscripción | `GET /api/subscriptions/{id}` | - |
-| **RF-09** | Alta de planes / membresías | `POST /api/subscriptions` | Prohibido solapar fechas de vigencia para un mismo usuario. El backend calcula `end_date` sumando un mes a `start_date`. El precio base se toma obligatoriamente de `plans.current_price` y se congela junto con el descuento aplicado. |
+| **RF-09** | Alta de suscripción | `POST /api/subscriptions` | Prohibido solapar fechas de vigencia para un mismo socio. El backend calcula `end_date` sumando un mes a `start_date`. El precio base se toma obligatoriamente de `plans.current_price` y se congela junto con el descuento aplicado. |
 | **RF-10** | Modificación de comentarios de suscripción | `PUT /api/subscriptions/{id}` | Solo permite modificar `comments`; ningún otro campo es modificable. |
 | **RF-11** | Cancelación lógica de suscripción | `DELETE /api/subscriptions/{id}` | Baja lógica (`status = 'CANCELLED'`) que deniega acceso inmediato, preserva inmutables los pagos `PAID` (sin reintegro automático) y libera el rango temporal de solapamiento. |
 | **RF-12** | Auditoría y lista general de pagos | `GET /api/payments` | Filtra por cajero y rango de fechas para el cierre de caja. |
 | **RF-13** | Consulta de comprobante específico | `GET /api/payments/{id}` | - |
 | **RF-14** | Registro de abonos y comprobantes | `POST /api/payments` | No admite transacciones huérfanas sin referenciar a `subscription_number`. Valida `amount > 0` y rechaza con `409` el monto que supere el saldo pendiente. Guarda el cajero logueado. |
 | **RF-15** | Conciliación transaccional (Webhooks) | `PUT /api/payments/{id}` | Registros `PAID` son financieramente inmutables (se marcan `CANCELLED` ante error). |
-| **RF-16** | Validación de ingreso en terminal | `POST /api/access/validate` | Rechazo automático por inactividad, plan vencido, tope semanal alcanzado o cuota impaga ($\sum \text{amount}_{\text{PAID}} < \text{price} - \text{discount}$). |
+| **RF-16** | Validación de ingreso en terminal | `POST /api/access/validate` | Rechazo automático por inactividad, suscripción vencida, tope semanal alcanzado o cuota impaga ($\sum \text{amount}_{\text{PAID}} < \text{price} - \text{discount}$). |
 | **RF-17** | Historial de auditoría de ingresos | `GET /api/access` | Estrictamente lectura. Operaciones CRUD (`PUT`/`DELETE`) inhabilitadas. |
 | **RF-18** | Visualización métricas financieras | *Frontend / Dashboard* | Consolida cálculos cruzados de Accesos y Pagos. |
 | **RF-19** | Interfaces de Gestión Administrativa | *Frontend / Panel ABM* | Consumo de toda la API protegido vía Bearer Token JWT. |

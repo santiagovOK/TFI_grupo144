@@ -104,7 +104,7 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 | `Member` | `members` | Socio del gimnasio (identificado por `member_number`) |
 | `Employee` | `employees` | Personal operativo o administrativo con credenciales de login (`work_email`) |
 | `Subscription` | `subscriptions` | Suscripción con referencia `plan_code`, vigencia y snapshot histórico de precio |
-| `Access` | `access` | Registro de cada intento de ingreso validado |
+| `Access` | `access_logs` | Registro de cada intento de ingreso validado |
 | `Payment` | `payment` | Pago asociado a una suscripción |
 | `Plan` | `plans` | Catálogo dinámico identificado por `plan_code`, con límite semanal, precio actual y estado |
 

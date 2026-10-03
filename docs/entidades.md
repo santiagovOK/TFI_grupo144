@@ -234,7 +234,7 @@ Representa el rol de socio de una persona en el gimnasio.
 
 **Nota de Privacidad y Negocio:** El socio opera en terminales y mostrador mediante su `member_number`, protegiendo el `dni` civil. Esta tabla no posee contraseñas ni roles administrativos, desacoplando completamente la membresía deportiva de la seguridad del sistema.
 
-**Nota de Preservación del Socio ante Vencimiento:** El vencimiento de una suscripción no genera ninguna mutación automática ni eliminación sobre el registro de la entidad `Member`. El socio conserva inalterado su estado administrativo preexistente (pudiendo continuar como `ACTIVE` o haber quedado en `OVERDUE` por gestiones previas). La inhabilitación de acceso en molinete opera de manera dinámica en el motor de validación (RF-16) al constatar la ausencia de una suscripción vigente, preservando intacto el historial de auditoría del socio.
+**Nota de Preservación del Socio ante Vencimiento:** El vencimiento de una suscripción no genera ninguna mutación automática ni eliminación sobre el registro de la entidad `Member` ni modifica su `status`. La vigencia de la suscripción y la deuda exigible se evalúan dinámicamente al validar el acceso (RF-16), según la suscripción y sus pagos, preservando intacto el historial de auditoría del socio.
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `member_number` | VARCHAR(20) | No | Sí (PK) | Clave natural de negocio utilizada en terminales de acceso |
@@ -289,7 +289,7 @@ Representa el catálogo de modalidades de acceso y aranceles vigentes del gimnas
 
 Representa el período de suscripción de un socio vinculado al plan seleccionado (`plan_code`) y a sus fechas de vigencia.
 
-**Nota de Vigencia:** cada suscripción es un período cerrado: siempre tiene fecha de inicio y de fin, y cada renovación genera una suscripción nueva. Una suscripción está vigente operativa y financieramente cuando `start_date <= momento < end_date` **y su `status = 'ACTIVE'`**: el inicio se incluye y el fin no. Así, una renovación puede empezar en el mismo instante en que termina la anterior sin que se superpongan. La restricción `chk_subscription_dates` exige que el fin sea posterior al inicio.
+**Nota de Vigencia:** cada suscripción es un período definido: siempre tiene fecha de inicio y de fin, y cada renovación genera una suscripción nueva. Para una suscripción mensual, el período va desde el día y la hora exactos del alta hasta el mismo día y hora del mes siguiente, con fin exclusivo (`[)`). Por ejemplo, un alta el 5/10 vence al comenzar el 5/11: el último día incluido es el 4/11. Una suscripción está vigente operativa y financieramente cuando `start_date <= momento < end_date` **y su `status = 'ACTIVE'`**: el inicio se incluye y el fin no. Así, una renovación puede empezar en el mismo instante en que termina la anterior sin que se superpongan. La restricción `chk_subscription_dates` exige que el fin sea posterior al inicio.
 
 **Nota de Cupo Semanal:** la tabla no guarda un contador de accesos. El límite se define en el plan asociado mediante `plans.weekly_limit`; los accesos usados se cuentan en la tabla `access` (ver Fundamentos de Diseño Relacional, punto 7). La restricción CHECK requiere un valor no negativo cuando `weekly_limit` está informado.
 
@@ -359,14 +359,14 @@ Para garantizar la integridad de los datos a nivel conceptual, los siguientes ca
 
 ### `MemberStatus` (Tabla `members`)
 - `ACTIVE`: Socio con cuota y membresía al día; habilitado para acceder al gimnasio.
-- `OVERDUE`: Socio con cuota pendiente o período vencido; acceso temporalmente denegado en molinete.
+- `OVERDUE`: Socio con deuda exigible registrada. Este estado no se asigna automáticamente por el vencimiento de una suscripción.
 - `INACTIVE`: Socio dado de baja administrativa definitiva o suspendido.
 ### `Plan` como catálogo de datos, no como enum
 La categoría fija `Modality` (`FREE`, `THREE`, `TWO`) fue reemplazada por la entidad relacional `plans`, identificada por `plan_code`. Los registros de Plan contienen `name`, `weekly_limit`, `current_price` y `active`. Los ejemplos de planes no constituyen un conjunto enumerado cerrado. Nótese que `'FREE'` denota "Pase Libre" (sin límite semanal de accesos, `weekly_limit IS NULL`), no gratuidad económica; la gratuidad se modela formalmente con `current_price = 0.00`.
 
 ### `SubscriptionStatus` (Tabla `subscriptions`)
 - `ACTIVE`: Suscripción activa y vigente en el sistema.
-- `CANCELLED`: Suscripción cancelada / dada de baja lógica. Deniega inmediatamente el acceso en molinete, preserva los pagos `PAID` inmutables en `payment` (sin reintegros automáticos) y libera el rango temporal para nuevas suscripciones.
+- `CANCELLED`: Suscripción cancelada / dada de baja lógica. Deniega inmediatamente el acceso en la terminal de acceso, preserva los pagos `PAID` inmutables en `payment` (sin reintegros automáticos) y libera el rango temporal para nuevas suscripciones.
 - `EXPIRED`: Suscripción cuyo período de vigencia ha finalizado.
 
 ### `Currency` (Tabla `payment`)

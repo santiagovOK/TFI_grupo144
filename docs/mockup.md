@@ -9,7 +9,7 @@
 ## 1. Criterios Generales de Diseño
 
 1. **Privacy by Design en Terminal de Acceso:**
-   - La terminal de acceso en puerta/molinete opera exclusivamente con el **Número de Socio** (`member_number`).
+   - La terminal de acceso ubicada en la puerta opera exclusivamente con el **Número de Socio** (`member_number`).
    - El DNI no se solicita ni se muestra en la pantalla de la terminal pública, reservándose exclusivamente para gestiones administrativas internas en recepción.
 2. **Validación Visual de Contacto Obligatorio:**
    - En el alta y edición de socios, la interfaz exige de forma obligatoria al menos un canal de contacto válido (email o teléfono), con validación visual en formulario.
@@ -46,9 +46,9 @@ Puerta de entrada al panel web administrativo (`gym-frontend-admin`), securizada
 ![Inicio de Sesión - Login](./mockups/img/pantalla_0_login.png)
 ---
 
-### Pantalla 1: Terminal de Acceso (Autogestión / Molinete)
+### Pantalla 1: Terminal de Acceso (Autogestión)
 
-Diseñada para pantalla táctil en tótem o tablet junto al molinete de entrada (resolución base 1024 × 768 px).
+Diseñada para pantalla táctil en tótem o tablet junto a la terminal de acceso de entrada (resolución base 1024 × 768 px).
 
 #### Estado de Reposo / Espera de Lectura
 - **Barra Superior:** Identificación del gimnasio e indicador de estado de conexión en vivo ("Lista para lectura").
@@ -130,7 +130,7 @@ Diseñada para la supervisión operativa y gerencial (acceso completo para `ADMI
 - **Gráficos Operativos:**
   - Distribución horaria de accesos (gráfico de barras identificando horas pico).
   - Distribución de socios por Plan según los registros asociados a `subscriptions.plan_code` (la ilustración muestra ejemplos iniciales).
-- **Feed de Accesos en Tiempo Real:** Lista con las últimas validaciones del molinete indicando hora, socio, Plan asociado y resultado.
+- **Feed de Accesos en Tiempo Real:** Lista con las últimas validaciones de la terminal de acceso indicando hora, socio, Plan asociado y resultado.
 
 ![Dashboard Administrativo](./mockups/img/pantalla_4_dashboard.png)
 - **Modal de Comunicaciones y Avisos Masivos (Exclusivo ADMIN):**

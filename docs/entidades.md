@@ -45,21 +45,20 @@ classDiagram
         - Boolean active
     }
 
-    class Enrollment {
+    class Subscription {
         - Integer subscriptionNumber
         - BigDecimal price
         - BigDecimal discount
         - LocalDateTime startDate
         - LocalDateTime endDate
         - String comments
-        - EnrollmentStatus status
+        - SubscriptionStatus status
     }
 
-    class EnrollmentStatus {
+    class SubscriptionStatus {
         <<enumeration>>
         ACTIVE
         CANCELLED
-        EXPIRED
     }
     class Role {
         <<enumeration>>
@@ -70,7 +69,6 @@ classDiagram
     class MemberStatus {
         <<enumeration>>
         ACTIVE
-        OVERDUE
         INACTIVE
     }
 
@@ -79,14 +77,14 @@ classDiagram
     Person "1" *-- "0..1" Employee : empleado
     Employee ..> Role : utiliza
     Member ..> MemberStatus : utiliza
-    Member "1" --> "0..*" Enrollment : tiene
-    Plan "1" --> "0..*" Enrollment : rige
+    Member "1" --> "0..*" Subscription : tiene
+    Plan "1" --> "0..*" Subscription : rige
 ```
 
 ### Justificación del Diseño Conceptual de Actores
 * **Socio y empleado como roles de una persona:** `Person` guarda los datos de cualquier persona y `Member` y `Employee` son roles que puede tener o no. Una persona puede tener uno, el otro o los dos, por ejemplo la profe que también entrena en el gimnasio, y puede sumar o dejar un rol con el tiempo sin dejar de ser la misma persona. Por eso no se usa herencia: la herencia es fija y un cambio de rol obligaría a cambiar de clase. Se dibuja como composición porque el rol se crea para una persona y no existe sin ella.
 * **Seguridad y Privacidad:** Las credenciales de autenticación quedan estrictamente contenidas en `Employee`. `Member` solo expone atributos de membresía deportiva (`memberNumber`, `joinDate`, `status`).
-* **Relaciones como líneas, no como atributos:** `Enrollment` no lleva `memberNumber` ni `planCode` porque a qué socio y a qué plan pertenece ya lo muestran las líneas `tiene` y `rige`. Las claves foráneas y las fechas de registro (`created_at`, `updated_at`) son detalles de las tablas y aparecen en el DER.
+* **Relaciones como líneas, no como atributos:** `Subscription` no lleva `memberNumber` ni `planCode` porque a qué socio y a qué plan pertenece ya lo muestran las líneas `tiene` y `rige`. Las claves foráneas y las fechas de registro (`created_at`, `updated_at`) son detalles de las tablas y aparecen en el DER.
 * **Tipado:** Los atributos siguen las convenciones y tipos estándar de Java (`String`, `LocalDate`, `LocalDateTime`, tipos de enums), prescindiendo de tipos físicos de almacenamiento como `VARCHAR` o `TIMESTAMPTZ`.
 
 ---
@@ -108,7 +106,7 @@ erDiagram
     members {
         VARCHAR(20) member_number PK "Clave natural de negocio"
         VARCHAR(15) dni FK "UK, Referencia a persons(dni)"
-        VARCHAR(20) status "Enum MemberStatus: ACTIVE, OVERDUE, INACTIVE"
+        VARCHAR(20) status "Enum MemberStatus: ACTIVE, INACTIVE"
         TIMESTAMPTZ join_date "Fecha de afiliación"
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
@@ -132,7 +130,7 @@ erDiagram
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
     }
-    enrollment {
+    subscriptions {
         INTEGER subscription_number PK "Número correlativo de suscripción (SERIAL)"
         VARCHAR(20) member_number FK "Referencia a members"
         VARCHAR(20) plan_code FK "Referencia a plans(plan_code)"
@@ -141,13 +139,13 @@ erDiagram
         TIMESTAMPTZ start_date "Inicio del período (CHECK)"
         TIMESTAMPTZ end_date "Fin del período (CHECK)"
         VARCHAR(500) comments
-        VARCHAR(20) status "Enum EnrollmentStatus: ACTIVE, CANCELLED, EXPIRED"
+        VARCHAR(20) status "Enum SubscriptionStatus: ACTIVE, CANCELLED"
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
     }
     payment {
         INTEGER receipt_number PK "Número de recibo correlativo de caja (SERIAL)"
-        INTEGER subscription_number FK "Referencia a enrollment(subscription_number)"
+        INTEGER subscription_number FK "Referencia a subscriptions(subscription_number)"
         DECIMAL(19,2) amount "Importe cobrado (CHECK > 0)"
         VARCHAR(10) currency "Enum Currency: ARS, USD"
         VARCHAR(20) status "Enum PaymentStatus: PENDING, PAID, FAILED, CANCELLED"
@@ -161,18 +159,18 @@ erDiagram
     access {
         INTEGER access_id PK "Secuencial de auditoría temporal (SERIAL)"
         VARCHAR(20) member_number FK "Referencia obligatoria a members"
-        INTEGER subscription_number FK "Referencia a enrollment(subscription_number)"
+        INTEGER subscription_number FK "Referencia a subscriptions(subscription_number)"
         TIMESTAMPTZ access_date "Momento exacto del intento"
         VARCHAR(20) status "Enum AccessStatus: GRANTED, DENIED"
         VARCHAR(500) denied_reason "Obligatorio si es denegado (CHECK)"
     }
     persons ||--|o members : "rol de socio (0..1)"
     persons ||--|o employees : "rol de empleado (0..1)"
-    plans ||..o{ enrollment : "rige (1:N)"
-    members ||..o{ enrollment : "tiene historial (1:N)"
+    plans ||..o{ subscriptions : "rige (1:N)"
+    members ||..o{ subscriptions : "tiene historial (1:N)"
     members ||..o{ access : "registra intentos (1:N)"
-    enrollment ||..o{ payment : "tiene pagos (1:N)"
-    enrollment |o..o{ access : "asocia accesos concedidos (1:N)"
+    subscriptions ||..o{ payment : "tiene pagos (1:N)"
+    subscriptions |o..o{ access : "asocia accesos concedidos (1:N)"
 ```
 
 **Notación del diagrama:** la línea punteada representa una relación no identificadora (el hijo tiene su propia clave primaria y solo referencia al padre).
@@ -189,7 +187,7 @@ Cada clave primaria se eligió según cómo identifica el gimnasio a esa cosa en
 | `members` | `member_number VARCHAR(20)` | Natural del negocio | Es el número que el socio da en recepción y escribe en la terminal. El DNI queda como clave foránea única hacia `persons`. |
 | `employees` | `employee_code VARCHAR(20)` | Natural del negocio | Es el código o legajo interno del empleado. El DNI queda como clave foránea única hacia `persons` y el login se hace con `work_email`. |
 | `plans` | `plan_code VARCHAR(20)` | Natural del negocio | Es el código corto de cada plan (por ejemplo `THREE_DAYS`); los valores citados son ejemplos, no una lista cerrada. |
-| `enrollment` | `subscription_number SERIAL` | Correlativo (sustituta) | Un socio tiene muchas suscripciones a lo largo del tiempo. Socio + fecha de inicio no alcanza como clave, porque una suscripción cancelada y la que la reemplaza pueden empezar el mismo día. El número permite hablar de "la suscripción 1520" en caja. |
+| `subscriptions` | `subscription_number SERIAL` | Correlativo (sustituta) | Un socio tiene muchas suscripciones a lo largo del tiempo. Socio + fecha de inicio no alcanza como clave, porque una suscripción cancelada y la que la reemplaza pueden empezar el mismo día. El número permite hablar de "la suscripción 1520" en caja. |
 | `payment` | `receipt_number SERIAL` | Correlativo (sustituta) | Funciona como el número de recibo del talonario de caja. |
 | `access` | `access_id SERIAL` | Correlativo (sustituta) | Cada intento en la terminal es un evento. El socio y la hora no alcanzan como clave, porque dos intentos pueden registrarse con la misma hora. |
 
@@ -201,11 +199,11 @@ El número correlativo lo genera la base y puede tener saltos (por ejemplo, si u
 |----------|------|-------------|
 | `persons` ↔ `members` | `1:1` opcional | Una persona puede tener el rol de socio del gimnasio. |
 | `persons` ↔ `employees` | `1:1` opcional | Una persona puede tener el rol de empleado (cajero/administrador), incluso si también es socia. |
-| `plans` ↔ `enrollment` | `1:N` (Uno a Muchos), no identificadora | Un plan o modalidad de arancel rige múltiples contrataciones de socios a lo largo del tiempo. |
-| `members` ↔ `enrollment` | `1:N` (Uno a Muchos), no identificadora | Un socio puede tener múltiples inscripciones a lo largo del tiempo (historial por período). |
+| `plans` ↔ `subscriptions` | `1:N` (Uno a Muchos), no identificadora | Un plan o modalidad de arancel rige múltiples contrataciones de socios a lo largo del tiempo. |
+| `members` ↔ `subscriptions` | `1:N` (Uno a Muchos), no identificadora | Un socio puede tener múltiples suscripciones a lo largo del tiempo (historial por período). |
 | `members` ↔ `access` | `1:N` (Uno a Muchos), no identificadora | Un socio puede registrar múltiples intentos de acceso (historial de accesos). |
-| `enrollment` ↔ `payment` | `1:N` (Uno a Muchos), no identificadora | Una inscripción puede registrar múltiples pagos o intentos de cobro vinculados por `subscription_number`. |
-| `enrollment` ↔ `access` | `1:N` (Uno a Muchos), no identificadora | Una inscripción asocia los accesos concedidos durante su vigencia a través de `subscription_number` (opcional; nulo si el acceso fue denegado sin inscripción activa). |
+| `subscriptions` ↔ `payment` | `1:N` (Uno a Muchos), no identificadora | Una suscripción puede registrar múltiples pagos o intentos de cobro vinculados por `subscription_number`. |
+| `subscriptions` ↔ `access` | `1:N` (Uno a Muchos), no identificadora | Una suscripción asocia los accesos concedidos durante su vigencia a través de `subscription_number` (opcional; nulo si el acceso fue denegado sin suscripción activa). |
 
 ---
 
@@ -234,11 +232,12 @@ Representa el rol de socio de una persona en el gimnasio.
 
 **Nota de Privacidad y Negocio:** El socio opera en terminales y mostrador mediante su `member_number`, protegiendo el `dni` civil. Esta tabla no posee contraseñas ni roles administrativos, desacoplando completamente la membresía deportiva de la seguridad del sistema.
 
+**Nota de Preservación del Socio ante Vencimiento:** El vencimiento de una suscripción no genera ninguna mutación automática ni eliminación sobre el registro de la entidad `Member` ni modifica su `status`. La vigencia de la suscripción y la deuda exigible se evalúan dinámicamente al validar el acceso (RF-16), según la suscripción y sus pagos, preservando intacto el historial de auditoría del socio.
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `member_number` | VARCHAR(20) | No | Sí (PK) | Clave natural de negocio utilizada en terminales de acceso |
 | `dni` | VARCHAR(15) | No | Sí (UK/FK) | Clave foránea 1:1 a `persons.dni` (`ON DELETE RESTRICT`) |
-| `status` | VARCHAR(20) | No | — | Valor del Enum `MemberStatus` (`ACTIVE`, `OVERDUE`, `INACTIVE`) |
+| `status` | VARCHAR(20) | No | — | Valor del Enum `MemberStatus` (`ACTIVE`, `INACTIVE`) |
 | `join_date` | TIMESTAMPTZ | No | — | Fecha y hora de alta de la membresía |
 | `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |
 | `updated_at` | TIMESTAMPTZ | Sí | — | Asignado por la aplicación ante modificaciones |
@@ -267,11 +266,11 @@ Representa el rol de empleado de una persona, como personal operativo o administ
 
 Representa el catálogo de modalidades de acceso y aranceles vigentes del gimnasio (soporte de configuración de aranceles según Pantalla 5 de mockups).
 
-**Nota de Aranceles Dinámicos e Inmutabilidad Histórica:** Centraliza los precios de lista y cupos semanales. Cuando un socio contrata una inscripción (`enrollment`), esta toma el precio de lista (`current_price`) y lo congela en su campo `price`. Las futuras modificaciones de aranceles en `plans` aplican solo a nuevas contrataciones, preservando la inmutabilidad de los contratos vigentes y finalizados.
+**Nota de Aranceles Dinámicos e Inmutabilidad Histórica:** Centraliza los precios de lista y cupos semanales. Cuando un socio contrata una suscripción (`subscriptions`), esta toma el precio de lista (`current_price`) y lo congela en su campo `price`. Las futuras modificaciones de aranceles en `plans` aplican solo a nuevas contrataciones, preservando la inmutabilidad de los contratos vigentes y finalizados.
 
 **Nota de Modalidades ("Pase Libre" vs. Becados / Cortesías):**
 - **Pase Libre (`'FREE'`):** El término *"Free Pass"* o *"Pase Libre"* en la industria de gimnasios representa acceso sin límite semanal de concurrencia (`weekly_limit = NULL`), pero constituye un servicio comercial arancelado (habitualmente el plan con el abono más alto).
-- **Becas y Cortesías ($0):** Para otorgar membresías gratuitas o con descuento total (becas deportivas, convenios institucionales o pases de cortesía), no se crea un tipo especial ni se bypasséa la base de datos: se configura un registro de `Plan` con `current_price = 0.00` (garantizado por la restricción `current_price >= 0`, ej. `plan_code = 'SCHOLARSHIP'`, `name = "Pase Becado / Institucional"`). Esto genera una inscripción formal por $0.00 (`enrollment.price = 0.00`), pero **no genera ningún registro en la tabla `payment`** (la cual exige estrictamente `amount > 0` mediante `chk_payment_amount`). El saldo adeudado del socio resulta $0.00, quedando habilitado para el acceso regular sin comprobantes financieros ficticios en caja.
+- **Becas y Cortesías ($0) y Bonificaciones al 100% (AC4):** Para otorgar membresías gratuitas o con descuento total (becas deportivas, convenios institucionales o pases de cortesía), no se crea un tipo especial ni se bypasséa la base de datos: puede configurarse un registro de `Plan` con `current_price = 0.00` (garantizado por la restricción `current_price >= 0`, ej. `plan_code = 'SCHOLARSHIP'`, `name = "Pase Becado / Institucional"`), o bien aplicarse una bonificación total sobre un plan arancelado mediante `discount = price` (permitido por `chk_subscription_discount`). En ambos casos, el saldo adeudado del socio resulta estrictamente $0.00 y la terminal de acceso concede el ingreso (`GRANTED`) comprobando que el monto a pagar es $0, **sin requerir ni registrar comprobantes en la tabla `payment`** (la cual exige estrictamente `amount > 0` mediante `chk_payment_amount`), evitando generar recibos ficticios en caja.
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
@@ -284,17 +283,17 @@ Representa el catálogo de modalidades de acceso y aranceles vigentes del gimnas
 | `updated_at` | TIMESTAMPTZ | Sí | — | Asignado por la aplicación ante modificaciones |
 ---
 
-## Tabla: `enrollment`
+## Tabla: `subscriptions`
 
-Representa el período de inscripción de un socio vinculado al plan seleccionado (`plan_code`) y a sus fechas de vigencia.
+Representa el período de suscripción de un socio vinculado al plan seleccionado (`plan_code`) y a sus fechas de vigencia.
 
-**Nota de Vigencia:** cada inscripción es un período cerrado: siempre tiene fecha de inicio y de fin, y cada renovación genera una inscripción nueva. Una inscripción está vigente cuando `start_date <= momento < end_date`: el inicio se incluye y el fin no. Así, una renovación puede empezar en el mismo instante en que termina la anterior sin que se superpongan. La restricción `chk_enrollment_dates` exige que el fin sea posterior al inicio.
+**Nota de Vigencia:** cada suscripción es un período definido: siempre tiene fecha de inicio y de fin, y cada renovación genera una suscripción nueva. Para una suscripción mensual, el período va desde el día y la hora exactos de inicio hasta el mismo día y hora del mes siguiente, con fin exclusivo (`[)`). Por ejemplo, un alta el 5/10 a las 18:00 vence exactamente el 5/11 a las 18:00 (el acceso es válido mientras `momento < 18:00`). Una suscripción está vigente operativa y financieramente cuando `start_date <= momento < end_date` **y su `status = 'ACTIVE'`**: el inicio se incluye y el fin no. Así, una renovación puede empezar en el mismo instante en que termina la anterior sin que se superpongan. La restricción `chk_subscription_dates` exige que el fin sea posterior al inicio.
 
 **Nota de Cupo Semanal:** la tabla no guarda un contador de accesos. El límite se define en el plan asociado mediante `plans.weekly_limit`; los accesos usados se cuentan en la tabla `access` (ver Fundamentos de Diseño Relacional, punto 7). La restricción CHECK requiere un valor no negativo cuando `weekly_limit` está informado.
 
-**Nota de Condiciones Financieras:** `enrollment.price` conserva el precio pactado como snapshot histórico del `plans.current_price` aplicado al crear la inscripción; futuros cambios de tarifa no modifican ese valor. `discount` conserva el descuento concedido. Las restricciones `chk_enrollment_price` y `chk_enrollment_discount` exigen que el precio sea no negativo y que el descuento no supere dicho precio.
+**Nota de Condiciones Financieras:** `subscriptions.price` conserva el precio pactado como snapshot histórico del `plans.current_price` aplicado al crear la suscripción; futuros cambios de tarifa no modifican ese valor. `discount` conserva el descuento concedido. Las restricciones `chk_subscription_price` y `chk_subscription_discount` exigen que el precio sea no negativo y que el descuento no supere dicho precio (`0 <= discount <= price`). Si `price = 0.00` o `discount = price` (bonificación total del 100%), el saldo exigible es $0.00 y no se crean registros en `payment`.
 
-**Nota de Baja Lógica y Solapamiento:** la tabla implementa baja lógica mediante la columna `status` (`ACTIVE`, `CANCELLED`, `EXPIRED`). Para evitar inconsistencias operativas sin delegar la integridad exclusivamente a la aplicación, el motor de base de datos prohíbe el solapamiento de períodos vigentes para un mismo socio mediante una restricción de exclusión (`no_overlap_enrollment` vía `EXCLUDE USING gist`). Dicha restricción se aplica únicamente sobre inscripciones no canceladas (`WHERE status != 'CANCELLED'`), permitiendo registrar nuevas inscripciones sin conflictos si un período anterior fue dado de baja.
+**Nota de Baja Lógica, Cancelación y Solapamiento (AC5):** la tabla implementa baja lógica mediante la columna `status` (`ACTIVE`, `CANCELLED`). Cuando una suscripción es cancelada (`status = 'CANCELLED'`), el socio queda inmediatamente inhabilitado para ingresar al gimnasio en terminales de acceso. El vencimiento temporal se determina dinámicamente a partir de `start_date` y `end_date`; no requiere una transición persistida de estado. Los comprobantes vinculados en la tabla `payment` con estado `PAID` permanecen inmutables como `PAID` para auditoría y balance de caja, sin sufrir cancelaciones ni reintegros automáticos. Asimismo, el motor de base de datos prohíbe el solapamiento de períodos vigentes para un mismo socio mediante una restricción de exclusión `no_overlap_subscriptions` (`EXCLUDE USING gist`), evaluada únicamente sobre suscripciones no canceladas.
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
@@ -306,10 +305,9 @@ Representa el período de inscripción de un socio vinculado al plan seleccionad
 | `start_date` | TIMESTAMPTZ | No | — | Inicio del período (incluido). Restricción CHECK: anterior a `end_date` |
 | `end_date` | TIMESTAMPTZ | No | — | Fin del período (excluido). Restricción CHECK: posterior a `start_date` |
 | `comments` | VARCHAR(500) | Sí | — | |
-| `status` | VARCHAR(20) | No | — | Valor del Enum `EnrollmentStatus` (Por defecto `ACTIVE`, restricción CHECK) |
+| `status` | VARCHAR(20) | No | — | Valor del Enum `SubscriptionStatus` (por defecto `ACTIVE`; permite `ACTIVE`, `CANCELLED`) |
 | `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |
 | `updated_at` | TIMESTAMPTZ | Sí | — | Sin actualización automática en la base. La aplicación deberá asignarlo al modificar el registro |
-
 ---
 
 ## Tabla: `access`
@@ -320,7 +318,7 @@ Registra cada intento de ingreso validado en la terminal de acceso.
 |---------|------|-------|-------|-------------|
 | `access_id` | SERIAL / INTEGER | No (generado) | Sí (PK) | Clave primaria secuencial de auditoría temporal |
 | `member_number` | VARCHAR(20) | No | — | FK a `members.member_number` (`ON DELETE RESTRICT`) |
-| `subscription_number` | INTEGER | Sí | — | FK a `enrollment.subscription_number` (`ON DELETE RESTRICT`). Obligatorio si el acceso es `GRANTED`, opcional si es `DENIED` (`chk_access_logic`) |
+| `subscription_number` | INTEGER | Sí | — | FK a `subscriptions.subscription_number` (`ON DELETE RESTRICT`). Obligatorio si el acceso es `GRANTED`, opcional si es `DENIED` (`chk_access_logic`) |
 | `access_date` | TIMESTAMPTZ | No | — | Momento exacto del intento. Por defecto `CURRENT_TIMESTAMP` |
 | `status` | VARCHAR(20) | No | — | Valor del Enum `AccessStatus` (Sin valor por defecto, restricción CHECK) |
 | `denied_reason` | VARCHAR(500) | Sí | — | Motivo del rechazo. Obligatorio si el acceso es `DENIED` (`chk_access_logic`) |
@@ -329,12 +327,14 @@ Registra cada intento de ingreso validado en la terminal de acceso.
 
 ## Tabla: `payment`
 
-Registra un pago asociado a una inscripción.
+Registra un pago asociado a una suscripción.
+
+**Nota de Inmutabilidad Financiera (AC5):** Los comprobantes con estado `PAID` son financieramente inmutables: la eventual cancelación de la suscripción asociada no transiciona los pagos `PAID` a `CANCELLED`, preservando el arqueo de caja y la auditoría contable. El estado `CANCELLED` en `payment` se reserva exclusivamente para la anulación de un comprobante ante un error operativo directo de carga en caja.
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `receipt_number` | SERIAL / INTEGER | No (generado) | Sí (PK) | Clave primaria. Número de recibo correlativo de caja |
-| `subscription_number` | INTEGER | No | — | FK a `enrollment.subscription_number` (`ON DELETE RESTRICT`) |
+| `subscription_number` | INTEGER | No | — | FK a `subscriptions.subscription_number` (`ON DELETE RESTRICT`) |
 | `amount` | DECIMAL(19,2) | No | — | Monto del pago. Restricción CHECK: `amount > 0` |
 | `currency` | VARCHAR(10) | No | — | Valor Enum `Currency` (Por defecto `ARS`, restricción CHECK) |
 | `status` | VARCHAR(20) | No | — | Valor del Enum `PaymentStatus` (Por defecto `PENDING`, restricción CHECK) |
@@ -356,16 +356,15 @@ Para garantizar la integridad de los datos a nivel conceptual, los siguientes ca
 - `STAFF`: Personal operativo (instructores, recepcionistas, cajeros).
 
 ### `MemberStatus` (Tabla `members`)
-- `ACTIVE`: Socio con cuota y membresía al día; habilitado para acceder al gimnasio.
-- `OVERDUE`: Socio con cuota pendiente o período vencido; acceso temporalmente denegado en molinete.
-- `INACTIVE`: Socio dado de baja administrativa definitiva o suspendido.
+- `ACTIVE`: Socio habilitado administrativamente. La deuda y la vigencia de sus suscripciones se evalúan dinámicamente al validar el acceso (RF-16); no se almacena un estado de mora.
+- `INACTIVE`: Socio dado de baja administrativa o suspendido.
+
 ### `Plan` como catálogo de datos, no como enum
 La categoría fija `Modality` (`FREE`, `THREE`, `TWO`) fue reemplazada por la entidad relacional `plans`, identificada por `plan_code`. Los registros de Plan contienen `name`, `weekly_limit`, `current_price` y `active`. Los ejemplos de planes no constituyen un conjunto enumerado cerrado. Nótese que `'FREE'` denota "Pase Libre" (sin límite semanal de accesos, `weekly_limit IS NULL`), no gratuidad económica; la gratuidad se modela formalmente con `current_price = 0.00`.
 
-### `EnrollmentStatus` (Tabla `enrollment`)
-- `ACTIVE`: Inscripción activa y vigente en el sistema.
-- `CANCELLED`: Inscripción cancelada / dada de baja lógica (libera el rango temporal para nuevas suscripciones y conserva pagos/accesos históricos).
-- `EXPIRED`: Inscripción cuyo período de vigencia ha finalizado.
+### `SubscriptionStatus` (Tabla `subscriptions`)
+- `ACTIVE`: Suscripción no cancelada; su vigencia se determina dinámicamente comparando el momento actual con `start_date` y `end_date`.
+- `CANCELLED`: Suscripción dada de baja lógica. Deniega inmediatamente el acceso en la terminal y preserva los pagos `PAID` inmutables en `payment` (sin reintegros automáticos), liberando el rango temporal para nuevas suscripciones.
 
 ### `Currency` (Tabla `payment`)
 - `ARS`: Peso argentino.
@@ -373,7 +372,7 @@ La categoría fija `Modality` (`FREE`, `THREE`, `TWO`) fue reemplazada por la en
 
 ### `PaymentStatus` (Tabla `payment`)
 - `PENDING`: Pago pendiente de confirmación.
-- `PAID`: Pago completado y acreditado.
+- `PAID`: Pago completado y acreditado. Financieramente inmutable ante cancelaciones de la suscripción asociada.
 - `FAILED`: Pago fallido o rechazado.
 - `CANCELLED`: Pago cancelado para auditoría.
 
@@ -383,16 +382,16 @@ La categoría fija `Modality` (`FREE`, `THREE`, `TWO`) fue reemplazada por la en
 
 ## Índices
 
-PostgreSQL crea automáticamente un índice por cada clave primaria y por cada restricción `UNIQUE` (`persons.dni`, `members.member_number`, `members.dni`, `employees.employee_code`, `employees.dni`, `enrollment.subscription_number`, `payment.receipt_number`, `payment.gateway_payment_id` y `access.access_id`), y otro para la restricción de exclusión `no_overlap_enrollment`: un índice GiST sobre el socio y el rango de fechas de `enrollment`, sin las inscripciones canceladas (ver Fundamentos de Diseño Relacional, punto 9). Pero no indexa las claves foráneas ni expresiones funcionales. Por eso el esquema define los siguientes índices B-Tree:
+PostgreSQL crea automáticamente un índice por cada clave primaria y por cada restricción `UNIQUE` (`persons.dni`, `members.member_number`, `members.dni`, `employees.employee_code`, `employees.dni`, `subscriptions.subscription_number`, `payment.receipt_number`, `payment.gateway_payment_id` y `access.access_id`), y otro para la restricción de exclusión `no_overlap_subscriptions`: un índice GiST sobre el socio y el rango de fechas de `subscriptions`, sin las suscripciones canceladas (ver Fundamentos de Diseño Relacional, punto 9). Pero no indexa las claves foráneas ni expresiones funcionales. Por eso el esquema define los siguientes índices B-Tree:
 
 | Índice | Tabla (columna) | Consultas que acelera |
 |---|---|---|
 | `ux_employees_work_email` | `employees` (`LOWER(work_email)`) | Garantiza la unicidad case-insensitive del correo laboral para autenticación (RF-01), evitando que variaciones de mayúsculas generen cuentas duplicadas. |
 | `ix_persons_email` | `persons` (`LOWER(email)`), WHERE email IS NOT NULL | Búsqueda rápida por email de contacto civil/familiar (no impone unicidad para habilitar cuentas familiares y menores de edad). |
-| `ix_enrollment_member_number` | `enrollment` (`member_number`) | Historial de inscripciones en la ficha del socio y búsqueda de la inscripción vigente en cada validación de acceso. También el control de `ON DELETE RESTRICT` al intentar borrar un socio. |
-| `ix_enrollment_plan_code` | `enrollment` (`plan_code`) | Consultas de inscripciones por plan y control de integridad referencial `ON DELETE RESTRICT` al modificar planes. |
-| `ix_payment_subscription_number` | `payment` (`subscription_number`) | Pagos de una inscripción al cobrar en caja y al controlar la cuota. También el control de `RESTRICT` al intentar borrar una inscripción. |
-| `ix_access_subscription_number` | `access` (`subscription_number`) | Accesos habilitados por una inscripción (auditoría). También el control de `RESTRICT` al intentar borrar una inscripción. |
+| `ix_subscriptions_member_number` | `subscriptions` (`member_number`) | Historial de suscripciones en la ficha del socio y búsqueda de la suscripción vigente en cada validación de acceso. También el control de `ON DELETE RESTRICT` al intentar borrar un socio. |
+| `ix_subscriptions_plan_code` | `subscriptions` (`plan_code`) | Consultas de suscripciones por plan y control de integridad referencial `ON DELETE RESTRICT` al modificar planes. |
+| `ix_payment_subscription_number` | `payment` (`subscription_number`) | Pagos de una suscripción al cobrar en caja y al controlar la cuota. También el control de `RESTRICT` al intentar borrar una suscripción. |
+| `ix_access_subscription_number` | `access` (`subscription_number`) | Accesos habilitados por una suscripción (auditoría). También el control de `RESTRICT` al intentar borrar una suscripción. |
 | `ix_access_access_date` | `access` (`access_date`) | Consultas por fecha sobre todos los socios: accesos del día, horarios pico del dashboard y filtros `from` / `to` de RF-17. |
 
 ## Fundamentos de Diseño Relacional
@@ -417,20 +416,20 @@ Para evitar el registro de "personas fantasmas" incontactables ante vencimientos
 Un intento de acceso en la terminal es un evento. Se identifica con un número correlativo (`access_id SERIAL`) porque no tiene un dato propio que lo distinga: el socio y la hora no alcanzan, ya que dos intentos pueden registrarse con la misma hora. La inmutabilidad del registro la asegura la aplicación, que no expone operaciones de modificación ni de borrado (Módulo Access, regla 2).
 
 **5. Números correlativos de suscripción y de recibo (`subscription_number` y `receipt_number`)**
-*   **En `enrollment` (número de suscripción):** Cada suscripción se identifica con un número correlativo (`subscription_number SERIAL`) que recepción puede usar para referirse a ella. Se eligió en lugar de una clave compuesta de socio + fecha de inicio, que además de no ser única (ver Justificación de Claves) habría que repetir en cada pago y cada acceso.
+*   **En `subscriptions` (número de suscripción):** Cada suscripción se identifica con un número correlativo (`subscription_number SERIAL`) que recepción puede usar para referirse a ella. Se eligió en lugar de una clave compuesta de socio + fecha de inicio, que además de no ser única (ver Justificación de Claves) habría que repetir en cada pago y cada acceso.
 *   **En `payment` (Recibo Comercial):** Todo cobro en mostrador genera un comprobante o recibo con numeración correlativa (`receipt_number SERIAL`), facilitando la rendición de caja y el entendimiento para el cliente. Para la integración con pasarelas de pago externas (ej. Mercado Pago), el id de transacción que devuelve la pasarela se guarda en `gateway_payment_id`, que es `UNIQUE`: la base no permite registrar dos veces el mismo pago de Mercado Pago. Además, como un pago `PAID` no se modifica (regla 2 del módulo Payment), una notificación repetida no cambia un pago ya acreditado.
 *   **Sin UUID:** El modelo no usa identificadores aleatorios como UUID. En el gimnasio nadie identifica a un socio, un recibo o un ingreso con un código de 36 caracteres; por eso se usan claves naturales o números correlativos.
 **6. Conservación del Historial (`ON DELETE RESTRICT`)**
 
-Todas las claves foráneas del esquema se declaran con `ON DELETE RESTRICT`: el motor rechaza la eliminación de una persona, un socio o una inscripción mientras existan registros dependientes que los referencien. De este modo, un borrado accidental no puede arrastrar comprobantes de pago ni eventos de acceso, que las reglas de negocio definen como registros de auditoría. Las bajas se resuelven de forma lógica (`members.status = 'INACTIVE'`, `employees.active = FALSE`), sin eliminación física.
-No se utiliza `ON DELETE SET NULL` en `access`: `member_number` es la referencia obligatoria al socio y `subscription_number` es la referencia que permite auditar qué inscripción habilitó cada acceso concedido.
+Todas las claves foráneas del esquema se declaran con `ON DELETE RESTRICT`: el motor rechaza la eliminación de una persona, un socio o una suscripción mientras existan registros dependientes que los referencien. De este modo, un borrado accidental no puede arrastrar comprobantes de pago ni eventos de acceso, que las reglas de negocio definen como registros de auditoría. Las bajas se resuelven de forma lógica (`members.status = 'INACTIVE'`, `employees.active = FALSE`), sin eliminación física.
+No se utiliza `ON DELETE SET NULL` en `access`: `member_number` es la referencia obligatoria al socio y `subscription_number` es la referencia que permite auditar qué suscripción habilitó cada acceso concedido.
 El alcance de esta restricción es proteger a los registros padre: no impide eliminar directamente una fila de `payment` o de `access`. La aplicación deberá impedir el borrado de pagos y la modificación o eliminación de accesos (Módulo Payment, regla 2; Módulo Access, regla 2). Los pagos acreditados conservarán sus datos financieros y podrán pasar a `CANCELLED` según la regla de negocio definida.
 
 **7. Cupo Semanal Calculado, no Almacenado**
 
-Los accesos que un socio ya usó en la semana no se guardan en una columna: se obtienen contando sus accesos `GRANTED` en la tabla `access` desde el lunes a las 00:00 de la semana en curso. El límite aplicable se consulta en `plans.weekly_limit` a través del `plan_code` de la inscripción vigente. La restricción CHECK requiere un valor no negativo cuando el límite está informado.
-Guardar un contador en `enrollment` implicaba repetir un dato que ya existe en `access`, con el riesgo de que ambos dejen de coincidir si falla la actualización de uno de ellos. También exigía una columna con la fecha del último reinicio, nula hasta el primer lunes, y un proceso que reiniciara el contador cada semana. Con el conteo, `access` es la única fuente del dato y no queda ningún campo que mantener.
-El conteo se hace por socio y no por inscripción: si un socio renueva a mitad de semana, los accesos que ya usó esa semana siguen contando.
+Los accesos que un socio ya usó en la semana no se guardan en una columna: se obtienen contando sus accesos `GRANTED` en la tabla `access` desde el lunes a las 00:00 de la semana en curso. El límite aplicable se consulta en `plans.weekly_limit` a través del `plan_code` de la suscripción vigente. La restricción CHECK requiere un valor no negativo cuando el límite está informado.
+Guardar un contador en `subscriptions` implicaba repetir un dato que ya existe en `access`, con el riesgo de que ambos dejen de coincidir si falla la actualización de uno de ellos. También exigía una columna con la fecha del último reinicio, nula hasta el primer lunes, y un proceso que reiniciara el contador cada semana. Con el conteo, `access` es la única fuente del dato y no queda ningún campo que mantener.
+El conteo se hace por socio y no por suscripción: si un socio renueva a mitad de semana, los accesos que ya usó esa semana siguen contando.
 
 **8. Fechas con Zona Horaria (`TIMESTAMPTZ`)**
 
@@ -438,14 +437,14 @@ Todas las columnas de fecha y hora se declaran `TIMESTAMPTZ` (`timestamp with ti
 Con `TIMESTAMP` (sin zona), la base guarda la fecha y la hora tal como llegan, sin saber a qué zona corresponden. El backend se desplegará en Render y la base en Neon, que por defecto trabajan en UTC, mientras que el gimnasio opera en hora de Argentina (UTC−3). Un acceso del domingo a las 22:30 en el gimnasio es el lunes a la 01:30 en UTC: guardado sin zona, el mismo registro podría interpretarse en un día distinto según quién lo lea, y los horarios pico del dashboard aparecerían corridos tres horas.
 Las reglas que dependen del día o de la semana se evalúan en la zona horaria del gimnasio. Para el cupo semanal (punto 7), el inicio de la semana se calcula como `date_trunc('week', now(), 'America/Argentina/Buenos_Aires')`: calculado en UTC, el acceso del domingo a las 22:30 se contaría en la semana siguiente.
 
-**9. Prevención de Solapamiento Temporal y Baja Lógica (`enrollment`)**
+**9. Prevención de Solapamiento Temporal y Baja Lógica (`subscriptions`)**
 
 Para garantizar que un socio no posea simultáneamente dos períodos de suscripción activos o superpuestos en el tiempo, el esquema implementa una restricción de exclusión a nivel de motor:
-`CONSTRAINT no_overlap_enrollment EXCLUDE USING gist (member_number WITH =, tstzrange(start_date, end_date, '[)') WITH &&) WHERE (status != 'CANCELLED')`.
+`CONSTRAINT no_overlap_subscriptions EXCLUDE USING gist (member_number WITH =, tstzrange(start_date, end_date, '[)') WITH &&) WHERE (status != 'CANCELLED')`.
 
 - **Uso de `btree_gist`:** PostgreSQL no admite de forma nativa la combinación de tipos escalares (como `VARCHAR` en `member_number` con el operador `=`) junto con rangos geométricos o temporales dentro de un índice GiST. La extensión `btree_gist` habilita esta compatibilidad, permitiendo evaluar la igualdad de socio y el solapamiento de rangos en un único índice eficiente.
 - **Rango semiabierto `[)`:** El rango temporal `tstzrange(start_date, end_date, '[)')` incluye el instante de inicio (`start_date`) y excluye el de finalización (`end_date`). Esta formulación matemática modela con precisión la regla de vigencia del gimnasio, permitiendo que una renovación inicie exactamente en el mismo instante en que expira el período previo sin generar colisiones ni falsos positivos de solapamiento.
-- **Baja Lógica y Conservación Histórica (RF-11):** La eliminación física mediante `DELETE` vulneraría la integridad referencial (`ON DELETE RESTRICT`) si la membresía ya cuenta con pagos registrados (`payment`) o ingresos en terminal (`access`). Para preservar la inmutabilidad y trazabilidad de estos registros contables y de auditoría, las cancelaciones se resuelven actualizando el estado a `CANCELLED`. Gracias al predicado parcial `WHERE (status != 'CANCELLED')`, al cancelar una inscripción futura o anticipada, el rango temporal queda inmediatamente liberado para registrar una nueva suscripción sin bloqueos.
+- **Baja Lógica y Conservación Histórica (RF-11):** La eliminación física mediante `DELETE` vulneraría la integridad referencial (`ON DELETE RESTRICT`) si la membresía ya cuenta con pagos registrados (`payment`) o ingresos en terminal (`access`). Para preservar la inmutabilidad y trazabilidad de estos registros contables y de auditoría, las cancelaciones se resuelven actualizando el estado a `CANCELLED`. Gracias al predicado parcial `WHERE (status != 'CANCELLED')`, al cancelar una suscripción futura o anticipada, el rango temporal queda inmediatamente liberado para registrar una nueva suscripción sin bloqueos.
 
 **10. Segregación Semántica de Correos y Unicidad Funcional (`work_email`)**
 

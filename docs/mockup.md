@@ -106,15 +106,17 @@ Diseñada para el personal administrativo y operativo en puesto de recepción (r
 
 ### Pantalla 3: Módulo de Inscripción y Cobro en Mostrador (Caja)
 
-- **Cabecera de Operación:** Indicador del socio seleccionado (N.º Socio, Nombre, DNI) y operador a cargo del cobro.
-- **Selección de Plan y Período:** Dropdown alimentado por los registros de Plan disponibles y definición de vigencia (período mensual cerrado).
-- **Desglose de Liquidación:** Monto base del plan, recargos o descuentos si aplicaran, y total a cobrar.
+- **Cabecera de Operación:** Indicador del socio seleccionado (N.º Socio, Nombre, DNI) y operador a cargo del cobro, que es el empleado logueado. Su `employee_code` queda guardado en el pago para el cierre de caja.
+- **Selección de Plan y Período:** Dropdown alimentado por los registros de Plan disponibles y fecha de inicio. La fecha de fin no se carga: se calcula sumando un mes al inicio (RF-09).
+- **Desglose de Liquidación:** Precio del plan, descuento de la suscripción si corresponde, lo ya pagado y saldo pendiente a cobrar. Se puede cobrar en partes, pero nunca más que el saldo pendiente; el botón de cobro se deshabilita mientras se procesa.
 - **Medios de Cobro:**
   - Registro de pago en efectivo con campo de monto recibido y cálculo automático de vuelto.
   - Integración digital: Contenedor con código QR dinámico de Mercado Pago para escaneo y confirmación de cobro.
-- **Emisión de Comprobante:** Opción de impresión o envío automático de constancia de pago por correo electrónico.
+- **Emisión de Comprobante:** Opción de impresión del comprobante con su número de recibo (`receipt_number`). El envío automático de constancias por correo queda fuera de V1 (ver Alcance en el README).
 
 ![Módulo de Caja e Inscripciones](./mockups/img/pantalla_3_caja.png)
+
+La imagen es un ejemplo visual estático de una versión anterior: muestra la fecha de vencimiento como campo, una línea de inscripción o matrícula y el envío de la constancia por email. Rige lo descrito en el texto.
 
 ---
 

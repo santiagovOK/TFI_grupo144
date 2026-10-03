@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 CREATE TABLE IF NOT EXISTS payment (
     receipt_number SERIAL PRIMARY KEY,
     subscription_number INTEGER NOT NULL REFERENCES subscriptions(subscription_number) ON DELETE RESTRICT,
+    employee_code VARCHAR(20) REFERENCES employees(employee_code) ON DELETE RESTRICT, -- Quién cobró; vacío solo en Mercado Pago
     amount DECIMAL(19,2) NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PAID', 'FAILED', 'CANCELLED')),
     payment_method VARCHAR(50),
@@ -83,7 +84,8 @@ CREATE TABLE IF NOT EXISTS payment (
     comments VARCHAR(500),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ,
-    CONSTRAINT chk_payment_amount CHECK (amount > 0)
+    CONSTRAINT chk_payment_amount CHECK (amount > 0),
+    CONSTRAINT chk_payment_employee CHECK (employee_code IS NOT NULL OR (payment_method IS NOT NULL AND payment_method = 'MERCADO_PAGO'))
     );
 
 CREATE TABLE IF NOT EXISTS access (
@@ -100,6 +102,7 @@ CREATE INDEX IF NOT EXISTS ix_persons_email ON persons (LOWER(email)) WHERE emai
 CREATE UNIQUE INDEX IF NOT EXISTS ux_employees_work_email ON employees (LOWER(work_email));
 CREATE INDEX IF NOT EXISTS ix_subscriptions_member_number ON subscriptions (member_number);
 CREATE INDEX IF NOT EXISTS ix_payment_subscription_number ON payment (subscription_number);
+CREATE INDEX IF NOT EXISTS ix_payment_employee_code ON payment (employee_code);
 CREATE INDEX IF NOT EXISTS ix_access_subscription_number ON access (subscription_number);
 CREATE INDEX IF NOT EXISTS ix_access_access_date ON access (access_date);
 CREATE INDEX IF NOT EXISTS ix_subscriptions_plan_code ON subscriptions (plan_code);

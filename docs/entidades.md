@@ -146,6 +146,7 @@ erDiagram
     payment {
         INTEGER receipt_number PK "Número de recibo correlativo de caja (SERIAL)"
         INTEGER subscription_number FK "Referencia a subscriptions(subscription_number)"
+        VARCHAR(20) employee_code FK "Referencia a employees(employee_code); vacío solo en Mercado Pago"
         DECIMAL(19,2) amount "Importe cobrado en pesos (CHECK > 0)"
         VARCHAR(20) status "Enum PaymentStatus: PENDING, PAID, FAILED, CANCELLED"
         VARCHAR(50) payment_method "Método de cobro"
@@ -168,6 +169,7 @@ erDiagram
     members ||..o{ subscriptions : "tiene historial (1:N)"
     members ||..o{ access : "registra intentos (1:N)"
     subscriptions ||..o{ payment : "tiene pagos (1:N)"
+    employees |o..o{ payment : "cobra (1:N)"
     subscriptions |o..o{ access : "asocia accesos concedidos (1:N)"
 ```
 
@@ -201,6 +203,7 @@ El número correlativo lo genera la base y puede tener saltos (por ejemplo, si u
 | `members` ↔ `subscriptions` | `1:N` (Uno a Muchos), no identificadora | Un socio puede tener múltiples suscripciones a lo largo del tiempo (historial por período). |
 | `members` ↔ `access` | `1:N` (Uno a Muchos), no identificadora | Un socio puede registrar múltiples intentos de acceso (historial de accesos). |
 | `subscriptions` ↔ `payment` | `1:N` (Uno a Muchos), no identificadora | Una suscripción puede registrar múltiples pagos o intentos de cobro vinculados por `subscription_number`. |
+| `employees` ↔ `payment` | `1:N` (Uno a Muchos), no identificadora | Un empleado puede cobrar muchos pagos en caja. El pago guarda quién lo cobró en `employee_code` (opcional; vacío solo en los pagos de Mercado Pago, donde no cobra nadie en el mostrador). |
 | `subscriptions` ↔ `access` | `1:N` (Uno a Muchos), no identificadora | Una suscripción asocia los accesos concedidos durante su vigencia a través de `subscription_number` (opcional; nulo si el acceso fue denegado sin suscripción activa). |
 
 ---
@@ -333,9 +336,10 @@ Registra un pago asociado a una suscripción.
 |---------|------|-------|-------|-------------|
 | `receipt_number` | SERIAL / INTEGER | No (generado) | Sí (PK) | Clave primaria. Número de recibo correlativo de caja |
 | `subscription_number` | INTEGER | No | — | FK a `subscriptions.subscription_number` (`ON DELETE RESTRICT`) |
+| `employee_code` | VARCHAR(20) | Sí | — | FK a `employees.employee_code` (`ON DELETE RESTRICT`). Empleado que cobró en caja. Restricción `chk_payment_employee`: solo puede quedar vacío si `payment_method = 'MERCADO_PAGO'` |
 | `amount` | DECIMAL(19,2) | No | — | Monto del pago en pesos argentinos. Restricción CHECK: `amount > 0` |
 | `status` | VARCHAR(20) | No | — | Valor del Enum `PaymentStatus` (Por defecto `PENDING`, restricción CHECK) |
-| `payment_method` | VARCHAR(50) | Sí | — | Método de pago (ej. tarjeta, mercadopago) |
+| `payment_method` | VARCHAR(50) | Sí | — | Método de pago (ej. `CASH`, `MERCADO_PAGO`) |
 | `gateway_payment_id` | VARCHAR(100) | Sí | Sí (UK) | Id devuelto por la pasarela de pagos |
 | `comments` | VARCHAR(500) | Sí | — | |
 | `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |
@@ -383,6 +387,7 @@ PostgreSQL crea automáticamente un índice por cada clave primaria y por cada r
 | `ix_subscriptions_member_number` | `subscriptions` (`member_number`) | Historial de suscripciones en la ficha del socio y búsqueda de la suscripción vigente en cada validación de acceso. También el control de `ON DELETE RESTRICT` al intentar borrar un socio. |
 | `ix_subscriptions_plan_code` | `subscriptions` (`plan_code`) | Consultas de suscripciones por plan y control de integridad referencial `ON DELETE RESTRICT` al modificar planes. |
 | `ix_payment_subscription_number` | `payment` (`subscription_number`) | Pagos de una suscripción al cobrar en caja y al controlar la cuota. También el control de `RESTRICT` al intentar borrar una suscripción. |
+| `ix_payment_employee_code` | `payment` (`employee_code`) | Cierre de caja: los pagos que cobró cada empleado en su turno. También el control de `RESTRICT` al intentar borrar un empleado. |
 | `ix_access_subscription_number` | `access` (`subscription_number`) | Accesos habilitados por una suscripción (auditoría). También el control de `RESTRICT` al intentar borrar una suscripción. |
 | `ix_access_access_date` | `access` (`access_date`) | Consultas por fecha sobre todos los socios: accesos del día, horarios pico del dashboard y filtros `from` / `to` de RF-17. |
 

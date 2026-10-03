@@ -71,7 +71,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 ### 1.4. Módulo Payment (`PaymentController`, `PaymentService`)
 
 - **Objetivos:** Registrar y supervisar los pagos efectuados por los socios para saldar sus suscripciones. Soporta múltiples transacciones por suscripción (abonos parciales o renovaciones), distintos métodos de pago y estados transaccionales (`PENDING`, `PAID`, `FAILED`, `CANCELLED`), preparando la arquitectura para la integración de pasarelas como Mercado Pago.
-- **Entidades involucradas:** `Payment` (`payment`), `Subscription` (`subscriptions`).
+- **Entidades involucradas:** `Payment` (`payment`), `Subscription` (`subscriptions`), `Employee` (`employees`).
 - **Contratos de Interfaz REST:**
 
 | RF | Método | Endpoint | Descripción | Request Body / Parámetros | Códigos de Respuesta |

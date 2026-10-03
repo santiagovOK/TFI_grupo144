@@ -44,6 +44,7 @@ Puerta de entrada al panel web administrativo (`gym-frontend-admin`), securizada
 
 
 ![Inicio de Sesión - Login](./mockups/img/pantalla_0_login.png)
+
 ---
 
 ### Pantalla 1: Terminal de Acceso (Autogestión)
@@ -81,7 +82,7 @@ Diseñada para el personal administrativo y operativo en puesto de recepción (r
 
 - **Barra Superior y Navegación:**
   - Identificador del operador conectado y badge de rol activo (`STAFF` o `ADMIN`).
-  - Menú lateral con accesos directos: Socios, Caja / Inscripciones, Accesos, Dashboard y Configuración.
+  - Menú lateral con accesos directos: Socios, Caja / Suscripciones, Accesos, Dashboard y Configuración.
 - **Buscador Omnibox:** Búsqueda rápida e incremental por DNI, N.º de Socio, Apellido o Nombre.
 - **Tabla General de Socios:**
   - Columnas: N.º Socio, Nombre completo, DNI, Estado de Membresía (badge Activo / Inactivo / Vencido), Plan actual, Acciones rápidas.
@@ -104,7 +105,7 @@ Diseñada para el personal administrativo y operativo en puesto de recepción (r
 
 ---
 
-### Pantalla 3: Módulo de Inscripción y Cobro en Mostrador (Caja)
+### Pantalla 3: Módulo de Suscripción y Cobro en Mostrador (Caja)
 
 - **Cabecera de Operación:** Indicador del socio seleccionado (N.º Socio, Nombre, DNI) y operador a cargo del cobro, que es el empleado logueado. Su `employee_code` queda guardado en el pago para el cierre de caja.
 - **Selección de Plan y Período:** Dropdown alimentado por los registros de Plan disponibles y fecha de inicio. La fecha de fin no se carga: se calcula sumando un mes al inicio (RF-09).
@@ -159,6 +160,7 @@ La Pantalla 5 ilustra una configuración tarifaria para usuarios con rol `ADMIN`
   - Precio actual y estado activo del registro seleccionado.
 
 ![Configuración de Aranceles por Modalidad](./mockups/img/pantalla_5_configuracion.png)
+
 ---
 
 ## 3. Formato de Entregables y Estructura en el Repositorio

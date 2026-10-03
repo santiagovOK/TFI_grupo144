@@ -16,7 +16,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 
 | RF | Método | Endpoint | Descripción | Request Body | Códigos de Respuesta |
 |---|---|---|---|---|---|
-| **RF-01** | `POST` | `/api/auth/login` | Autentica credenciales de usuario (work_email laboral y contraseña) y devuelve un token Bearer JWT con los roles asignados. | `{"work_email": "admin@gym.com", "password": "..."}` | `200 OK` (token JWT y datos de sesión), `401 Unauthorized` (credenciales inválidas), `403 Forbidden` (usuario inactivo). |
+| **RF-01** | `POST` | `/api/auth/login` | Autentica credenciales de usuario (email de trabajo `work_email` y contraseña) y devuelve un token Bearer JWT con los roles asignados. | `{"work_email": "admin@gym.com", "password": "..."}` | `200 OK` (token JWT y datos de sesión), `401 Unauthorized` (credenciales inválidas), `403 Forbidden` (usuario inactivo). |
 
 **Reglas de Negocio Formales:**
 1. Solo los usuarios con rol `ADMIN` o `STAFF` y con estado `active = true` están autorizados para autenticarse y recibir un token JWT.
@@ -56,7 +56,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 |---|---|---|---|---|---|
 | **RF-07** | `GET` | `/api/subscriptions` | Lista suscripciones paginadas, permitiendo filtrar por socio (`member_number`) o estado de vigencia. | Query params: `page`, `size`, `member_number`, `active` | `200 OK`. |
 | **RF-08** | `GET` | `/api/subscriptions/{id}` | Recupera la información detallada de una suscripción específica por su identificador (`subscription_number`). | Path param: `id` (Integer) | `200 OK`, `404 Not Found`. |
-| **RF-09** | `POST` | `/api/subscriptions` | Da de alta una nueva suscripción para un socio activo, vinculando el plan elegido (`plan_code`) y fecha de inicio (`start_date`). La fecha de fin (`end_date`) se calcula determinísticamente en el backend sumando exactamente un mes calendario (`plusMonths(1)`), por lo que el cliente no la envía. El precio base se toma obligatoriamente de `plans.current_price`; el cliente no puede enviar ni establecer el precio. Se congelan el precio y descuento aplicados. | `{"member_number": "1001", "plan_code": "THREE_DAYS", "discount": 0.00, "start_date": "2026-10-05T00:00:00Z"}` | `201 Created`, `400 Bad Request` (fecha de inicio inválida, descuento inválido, plan o socio inexistente/inactivo), `409 Conflict` (se superpone con otra suscripción del socio). |
+| **RF-09** | `POST` | `/api/subscriptions` | Da de alta una nueva suscripción para un socio activo, vinculando el plan elegido (`plan_code`) y fecha de inicio (`start_date`). La fecha de fin (`end_date`) se calcula determinísticamente en el backend sumando exactamente un mes calendario (`plusMonths(1)`), por lo que el cliente no la envía. El precio base se toma obligatoriamente de `plans.current_price`; el cliente no puede enviar ni establecer el precio. Se congelan el precio y descuento aplicados. | `{"member_number": "1001", "plan_code": "THREE_DAYS", "discount": 0.00, "start_date": "2026-10-05T18:00:00-03:00"}` | `201 Created`, `400 Bad Request` (fecha de inicio inválida, descuento inválido, plan o socio inexistente/inactivo), `409 Conflict` (se superpone con otra suscripción del socio). |
 | **RF-10** | `PUT` | `/api/subscriptions/{id}` | Modifica exclusivamente los comentarios (`comments`) de la suscripción. Ningún otro campo puede modificarse. | Path param: `id`. Body: `{"comments": "..."}` | `200 OK`, `400 Bad Request` (campo distinto de `comments`), `404 Not Found`. |
 | **RF-11** | `DELETE` | `/api/subscriptions/{id}` | Realiza la baja lógica de la suscripción (actualiza `status = 'CANCELLED'`), denegando inmediatamente el acceso en terminal de acceso. Preserva inmutables los pagos acreditados (`PAID`) sin reintegros automáticos y mantiene el historial de accesos. | Path param: `id` | `204 No Content`, `404 Not Found`. |
 
@@ -173,14 +173,14 @@ Esta matriz vincula de forma directa los Requerimientos Funcionales (RF) detalla
 | **RF-06** | Baja/Alta lógica de socios | `POST /api/members/{member_number}/status` | Actualiza estado (`ACTIVE` / `INACTIVE`) sin borrar historial inmutable. |
 | **RF-07** | Listado histórico de suscripciones | `GET /api/subscriptions` | Soporta filtros de vigencia. |
 | **RF-08** | Consulta de detalle de suscripción | `GET /api/subscriptions/{id}` | - |
-| **RF-09** | Alta de planes / membresías | `POST /api/subscriptions` | Prohibido solapar fechas de vigencia para un mismo usuario. El backend calcula `end_date` sumando un mes a `start_date`. El precio base se toma obligatoriamente de `plans.current_price` y se congela junto con el descuento aplicado. |
+| **RF-09** | Alta de suscripción | `POST /api/subscriptions` | Prohibido solapar fechas de vigencia para un mismo socio. El backend calcula `end_date` sumando un mes a `start_date`. El precio base se toma obligatoriamente de `plans.current_price` y se congela junto con el descuento aplicado. |
 | **RF-10** | Modificación de comentarios de suscripción | `PUT /api/subscriptions/{id}` | Solo permite modificar `comments`; ningún otro campo es modificable. |
 | **RF-11** | Cancelación lógica de suscripción | `DELETE /api/subscriptions/{id}` | Baja lógica (`status = 'CANCELLED'`) que deniega acceso inmediato, preserva inmutables los pagos `PAID` (sin reintegro automático) y libera el rango temporal de solapamiento. |
 | **RF-12** | Auditoría y lista general de pagos | `GET /api/payments` | Filtra por cajero y rango de fechas para el cierre de caja. |
 | **RF-13** | Consulta de comprobante específico | `GET /api/payments/{id}` | - |
 | **RF-14** | Registro de abonos y comprobantes | `POST /api/payments` | No admite transacciones huérfanas sin referenciar a `subscription_number`. Valida `amount > 0` y rechaza con `409` el monto que supere el saldo pendiente. Guarda el cajero logueado. |
 | **RF-15** | Conciliación transaccional (Webhooks) | `PUT /api/payments/{id}` | Registros `PAID` son financieramente inmutables (se marcan `CANCELLED` ante error). |
-| **RF-16** | Validación de ingreso en terminal | `POST /api/access/validate` | Rechazo automático por inactividad, plan vencido, tope semanal alcanzado o cuota impaga ($\sum \text{amount}_{\text{PAID}} < \text{price} - \text{discount}$). |
+| **RF-16** | Validación de ingreso en terminal | `POST /api/access/validate` | Rechazo automático por inactividad, suscripción vencida, tope semanal alcanzado o cuota impaga ($\sum \text{amount}_{\text{PAID}} < \text{price} - \text{discount}$). |
 | **RF-17** | Historial de auditoría de ingresos | `GET /api/access` | Estrictamente lectura. Operaciones CRUD (`PUT`/`DELETE`) inhabilitadas. |
 | **RF-18** | Visualización métricas financieras | *Frontend / Dashboard* | Consolida cálculos cruzados de Accesos y Pagos. |
 | **RF-19** | Interfaces de Gestión Administrativa | *Frontend / Panel ABM* | Consumo de toda la API protegido vía Bearer Token JWT. |

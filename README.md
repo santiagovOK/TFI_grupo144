@@ -116,7 +116,6 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 - `Member` ↔ `Access`: relación uno a muchos (1:N).
 - `Subscription` ↔ `Payment`: relación uno a muchos (1:N).
 - `Employee` ↔ `Payment`: relación uno a muchos (1:N); `payment.employee_code` guarda quién cobró (vacío solo en Mercado Pago).
-- `Subscription` ↔ `Access`: relación uno a muchos (1:N).
 - `Plan` ↔ `Subscription`: relación uno a muchos (1:N); `subscriptions.plan_code` referencia `plans.plan_code`.
 
 ### Enums

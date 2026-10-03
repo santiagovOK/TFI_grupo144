@@ -1,0 +1,40 @@
+name: CI Database
+
+# Cuándo se ejecuta: en cada PR hacia main o push a main
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  validate-schema:
+    name: Validar DDL PostgreSQL
+    runs-on: ubuntu-latest
+
+    # Levanta PostgreSQL en la nube de GitHub
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: gym
+          POSTGRES_USER: gym
+          POSTGRES_PASSWORD: gym_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      # 1. Clona el código de la rama en la máquina virtual
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      # 2. Prueba que schema.sql ejecute sin errores en PostgreSQL real
+      - name: Validar ejecución de schema.sql
+        run: |
+          PGPASSWORD=gym_password psql -h localhost -U gym -d gym -f gym-backend/src/main/resources/schema.sql
+

@@ -76,7 +76,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 
 | RF | Método | Endpoint | Descripción | Request Body / Parámetros | Códigos de Respuesta |
 |---|---|---|---|---|---|
-| **RF-12** | `GET` | `/api/payments` | Consulta listado de pagos registrados con paginación y filtros por suscripción (`subscription_number`), estado o rango de fechas. | Query params: `page`, `size`, `subscription_number`, `status` | `200 OK`. |
+| **RF-12** | `GET` | `/api/payments` | Consulta listado de pagos registrados con paginación y filtros por suscripción (`subscription_number`), cajero (`employee_code`), estado o rango de fechas de registro (`created_at`). Con `employee_code`, `from` y `to` se arma el cierre de caja de un turno. | Query params: `page`, `size`, `subscription_number`, `employee_code`, `status`, `from`, `to` | `200 OK`. |
 | **RF-13** | `GET` | `/api/payments/{id}` | Obtiene los datos detallados de un comprobante de pago por su número de recibo (`receipt_number`). | Path param: `id` (Integer) | `200 OK`, `404 Not Found`. |
 | **RF-14** | `POST` | `/api/payments` | Registra un nuevo cobro en caja asociado a una suscripción. El empleado que cobra (`employee_code`) se toma del usuario logueado; no se envía en el body. | `{"subscription_number": 1520, "amount": 25000.00, "payment_method": "CASH", "status": "PAID"}` | `201 Created`, `400 Bad Request` (monto inválido `<= 0`), `404 Not Found` (suscripción inexistente), `409 Conflict` (el monto supera el saldo pendiente). |
 | **RF-15** | `PUT` | `/api/payments/{id}` | Actualiza el estado de una transacción o referencia externa (ej. confirmación de webhook de pago). | Path param: `id`. Body con nuevo estado o datos de conciliación. | `200 OK`, `404 Not Found`. |
@@ -176,7 +176,7 @@ Esta matriz vincula de forma directa los Requerimientos Funcionales (RF) detalla
 | **RF-09** | Alta de planes / membresías | `POST /api/subscriptions` | Prohibido solapar fechas de vigencia para un mismo usuario. El backend calcula `end_date` sumando un mes a `start_date`. El precio base se toma obligatoriamente de `plans.current_price` y se congela junto con el descuento aplicado. |
 | **RF-10** | Modificación de comentarios de suscripción | `PUT /api/subscriptions/{id}` | Solo permite modificar `comments`; ningún otro campo es modificable. |
 | **RF-11** | Cancelación lógica de suscripción | `DELETE /api/subscriptions/{id}` | Baja lógica (`status = 'CANCELLED'`) que deniega acceso inmediato, preserva inmutables los pagos `PAID` (sin reintegro automático) y libera el rango temporal de solapamiento. |
-| **RF-12** | Auditoría y lista general de pagos | `GET /api/payments` | - |
+| **RF-12** | Auditoría y lista general de pagos | `GET /api/payments` | Filtra por cajero y rango de fechas para el cierre de caja. |
 | **RF-13** | Consulta de comprobante específico | `GET /api/payments/{id}` | - |
 | **RF-14** | Registro de abonos y comprobantes | `POST /api/payments` | No admite transacciones huérfanas sin referenciar a `subscription_number`. Valida `amount > 0` y rechaza con `409` el monto que supere el saldo pendiente. Guarda el cajero logueado. |
 | **RF-15** | Conciliación transaccional (Webhooks) | `PUT /api/payments/{id}` | Registros `PAID` son financieramente inmutables (se marcan `CANCELLED` ante error). |

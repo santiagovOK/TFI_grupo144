@@ -78,7 +78,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 |---|---|---|---|---|---|
 | **RF-12** | `GET` | `/api/payments` | Consulta listado de pagos registrados con paginación y filtros por suscripción (`subscription_number`), estado o rango de fechas. | Query params: `page`, `size`, `subscription_number`, `status` | `200 OK`. |
 | **RF-13** | `GET` | `/api/payments/{id}` | Obtiene los datos detallados de un comprobante de pago por su número de recibo (`receipt_number`). | Path param: `id` (Integer) | `200 OK`, `404 Not Found`. |
-| **RF-14** | `POST` | `/api/payments` | Registra un nuevo cobro asociado a una suscripción. | `{"subscription_number": 1520, "amount": 25000.00, "discount": 0.00, "currency": "ARS", "payment_method": "CASH", "status": "PAID"}` | `201 Created`, `400 Bad Request` (monto inválido `<= 0`, descuento mayor al monto o suscripción inexistente). |
+| **RF-14** | `POST` | `/api/payments` | Registra un nuevo cobro asociado a una suscripción. | `{"subscription_number": 1520, "amount": 25000.00, "discount": 0.00, "payment_method": "CASH", "status": "PAID"}` | `201 Created`, `400 Bad Request` (monto inválido `<= 0`, descuento mayor al monto o suscripción inexistente). |
 | **RF-15** | `PUT` | `/api/payments/{id}` | Actualiza el estado de una transacción o referencia externa (ej. confirmación de webhook de pago). | Path param: `id`. Body con nuevo estado o datos de conciliación. | `200 OK`, `404 Not Found`. |
 
 **Reglas de Negocio Formales:**

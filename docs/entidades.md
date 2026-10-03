@@ -146,8 +146,7 @@ erDiagram
     payment {
         INTEGER receipt_number PK "Número de recibo correlativo de caja (SERIAL)"
         INTEGER subscription_number FK "Referencia a subscriptions(subscription_number)"
-        DECIMAL(19,2) amount "Importe cobrado (CHECK > 0)"
-        VARCHAR(10) currency "Enum Currency: ARS, USD"
+        DECIMAL(19,2) amount "Importe cobrado en pesos (CHECK > 0)"
         VARCHAR(20) status "Enum PaymentStatus: PENDING, PAID, FAILED, CANCELLED"
         VARCHAR(50) payment_method "Método de cobro"
         VARCHAR(100) gateway_payment_id UK "Id de pasarela (MP)"
@@ -335,8 +334,7 @@ Registra un pago asociado a una suscripción.
 |---------|------|-------|-------|-------------|
 | `receipt_number` | SERIAL / INTEGER | No (generado) | Sí (PK) | Clave primaria. Número de recibo correlativo de caja |
 | `subscription_number` | INTEGER | No | — | FK a `subscriptions.subscription_number` (`ON DELETE RESTRICT`) |
-| `amount` | DECIMAL(19,2) | No | — | Monto del pago. Restricción CHECK: `amount > 0` |
-| `currency` | VARCHAR(10) | No | — | Valor Enum `Currency` (Por defecto `ARS`, restricción CHECK) |
+| `amount` | DECIMAL(19,2) | No | — | Monto del pago en pesos argentinos. Restricción CHECK: `amount > 0` |
 | `status` | VARCHAR(20) | No | — | Valor del Enum `PaymentStatus` (Por defecto `PENDING`, restricción CHECK) |
 | `payment_method` | VARCHAR(50) | Sí | — | Método de pago (ej. tarjeta, mercadopago) |
 | `gateway_payment_id` | VARCHAR(100) | Sí | Sí (UK) | Id devuelto por la pasarela de pagos |
@@ -365,10 +363,6 @@ La categoría fija `Modality` (`FREE`, `THREE`, `TWO`) fue reemplazada por la en
 ### `SubscriptionStatus` (Tabla `subscriptions`)
 - `ACTIVE`: Suscripción no cancelada; su vigencia se determina dinámicamente comparando el momento actual con `start_date` y `end_date`.
 - `CANCELLED`: Suscripción dada de baja lógica. Deniega inmediatamente el acceso en la terminal y preserva los pagos `PAID` inmutables en `payment` (sin reintegros automáticos), liberando el rango temporal para nuevas suscripciones.
-
-### `Currency` (Tabla `payment`)
-- `ARS`: Peso argentino.
-- `USD`: Dólar estadounidense.
 
 ### `PaymentStatus` (Tabla `payment`)
 - `PENDING`: Pago pendiente de confirmación.

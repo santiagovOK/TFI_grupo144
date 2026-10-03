@@ -77,7 +77,6 @@ CREATE TABLE IF NOT EXISTS payment (
     receipt_number SERIAL PRIMARY KEY,
     subscription_number INTEGER NOT NULL REFERENCES subscriptions(subscription_number) ON DELETE RESTRICT,
     amount DECIMAL(19,2) NOT NULL,
-    currency VARCHAR(10) NOT NULL DEFAULT 'ARS' CHECK (currency IN ('ARS', 'USD')),
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PAID', 'FAILED', 'CANCELLED')),
     payment_method VARCHAR(50),
     gateway_payment_id VARCHAR(100) UNIQUE,

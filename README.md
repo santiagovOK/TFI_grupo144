@@ -124,7 +124,6 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 |------|---------|
 | `Role` | `ADMIN`, `STAFF` |
 | `MemberStatus` | `ACTIVE`, `INACTIVE` |
-| `Currency` | `ARS`, `USD` |
 | `SubscriptionStatus` | `ACTIVE`, `CANCELLED` |
 | `AccessStatus` | `GRANTED`, `DENIED` |
 | `PaymentStatus` | `PENDING`, `PAID`, `FAILED`, `CANCELLED` |
@@ -170,7 +169,7 @@ dropdb gym_prueba                # borra la base de prueba
 - [ ] Configurar `build.gradle` con dependencias (Spring Boot 4.x, JPA, Lombok, JWT, Validation, OpenAPI 3.x).
 - [ ] Configurar `settings.gradle` con grupo y nombre del proyecto.
 - [ ] Configurar `application.yml` (DB connection, server port, security settings).
-- [ ] Crear entidades JPA (7 entidades + 6 enums).
+- [ ] Crear entidades JPA (7 entidades + 5 enums).
 - [ ] Crear DTOs para request/response.
 - [ ] Configurar Spring Security: habilitar JWT, deshabilitar HTTP basic auth.
 - [ ] Crear `JwtTokenProvider` (generar/validar tokens).
@@ -187,7 +186,7 @@ dropdb gym_prueba                # borra la base de prueba
 - [ ] Implementar `MemberService` + `MemberController` y `EmployeeService` + `EmployeeController` (gestión de socios y personal).
 - [ ] Implementar `PlanService` + `PlanController` (catálogo de modalidades y aranceles).
 - [ ] Implementar `SubscriptionService` + `SubscriptionController` (CRUD, control de historial 1:N y validación de vigencia).
-- [ ] Implementar `PaymentService` + `PaymentController` (registro de pagos, métodos de cobro, estados transaccionales y moneda).
+- [ ] Implementar `PaymentService` + `PaymentController` (registro de pagos, métodos de cobro y estados transaccionales).
 - [ ] Implementar `AccessService` + `AccessController` (reglas de negocio, conteo semanal).
 
 </details>
@@ -331,7 +330,6 @@ gym-manager/
 │   │   │   └── Plan.java
 │   │   ├── enums/                        # Enumeraciones Java
 │   │   │   ├── Role.java
-│   │   │   ├── Currency.java
 │   │   │   ├── MemberStatus.java
 │   │   │   ├── SubscriptionStatus.java
 │   │   │   ├── PaymentStatus.java

@@ -115,6 +115,7 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 - `Member` ↔ `Subscription`: relación uno a muchos (1:N).
 - `Member` ↔ `Access`: relación uno a muchos (1:N).
 - `Subscription` ↔ `Payment`: relación uno a muchos (1:N).
+- `Employee` ↔ `Payment`: relación uno a muchos (1:N); `payment.employee_code` guarda quién cobró (vacío solo en Mercado Pago).
 - `Subscription` ↔ `Access`: relación uno a muchos (1:N).
 - `Plan` ↔ `Subscription`: relación uno a muchos (1:N); `subscriptions.plan_code` referencia `plans.plan_code`.
 
@@ -124,10 +125,10 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 |------|---------|
 | `Role` | `ADMIN`, `STAFF` |
 | `MemberStatus` | `ACTIVE`, `INACTIVE` |
-| `Currency` | `ARS`, `USD` |
 | `SubscriptionStatus` | `ACTIVE`, `CANCELLED` |
 | `AccessStatus` | `GRANTED`, `DENIED` |
 | `PaymentStatus` | `PENDING`, `PAID`, `FAILED`, `CANCELLED` |
+| `PaymentMethod` | `CASH`, `MERCADO_PAGO` |
 
 ### Probar el esquema de la base de datos
 
@@ -187,7 +188,7 @@ dropdb gym_prueba                # borra la base de prueba
 - [ ] Implementar `MemberService` + `MemberController` y `EmployeeService` + `EmployeeController` (gestión de socios y personal).
 - [ ] Implementar `PlanService` + `PlanController` (catálogo de modalidades y aranceles).
 - [ ] Implementar `SubscriptionService` + `SubscriptionController` (CRUD, control de historial 1:N y validación de vigencia).
-- [ ] Implementar `PaymentService` + `PaymentController` (registro de pagos, métodos de cobro, estados transaccionales y moneda).
+- [ ] Implementar `PaymentService` + `PaymentController` (registro de pagos, métodos de cobro y estados transaccionales).
 - [ ] Implementar `AccessService` + `AccessController` (reglas de negocio, conteo semanal).
 
 </details>
@@ -331,10 +332,10 @@ gym-manager/
 │   │   │   └── Plan.java
 │   │   ├── enums/                        # Enumeraciones Java
 │   │   │   ├── Role.java
-│   │   │   ├── Currency.java
 │   │   │   ├── MemberStatus.java
 │   │   │   ├── SubscriptionStatus.java
 │   │   │   ├── PaymentStatus.java
+│   │   │   ├── PaymentMethod.java
 │   │   │   └── AccessStatus.java
 │   │   └── dto/                          # Objetos de request/response
 │   │       ├── LoginRequest.java

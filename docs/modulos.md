@@ -78,13 +78,15 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 |---|---|---|---|---|---|
 | **RF-12** | `GET` | `/api/payments` | Consulta listado de pagos registrados con paginación y filtros por suscripción (`subscription_number`), estado o rango de fechas. | Query params: `page`, `size`, `subscription_number`, `status` | `200 OK`. |
 | **RF-13** | `GET` | `/api/payments/{id}` | Obtiene los datos detallados de un comprobante de pago por su número de recibo (`receipt_number`). | Path param: `id` (Integer) | `200 OK`, `404 Not Found`. |
-| **RF-14** | `POST` | `/api/payments` | Registra un nuevo cobro asociado a una suscripción. | `{"subscription_number": 1520, "amount": 25000.00, "payment_method": "CASH", "status": "PAID"}` | `201 Created`, `400 Bad Request` (monto inválido `<= 0` o suscripción inexistente). |
+| **RF-14** | `POST` | `/api/payments` | Registra un nuevo cobro en caja asociado a una suscripción. El empleado que cobra (`employee_code`) se toma del usuario logueado; no se envía en el body. | `{"subscription_number": 1520, "amount": 25000.00, "payment_method": "CASH", "status": "PAID"}` | `201 Created`, `400 Bad Request` (monto inválido `<= 0`), `404 Not Found` (suscripción inexistente), `409 Conflict` (el monto supera el saldo pendiente). |
 | **RF-15** | `PUT` | `/api/payments/{id}` | Actualiza el estado de una transacción o referencia externa (ej. confirmación de webhook de pago). | Path param: `id`. Body con nuevo estado o datos de conciliación. | `200 OK`, `404 Not Found`. |
 
 **Reglas de Negocio Formales:**
 1. **Integridad Transaccional:** Todo registro de cobro debe referenciar de forma obligatoria a una suscripción existente (`subscription_number`); no se admiten pagos "huérfanos".
 2. **Idempotencia e Inmutabilidad Financiera (AC5):** Los pagos registrados con estado `PAID` son financieramente inmutables. La cancelación de una suscripción asociada no altera el estado de sus pagos `PAID`, garantizando la consistencia de los balances de caja. Ante un error operativo de carga imputado directamente al cobro, el pago se marca como `CANCELLED` para preservar la auditoría financiera, sin eliminarlo físicamente (`DELETE`) de la base de datos.
 3. **Validación de Montos:** Todo pago debe tener un monto estrictamente positivo (`amount > 0`). El pago no lleva descuento propio: el único descuento es el de la suscripción (`subscriptions.discount`), que ya se resta del saldo a pagar.
+4. **No se cobra más que el saldo pendiente:** El saldo pendiente de una suscripción es $(\text{price} - \text{discount}) - \sum \text{amount}_{\text{PAID}}$. Si el monto de un cobro lo supera (incluido el caso de una suscripción ya saldada), se rechaza con `409 Conflict`. El cálculo del saldo y la inserción del pago se hacen dentro de la misma transacción, bloqueando la fila de la suscripción mientras tanto (`SELECT ... FOR UPDATE`), para que dos cobros simultáneos sobre la misma suscripción no puedan pasarse del saldo. En la pantalla de Caja, el botón de cobro se deshabilita mientras la solicitud está en curso, para evitar un doble envío.
+5. **Cajero responsable:** Todo cobro en mostrador guarda el `employee_code` del empleado logueado, para el cierre de caja por turno. Solo los pagos de Mercado Pago quedan sin cajero (restricción `chk_payment_employee`).
 ---
 
 ### 1.5. Módulo Access (`AccessController`, `AccessService`)
@@ -176,7 +178,7 @@ Esta matriz vincula de forma directa los Requerimientos Funcionales (RF) detalla
 | **RF-11** | Cancelación lógica de suscripción | `DELETE /api/subscriptions/{id}` | Baja lógica (`status = 'CANCELLED'`) que deniega acceso inmediato, preserva inmutables los pagos `PAID` (sin reintegro automático) y libera el rango temporal de solapamiento. |
 | **RF-12** | Auditoría y lista general de pagos | `GET /api/payments` | - |
 | **RF-13** | Consulta de comprobante específico | `GET /api/payments/{id}` | - |
-| **RF-14** | Registro de abonos y comprobantes | `POST /api/payments` | No admite transacciones huérfanas sin referenciar a `subscription_number`. Valida `amount > 0`. |
+| **RF-14** | Registro de abonos y comprobantes | `POST /api/payments` | No admite transacciones huérfanas sin referenciar a `subscription_number`. Valida `amount > 0` y rechaza con `409` el monto que supere el saldo pendiente. Guarda el cajero logueado. |
 | **RF-15** | Conciliación transaccional (Webhooks) | `PUT /api/payments/{id}` | Registros `PAID` son financieramente inmutables (se marcan `CANCELLED` ante error). |
 | **RF-16** | Validación de ingreso en terminal | `POST /api/access/validate` | Rechazo automático por inactividad, plan vencido, tope semanal alcanzado o cuota impaga ($\sum \text{amount}_{\text{PAID}} < \text{price} - \text{discount}$). |
 | **RF-17** | Historial de auditoría de ingresos | `GET /api/access` | Estrictamente lectura. Operaciones CRUD (`PUT`/`DELETE`) inhabilitadas. |

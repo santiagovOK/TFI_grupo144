@@ -79,13 +79,14 @@ CREATE TABLE IF NOT EXISTS payment (
     employee_code VARCHAR(20) REFERENCES employees(employee_code) ON DELETE RESTRICT, -- Quién cobró; vacío solo en Mercado Pago
     amount DECIMAL(19,2) NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PAID', 'FAILED', 'CANCELLED')),
-    payment_method VARCHAR(50),
+    payment_method VARCHAR(50) NOT NULL,
     gateway_payment_id VARCHAR(100) UNIQUE,
     comments VARCHAR(500),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ,
     CONSTRAINT chk_payment_amount CHECK (amount > 0),
-    CONSTRAINT chk_payment_employee CHECK (employee_code IS NOT NULL OR (payment_method IS NOT NULL AND payment_method = 'MERCADO_PAGO'))
+    CONSTRAINT chk_payment_method CHECK (payment_method IN ('CASH', 'MERCADO_PAGO')),
+    CONSTRAINT chk_payment_employee CHECK (employee_code IS NOT NULL OR payment_method = 'MERCADO_PAGO')
     );
 
 CREATE TABLE IF NOT EXISTS access (

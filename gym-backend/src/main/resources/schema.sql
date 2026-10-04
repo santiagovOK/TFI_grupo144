@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     CONSTRAINT no_overlap_subscriptions EXCLUDE USING gist (member_number WITH =, tstzrange(start_date, end_date, '[)') WITH &&) WHERE (status != 'CANCELLED')
 );
 
-CREATE TABLE IF NOT EXISTS payment (
+CREATE TABLE IF NOT EXISTS payments (
     receipt_number SERIAL PRIMARY KEY,
     subscription_number INTEGER NOT NULL REFERENCES subscriptions(subscription_number) ON DELETE RESTRICT,
     employee_code VARCHAR(20) REFERENCES employees(employee_code) ON DELETE RESTRICT, -- Quién cobró; vacío solo en Mercado Pago
@@ -106,8 +106,8 @@ CREATE TABLE IF NOT EXISTS access_logs (
 CREATE INDEX IF NOT EXISTS ix_persons_email ON persons (LOWER(email)) WHERE email IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS ux_employees_work_email ON employees (LOWER(work_email));
 CREATE INDEX IF NOT EXISTS ix_subscriptions_member_number ON subscriptions (member_number);
-CREATE INDEX IF NOT EXISTS ix_payment_subscription_number ON payment (subscription_number);
-CREATE INDEX IF NOT EXISTS ix_payment_employee_code ON payment (employee_code);
+CREATE INDEX IF NOT EXISTS ix_payments_subscription_number ON payments (subscription_number);
+CREATE INDEX IF NOT EXISTS ix_payments_employee_code ON payments (employee_code);
 CREATE INDEX IF NOT EXISTS ix_access_logs_subscription_number ON access_logs (subscription_number);
 CREATE INDEX IF NOT EXISTS ix_access_logs_access_time ON access_logs (access_time);
 CREATE INDEX IF NOT EXISTS ix_access_logs_member_number ON access_logs (member_number) WHERE member_number IS NOT NULL;

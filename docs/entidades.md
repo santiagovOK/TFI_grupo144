@@ -194,7 +194,7 @@ erDiagram
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
     }
-    payment {
+    payments {
         INTEGER receipt_number PK "Número de recibo correlativo de caja (SERIAL)"
         INTEGER subscription_number FK "Referencia a subscriptions(subscription_number)"
         VARCHAR(20) employee_code FK "Referencia a employees(employee_code); vacío solo en Mercado Pago"
@@ -220,8 +220,8 @@ erDiagram
     plans ||..o{ subscriptions : "rige (1:N)"
     members ||..o{ subscriptions : "tiene historial (1:N)"
     members |o..o{ access_logs : "registra intentos (1:N)"
-    subscriptions ||..o{ payment : "tiene pagos (1:N)"
-    employees |o..o{ payment : "cobra (1:N)"
+    subscriptions ||..o{ payments : "tiene pagos (1:N)"
+    employees |o..o{ payments : "cobra (1:N)"
     subscriptions |o..o{ access_logs : "habilita ingresos (1:N)"
 ```
 
@@ -240,7 +240,7 @@ Cada clave primaria se eligió según cómo identifica el gimnasio a esa cosa en
 | `employees` | `employee_code VARCHAR(20)` | Natural del negocio | Es el código o legajo interno del empleado. El DNI queda como clave foránea única hacia `persons` y el login se hace con `work_email`. |
 | `plans` | `plan_code VARCHAR(20)` | Natural del negocio | Es el código corto de cada plan (por ejemplo `THREE_DAYS`); los valores citados son ejemplos, no una lista cerrada. |
 | `subscriptions` | `subscription_number SERIAL` | Correlativo (sustituta) | Un socio tiene muchas suscripciones a lo largo del tiempo. Socio + fecha de inicio no alcanza como clave, porque una suscripción cancelada y la que la reemplaza pueden empezar el mismo día. El número permite hablar de "la suscripción 1520" en caja. |
-| `payment` | `receipt_number SERIAL` | Correlativo (sustituta) | Funciona como el número de recibo del talonario de caja. |
+| `payments` | `receipt_number SERIAL` | Correlativo (sustituta) | Funciona como el número de recibo del talonario de caja. |
 | `access_logs` | `access_id SERIAL` | Correlativo (sustituta) | Cada intento en la terminal es un evento. El socio y la hora no alcanzan como clave, porque dos intentos pueden registrarse con la misma hora. |
 
 El número correlativo lo genera la base y puede tener saltos (por ejemplo, si una operación falla antes de guardarse). Sirve para identificar el registro, pero no es una numeración fiscal.
@@ -254,9 +254,9 @@ El número correlativo lo genera la base y puede tener saltos (por ejemplo, si u
 | `plans` ↔ `subscriptions` | `1:N` (Uno a Muchos), no identificadora | Un plan o modalidad de arancel rige múltiples contrataciones de socios a lo largo del tiempo. |
 | `members` ↔ `subscriptions` | `1:N` (Uno a Muchos), no identificadora | Un socio puede tener múltiples suscripciones a lo largo del tiempo (historial por período). |
 | `members` ↔ `access_logs` | `1:N` (Uno a Muchos), no identificadora | Un socio puede registrar múltiples intentos de acceso (historial de accesos). La referencia es opcional: un intento con un número que no existe se guarda sin socio. |
-| `subscriptions` ↔ `payment` | `1:N` (Uno a Muchos), no identificadora | Una suscripción puede registrar múltiples pagos o intentos de cobro vinculados por `subscription_number`. |
+| `subscriptions` ↔ `payments` | `1:N` (Uno a Muchos), no identificadora | Una suscripción puede registrar múltiples pagos o intentos de cobro vinculados por `subscription_number`. |
 | `subscriptions` ↔ `access_logs` | `1:N` (Uno a Muchos), no identificadora | Cada ingreso concedido guarda la suscripción que lo habilitó (`subscription_number`, obligatoria si es `GRANTED`). En un rechazo es opcional: se carga si ayuda a explicarlo, por ejemplo con cuota impaga. |
-| `employees` ↔ `payment` | `1:N` (Uno a Muchos), no identificadora | Un empleado puede cobrar muchos pagos en caja. El pago guarda quién lo cobró en `employee_code` (opcional). Todo cobro en el mostrador lo guarda, también si se paga con el QR de Mercado Pago; solo queda vacío en un pago de Mercado Pago que el socio hace por su cuenta, sin pasar por caja. |
+| `employees` ↔ `payments` | `1:N` (Uno a Muchos), no identificadora | Un empleado puede cobrar muchos pagos en caja. El pago guarda quién lo cobró en `employee_code` (opcional). Todo cobro en el mostrador lo guarda, también si se paga con el QR de Mercado Pago; solo queda vacío en un pago de Mercado Pago que el socio hace por su cuenta, sin pasar por caja. |
 
 ---
 
@@ -345,9 +345,9 @@ Representa el período de suscripción de un socio vinculado al plan seleccionad
 
 **Nota de Cupo Semanal:** la tabla no guarda un contador. El límite se define en el plan asociado mediante `plans.weekly_limit`; el uso se calcula en `access_logs` contando los días distintos con ingreso concedido (`GRANTED`) desde el lunes a las 00:00 de la semana en curso, en hora de Argentina; los reingresos del mismo día no descuentan (ver Fundamentos de Diseño Relacional, punto 7). La restricción CHECK requiere un valor no negativo cuando `weekly_limit` está informado.
 
-**Nota de Condiciones Financieras:** `subscriptions.price` conserva el precio pactado como snapshot histórico del `plans.current_price` aplicado al crear la suscripción; futuros cambios de tarifa no modifican ese valor. `discount` conserva el descuento concedido. Las restricciones `chk_subscription_price` y `chk_subscription_discount` exigen que el precio sea no negativo y que el descuento no supere dicho precio (`0 <= discount <= price`). Si `price = 0.00` o `discount = price` (bonificación total del 100%), el saldo exigible es $0.00 y no se crean registros en `payment`.
+**Nota de Condiciones Financieras:** `subscriptions.price` conserva el precio pactado como snapshot histórico del `plans.current_price` aplicado al crear la suscripción; futuros cambios de tarifa no modifican ese valor. `discount` conserva el descuento concedido. Las restricciones `chk_subscription_price` y `chk_subscription_discount` exigen que el precio sea no negativo y que el descuento no supere dicho precio (`0 <= discount <= price`). Si `price = 0.00` o `discount = price` (bonificación total del 100%), el saldo exigible es $0.00 y no se crean registros en `payments`.
 
-**Nota de Baja Lógica, Cancelación y Solapamiento (AC5):** la tabla implementa baja lógica mediante la columna `status` (`ACTIVE`, `CANCELLED`). Cuando una suscripción es cancelada (`status = 'CANCELLED'`), el socio queda inmediatamente inhabilitado para ingresar al gimnasio en terminales de acceso. El vencimiento temporal se determina dinámicamente a partir de `start_date` y `end_date`; no requiere una transición persistida de estado. Los comprobantes vinculados en la tabla `payment` con estado `PAID` permanecen inmutables como `PAID` para auditoría y balance de caja, sin sufrir cancelaciones ni reintegros automáticos. Asimismo, el motor de base de datos prohíbe el solapamiento de períodos vigentes para un mismo socio mediante una restricción de exclusión `no_overlap_subscriptions` (`EXCLUDE USING gist`), evaluada únicamente sobre suscripciones no canceladas.
+**Nota de Baja Lógica, Cancelación y Solapamiento (AC5):** la tabla implementa baja lógica mediante la columna `status` (`ACTIVE`, `CANCELLED`). Cuando una suscripción es cancelada (`status = 'CANCELLED'`), el socio queda inmediatamente inhabilitado para ingresar al gimnasio en terminales de acceso. El vencimiento temporal se determina dinámicamente a partir de `start_date` y `end_date`; no requiere una transición persistida de estado. Los comprobantes vinculados en la tabla `payments` con estado `PAID` permanecen inmutables como `PAID` para auditoría y balance de caja, sin sufrir cancelaciones ni reintegros automáticos. Asimismo, el motor de base de datos prohíbe el solapamiento de períodos vigentes para un mismo socio mediante una restricción de exclusión `no_overlap_subscriptions` (`EXCLUDE USING gist`), evaluada únicamente sobre suscripciones no canceladas.
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
@@ -380,11 +380,11 @@ Registra cada intento de ingreso validado en la terminal de acceso.
 
 ---
 
-## Tabla: `payment`
+## Tabla: `payments`
 
 Registra un pago asociado a una suscripción.
 
-**Nota de Inmutabilidad Financiera (AC5):** Los comprobantes con estado `PAID` son financieramente inmutables: la eventual cancelación de la suscripción asociada no transiciona los pagos `PAID` a `CANCELLED`, preservando el arqueo de caja y la auditoría contable. El estado `CANCELLED` en `payment` se reserva exclusivamente para la anulación de un comprobante ante un error operativo directo de carga en caja.
+**Nota de Inmutabilidad Financiera (AC5):** Los comprobantes con estado `PAID` son financieramente inmutables: la eventual cancelación de la suscripción asociada no transiciona los pagos `PAID` a `CANCELLED`, preservando el arqueo de caja y la auditoría contable. El estado `CANCELLED` en `payments` se reserva exclusivamente para la anulación de un comprobante ante un error operativo directo de carga en caja.
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
@@ -418,15 +418,15 @@ La categoría fija `Modality` (`FREE`, `THREE`, `TWO`) fue reemplazada por la en
 
 ### `SubscriptionStatus` (Tabla `subscriptions`)
 - `ACTIVE`: Suscripción no cancelada; su vigencia se determina dinámicamente comparando el momento actual con `start_date` y `end_date`.
-- `CANCELLED`: Suscripción dada de baja lógica. Deniega inmediatamente el acceso en la terminal y preserva los pagos `PAID` inmutables en `payment` (sin reintegros automáticos), liberando el rango temporal para nuevas suscripciones.
+- `CANCELLED`: Suscripción dada de baja lógica. Deniega inmediatamente el acceso en la terminal y preserva los pagos `PAID` inmutables en `payments` (sin reintegros automáticos), liberando el rango temporal para nuevas suscripciones.
 
-### `PaymentMethod` (Tabla `payment`)
+### `PaymentMethod` (Tabla `payments`)
 - `CASH`: Efectivo en el mostrador.
 - `MERCADO_PAGO`: Pago con Mercado Pago, con el QR en caja o por cuenta del socio.
 
 Si se suma otro medio de cobro, se agrega a la lista de `chk_payment_method`.
 
-### `PaymentStatus` (Tabla `payment`)
+### `PaymentStatus` (Tabla `payments`)
 - `PENDING`: Pago pendiente de confirmación.
 - `PAID`: Pago completado y acreditado. Financieramente inmutable ante cancelaciones de la suscripción asociada.
 - `FAILED`: Pago fallido o rechazado.
@@ -446,7 +446,7 @@ Motivo de un acceso `DENIED`, en el orden en que la terminal lo evalúa:
 
 ## Índices
 
-PostgreSQL crea automáticamente un índice por cada clave primaria y por cada restricción `UNIQUE` (`persons.dni`, `members.member_number`, `members.dni`, `employees.employee_code`, `employees.dni`, `plans.plan_code`, `subscriptions.subscription_number`, `payment.receipt_number`, `payment.gateway_payment_id` y `access_logs.access_id`), y otro para la restricción de exclusión `no_overlap_subscriptions`: un índice GiST sobre el socio y el rango de fechas de `subscriptions`, sin las suscripciones canceladas (ver Fundamentos de Diseño Relacional, punto 9). Pero no indexa las claves foráneas ni expresiones funcionales. Por eso el esquema define los siguientes índices B-Tree:
+PostgreSQL crea automáticamente un índice por cada clave primaria y por cada restricción `UNIQUE` (`persons.dni`, `members.member_number`, `members.dni`, `employees.employee_code`, `employees.dni`, `plans.plan_code`, `subscriptions.subscription_number`, `payments.receipt_number`, `payments.gateway_payment_id` y `access_logs.access_id`), y otro para la restricción de exclusión `no_overlap_subscriptions`: un índice GiST sobre el socio y el rango de fechas de `subscriptions`, sin las suscripciones canceladas (ver Fundamentos de Diseño Relacional, punto 9). Pero no indexa las claves foráneas ni expresiones funcionales. Por eso el esquema define los siguientes índices B-Tree:
 
 | Índice | Tabla (columna) | Consultas que acelera |
 |---|---|---|
@@ -454,8 +454,8 @@ PostgreSQL crea automáticamente un índice por cada clave primaria y por cada r
 | `ix_persons_email` | `persons` (`LOWER(email)`), WHERE email IS NOT NULL | Búsqueda rápida por email de contacto civil/familiar (no impone unicidad para habilitar cuentas familiares y menores de edad). |
 | `ix_subscriptions_member_number` | `subscriptions` (`member_number`) | Historial de suscripciones en la ficha del socio y búsqueda de la suscripción vigente en cada validación de acceso. También el control de `ON DELETE RESTRICT` al intentar borrar un socio. |
 | `ix_subscriptions_plan_code` | `subscriptions` (`plan_code`) | Consultas de suscripciones por plan y control de integridad referencial `ON DELETE RESTRICT` al intentar borrar un plan. |
-| `ix_payment_subscription_number` | `payment` (`subscription_number`) | Pagos de una suscripción al cobrar en caja y al controlar la cuota. También el control de `RESTRICT` al intentar borrar una suscripción. |
-| `ix_payment_employee_code` | `payment` (`employee_code`) | Cierre de caja: los pagos que cobró cada empleado en su turno. También el control de `RESTRICT` al intentar borrar un empleado. |
+| `ix_payments_subscription_number` | `payments` (`subscription_number`) | Pagos de una suscripción al cobrar en caja y al controlar la cuota. También el control de `RESTRICT` al intentar borrar una suscripción. |
+| `ix_payments_employee_code` | `payments` (`employee_code`) | Cierre de caja: los pagos que cobró cada empleado en su turno. También el control de `RESTRICT` al intentar borrar un empleado. |
 | `ix_access_logs_subscription_number` | `access_logs` (`subscription_number`) | Ingresos que habilitó una suscripción (auditoría). También el control de `RESTRICT` al intentar borrar una suscripción. |
 | `ix_access_logs_access_time` | `access_logs` (`access_time`) | Consultas por fecha sobre todos los socios: accesos del día, horarios pico del dashboard y filtros `from` / `to` de RF-17. |
 | `ix_access_logs_member_number` | `access_logs` (`member_number`), WHERE member_number IS NOT NULL | Historial de ingresos y rechazos de un socio en su ficha y filtro `member_number` de RF-17. Deja afuera los intentos con números inexistentes, que no tienen socio. También el control de `RESTRICT` al intentar borrar un socio. |
@@ -484,14 +484,14 @@ Un intento de acceso en la terminal es un evento. Se identifica con un número c
 
 **5. Números correlativos de suscripción y de recibo (`subscription_number` y `receipt_number`)**
 *   **En `subscriptions` (número de suscripción):** Cada suscripción se identifica con un número correlativo (`subscription_number SERIAL`) que recepción puede usar para referirse a ella. Se eligió en lugar de una clave compuesta de socio + fecha de inicio, que además de no ser única (ver Justificación de Claves) habría que repetir en cada pago y cada acceso.
-*   **En `payment` (Recibo Comercial):** Todo cobro en mostrador genera un comprobante o recibo con numeración correlativa (`receipt_number SERIAL`), facilitando la rendición de caja y el entendimiento para el cliente. Para la integración con pasarelas de pago externas (ej. Mercado Pago), el id de transacción que devuelve la pasarela se guarda en `gateway_payment_id`, que es `UNIQUE`: la base no permite registrar dos veces el mismo pago de Mercado Pago. Además, como un pago `PAID` no se modifica (regla 2 del módulo Payment), una notificación repetida no cambia un pago ya acreditado.
+*   **En `payments` (Recibo Comercial):** Todo cobro en mostrador genera un comprobante o recibo con numeración correlativa (`receipt_number SERIAL`), facilitando la rendición de caja y el entendimiento para el cliente. Para la integración con pasarelas de pago externas (ej. Mercado Pago), el id de transacción que devuelve la pasarela se guarda en `gateway_payment_id`, que es `UNIQUE`: la base no permite registrar dos veces el mismo pago de Mercado Pago. Además, como un pago `PAID` no se modifica (regla 2 del módulo Payment), una notificación repetida no cambia un pago ya acreditado.
 *   **Sin UUID:** El modelo no usa identificadores aleatorios como UUID. En el gimnasio nadie identifica a un socio, un recibo o un ingreso con un código de 36 caracteres; por eso se usan claves naturales o números correlativos.
 
 **6. Conservación del Historial (`ON DELETE RESTRICT`)**
 
 Todas las claves foráneas del esquema se declaran con `ON DELETE RESTRICT`: el motor rechaza la eliminación de una persona, un socio, un empleado, un plan o una suscripción mientras existan registros dependientes que los referencien. De este modo, un borrado accidental no puede arrastrar comprobantes de pago ni eventos de acceso, que las reglas de negocio definen como registros de auditoría. Por ejemplo, no se puede borrar a un empleado que ya cobró pagos, porque se perdería quién los cobró. Las bajas se resuelven de forma lógica (`members.status = 'INACTIVE'`, `employees.active = FALSE`, `plans.active = FALSE`), sin eliminación física.
 No se utiliza `ON DELETE SET NULL` en `access_logs`: un `member_number` vacío significa que el número tipeado no existe (motivo `MEMBER_NOT_FOUND`). Si al borrar un socio sus ingresos quedaran sin socio, se confundirían con intentos de números inexistentes y se perdería su historial. Cada ingreso concedido guarda la suscripción que lo habilitó (`subscription_number`), en lugar de deducirla después por la fecha. La deducción puede fallar: `no_overlap_subscriptions` no compara contra las canceladas, así que si a Ana se le cancela la suscripción del 5/10 al 5/11 y se le carga otra que también empieza el 5/10, para un ingreso del 12/10 habría dos candidatas. Guardarla en el momento deja asentado qué contrato respaldó cada ingreso, igual que el precio congelado de la suscripción o el cajero fijado al crear el cobro.
-El alcance de esta restricción es proteger a los registros padre: no impide eliminar directamente una fila de `payment` o de `access_logs`. La aplicación deberá impedir el borrado de pagos y la modificación o eliminación de accesos (Módulo Payment, regla 2; Módulo Access, regla 2). Los pagos acreditados conservarán sus datos financieros y solo podrán pasar a `CANCELLED` ante un error de carga en caja (Módulo Payment, regla 2); cancelar o vencer la suscripción no los modifica.
+El alcance de esta restricción es proteger a los registros padre: no impide eliminar directamente una fila de `payments` o de `access_logs`. La aplicación deberá impedir el borrado de pagos y la modificación o eliminación de accesos (Módulo Payment, regla 2; Módulo Access, regla 2). Los pagos acreditados conservarán sus datos financieros y solo podrán pasar a `CANCELLED` ante un error de carga en caja (Módulo Payment, regla 2); cancelar o vencer la suscripción no los modifica.
 
 **7. Cupo Semanal Calculado, no Almacenado**
 
@@ -512,7 +512,7 @@ Para garantizar que un socio no posea simultáneamente dos períodos de suscripc
 
 - **Uso de `btree_gist`:** PostgreSQL no admite de forma nativa la combinación de tipos escalares (como `VARCHAR` en `member_number` con el operador `=`) junto con rangos geométricos o temporales dentro de un índice GiST. La extensión `btree_gist` habilita esta compatibilidad, permitiendo evaluar la igualdad de socio y el solapamiento de rangos en un único índice eficiente.
 - **Rango semiabierto `[)`:** El rango temporal `tstzrange(start_date, end_date, '[)')` incluye el instante de inicio (`start_date`) y excluye el de finalización (`end_date`). Esta formulación matemática modela con precisión la regla de vigencia del gimnasio, permitiendo que una renovación inicie exactamente en el mismo instante en que expira el período previo sin generar colisiones ni falsos positivos de solapamiento.
-- **Baja Lógica y Conservación Histórica (RF-11):** La eliminación física mediante `DELETE` vulneraría la integridad referencial (`ON DELETE RESTRICT`) si la membresía ya cuenta con pagos registrados (`payment`) o ingresos en terminal (`access_logs`). Para preservar la inmutabilidad y trazabilidad de estos registros contables y de auditoría, las cancelaciones se resuelven actualizando el estado a `CANCELLED`. Gracias al predicado parcial `WHERE (status != 'CANCELLED')`, al cancelar una suscripción futura o anticipada, el rango temporal queda inmediatamente liberado para registrar una nueva suscripción sin bloqueos.
+- **Baja Lógica y Conservación Histórica (RF-11):** La eliminación física mediante `DELETE` vulneraría la integridad referencial (`ON DELETE RESTRICT`) si la membresía ya cuenta con pagos registrados (`payments`) o ingresos en terminal (`access_logs`). Para preservar la inmutabilidad y trazabilidad de estos registros contables y de auditoría, las cancelaciones se resuelven actualizando el estado a `CANCELLED`. Gracias al predicado parcial `WHERE (status != 'CANCELLED')`, al cancelar una suscripción futura o anticipada, el rango temporal queda inmediatamente liberado para registrar una nueva suscripción sin bloqueos.
 
 **10. Segregación Semántica de Correos y Unicidad Funcional (`work_email`)**
 

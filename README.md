@@ -105,7 +105,7 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 | `Employee` | `employees` | Personal operativo o administrativo con credenciales de login (`work_email`) |
 | `Subscription` | `subscriptions` | Suscripción con referencia `plan_code`, vigencia y snapshot histórico de precio |
 | `Access` | `access_logs` | Registro de cada intento de ingreso validado |
-| `Payment` | `payment` | Pago asociado a una suscripción |
+| `Payment` | `payments` | Pago asociado a una suscripción |
 | `Plan` | `plans` | Catálogo dinámico identificado por `plan_code`, con límite semanal, precio actual y estado |
 
 ### Relaciones
@@ -116,7 +116,7 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 - `Member` ↔ `Access`: relación uno a muchos (1:N, opcional); un intento con un número que no existe se guarda sin socio.
 - `Subscription` ↔ `Payment`: relación uno a muchos (1:N).
 - `Subscription` ↔ `Access`: relación uno a muchos (1:N, opcional); cada ingreso concedido guarda la suscripción que lo habilitó.
-- `Employee` ↔ `Payment`: relación uno a muchos (1:N); `payment.employee_code` guarda quién cobró (vacío solo en Mercado Pago).
+- `Employee` ↔ `Payment`: relación uno a muchos (1:N, opcional); `payments.employee_code` guarda quién cobró (vacío solo en Mercado Pago).
 - `Plan` ↔ `Subscription`: relación uno a muchos (1:N); `subscriptions.plan_code` referencia `plans.plan_code`.
 
 ### Enums

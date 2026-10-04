@@ -113,9 +113,9 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 - `Person` ↔ `Member`: rol opcional de una persona (1:1).
 - `Person` ↔ `Employee`: rol opcional de una persona (1:1). Una misma persona puede ser socia y empleada.
 - `Member` ↔ `Subscription`: relación uno a muchos (1:N).
-- `Member` ↔ `Access`: relación uno a muchos (1:N).
+- `Member` ↔ `Access`: relación uno a muchos (1:N, opcional); un intento con un número que no existe se guarda sin socio.
 - `Subscription` ↔ `Payment`: relación uno a muchos (1:N).
-- `Subscription` ↔ `Access`: relación uno a muchos (1:N); cada ingreso concedido guarda la suscripción que lo habilitó.
+- `Subscription` ↔ `Access`: relación uno a muchos (1:N, opcional); cada ingreso concedido guarda la suscripción que lo habilitó.
 - `Employee` ↔ `Payment`: relación uno a muchos (1:N); `payment.employee_code` guarda quién cobró (vacío solo en Mercado Pago).
 - `Plan` ↔ `Subscription`: relación uno a muchos (1:N); `subscriptions.plan_code` referencia `plans.plan_code`.
 
@@ -345,7 +345,8 @@ gym-manager/
 │   │       ├── EmployeeDTO.java
 │   │       ├── PlanDTO.java
 │   │       ├── SubscriptionDTO.java
-│   │       └── PaymentDTO.java
+│   │       ├── PaymentDTO.java
+│   │       └── AccessDTO.java
 │   ├── src/main/resources/
 │   │   ├── application.yml               # Configuración principal
 │   │   └── schema.sql                    # Creación manual de tablas

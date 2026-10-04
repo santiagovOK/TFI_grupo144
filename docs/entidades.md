@@ -14,6 +14,7 @@ Diagrama de clases formal del dominio siguiendo las convenciones de tipos y visi
 classDiagram
     direction TB
 
+    %% 1. Core / Actores
     class Person {
         - String dni
         - String name
@@ -23,12 +24,6 @@ classDiagram
         - LocalDate birthDate
     }
 
-    class Member {
-        - String memberNumber
-        - LocalDateTime joinDate
-        - MemberStatus status
-    }
-
     class Employee {
         - String employeeCode
         - String workEmail
@@ -36,7 +31,24 @@ classDiagram
         - Role role
         - Boolean active
     }
+    class Role {
+        <<enumeration>>
+        ADMIN
+        STAFF
+    }
 
+    class Member {
+        - String memberNumber
+        - LocalDateTime joinDate
+        - MemberStatus status
+    }
+    class MemberStatus {
+        <<enumeration>>
+        ACTIVE
+        INACTIVE
+    }
+
+    %% 2. Catálogo y Contratos
     class Plan {
         - String planCode
         - String name
@@ -54,31 +66,70 @@ classDiagram
         - String comments
         - SubscriptionStatus status
     }
-
     class SubscriptionStatus {
         <<enumeration>>
         ACTIVE
         CANCELLED
     }
-    class Role {
+
+    %% 3. Transacciones y Eventos
+    class Payment {
+        - Integer receiptNumber
+        - BigDecimal amount
+        - String gatewayPaymentId
+        - String comments
+        - PaymentStatus status
+        - PaymentMethod paymentMethod
+    }
+    class PaymentStatus {
         <<enumeration>>
-        ADMIN
-        STAFF
+        PENDING
+        PAID
+        FAILED
+        CANCELLED
+    }
+    class PaymentMethod {
+        <<enumeration>>
+        CASH
+        MERCADO_PAGO
     }
 
-    class MemberStatus {
+    class Access {
+        - Integer accessId
+        - String enteredMemberNumber
+        - LocalDateTime accessTime
+        - AccessStatus status
+        - DeniedReason deniedReason
+    }
+    class AccessStatus {
         <<enumeration>>
-        ACTIVE
-        INACTIVE
+        GRANTED
+        DENIED
+    }
+    class DeniedReason {
+        <<enumeration>>
+        MEMBER_NOT_FOUND
+        MEMBER_INACTIVE
+        NO_ACTIVE_SUBSCRIPTION
+        PAYMENT_OVERDUE
+        WEEKLY_LIMIT_REACHED
     }
 
-
-    Person "1" *-- "0..1" Member : socio
+    %% 4. Relaciones (Top-Down para minimizar cruces)
     Person "1" *-- "0..1" Employee : empleado
     Employee ..> Role : utiliza
+
+    Person "1" *-- "0..1" Member : socio
     Member ..> MemberStatus : utiliza
-    Member "1" --> "0..*" Subscription : tiene
+
     Plan "1" --> "0..*" Subscription : rige
+    Member "1" --> "0..*" Subscription : contrata
+
+    Employee "0..1" --> "0..*" Payment : cobra
+    Subscription "1" --> "0..*" Payment : asocia
+
+    Member "0..1" --> "0..*" Access : registra intentos
+    Subscription "0..1" --> "0..*" Access : habilita
 ```
 
 ### Justificación del Diseño Conceptual de Actores

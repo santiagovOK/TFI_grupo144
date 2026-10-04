@@ -152,7 +152,7 @@ La Pantalla 5 ilustra una configuración tarifaria para usuarios con rol `ADMIN`
 - **Catálogo de Planes y Aranceles:**
   - La ilustración muestra tres ejemplos (`Pase Libre`, `3 Días / Semana`, `2 Días / Semana`), no un límite sobre los planes configurables.
   - Código natural `plan_code` y datos de catálogo como `name`, `weekly_limit`, `current_price` y `active`.
-  - Límite semanal de accesos definido por `weekly_limit`.
+  - Límite de días por semana definido por `weekly_limit` (vacío para pase libre).
 - **Panel de Ajuste de Arancel de Referencia:**
   - Selección del registro de Plan a configurar.
   - Actualización del precio actual (`current_price`) como referencia para nuevas suscripciones.

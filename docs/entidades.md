@@ -124,7 +124,7 @@ erDiagram
     plans {
         VARCHAR(20) plan_code PK "Código nemotécnico natural (FREE, THREE_DAYS, etc.)"
         VARCHAR(100) name "Nombre comercial del plan (CHECK no vacío)"
-        INTEGER weekly_limit "Límite semanal de accesos (nullable, no negativo si se especifica)"
+        INTEGER weekly_limit "Días por semana con ingreso (nullable, no negativo si se especifica)"
         DECIMAL(19,2) current_price "Arancel de lista vigente (CHECK >= 0)"
         BOOLEAN active "Disponibilidad para contratación"
         TIMESTAMPTZ created_at
@@ -279,7 +279,7 @@ Representa el catálogo de modalidades de acceso y aranceles vigentes del gimnas
 |---------|------|-------|-------|-------------|
 | `plan_code` | VARCHAR(20) | No | Sí (PK) | Código natural de negocio del Plan; los ejemplos `FREE`, `THREE_DAYS`, `TWO_DAYS` no constituyen un conjunto cerrado. No puede quedar vacío (CHECK) |
 | `name` | VARCHAR(100) | No | — | Nombre comercial del plan. Restricción CHECK: no vacío |
-| `weekly_limit` | INTEGER | Sí | — | Límite semanal de accesos. Restricción CHECK: `weekly_limit IS NULL OR weekly_limit >= 0` |
+| `weekly_limit` | INTEGER | Sí | — | Cantidad de días distintos por semana en que el socio puede ingresar; vacío es pase libre. Restricción CHECK: `weekly_limit IS NULL OR weekly_limit >= 0` |
 | `current_price` | DECIMAL(19,2) | No | — | Arancel de lista vigente. Restricción CHECK: `current_price >= 0` |
 | `active` | BOOLEAN | No | — | Habilitación comercial para nuevas contrataciones (por defecto `TRUE`) |
 | `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |
@@ -292,7 +292,7 @@ Representa el período de suscripción de un socio vinculado al plan seleccionad
 
 **Nota de Vigencia:** cada suscripción es un período definido: siempre tiene fecha de inicio y de fin, y cada renovación genera una suscripción nueva. Para una suscripción mensual, el período va desde el día y la hora exactos de inicio hasta el mismo día y hora del mes siguiente, con fin exclusivo (`[)`). Por ejemplo, un alta el 5/10 a las 18:00 vence exactamente el 5/11 a las 18:00 (el acceso es válido mientras `momento < 18:00`). Una suscripción está vigente operativa y financieramente cuando `start_date <= momento < end_date` **y su `status = 'ACTIVE'`**: el inicio se incluye y el fin no. Así, una renovación puede empezar en el mismo instante en que termina la anterior sin que se superpongan. La restricción `chk_subscription_dates` exige que el fin sea posterior al inicio.
 
-**Nota de Cupo Semanal:** la tabla no guarda un contador de accesos. El límite se define en el plan asociado mediante `plans.weekly_limit`; los accesos usados se cuentan en la tabla `access_logs` (ver Fundamentos de Diseño Relacional, punto 7). La restricción CHECK requiere un valor no negativo cuando `weekly_limit` está informado.
+**Nota de Cupo Semanal:** la tabla no guarda un contador. El límite se define en el plan asociado mediante `plans.weekly_limit`; el uso se calcula en `access_logs` contando los días distintos con ingreso concedido (`GRANTED`) desde el lunes a las 00:00 de la semana en curso, en hora de Argentina; los reingresos del mismo día no descuentan (ver Fundamentos de Diseño Relacional, punto 7). La restricción CHECK requiere un valor no negativo cuando `weekly_limit` está informado.
 
 **Nota de Condiciones Financieras:** `subscriptions.price` conserva el precio pactado como snapshot histórico del `plans.current_price` aplicado al crear la suscripción; futuros cambios de tarifa no modifican ese valor. `discount` conserva el descuento concedido. Las restricciones `chk_subscription_price` y `chk_subscription_discount` exigen que el precio sea no negativo y que el descuento no supere dicho precio (`0 <= discount <= price`). Si `price = 0.00` o `discount = price` (bonificación total del 100%), el saldo exigible es $0.00 y no se crean registros en `payment`.
 
@@ -444,9 +444,9 @@ El alcance de esta restricción es proteger a los registros padre: no impide eli
 
 **7. Cupo Semanal Calculado, no Almacenado**
 
-Los accesos que un socio ya usó en la semana no se guardan en una columna: se obtienen contando sus accesos `GRANTED` en la tabla `access_logs` desde el lunes a las 00:00 de la semana en curso. El límite aplicable se consulta en `plans.weekly_limit` a través del `plan_code` de la suscripción vigente. La restricción CHECK requiere un valor no negativo cuando el límite está informado.
+Los días que un socio ya usó en la semana no se guardan en una columna: se obtienen contando en `access_logs` los días distintos con ingreso concedido (`GRANTED`) desde el lunes a las 00:00 de la semana en curso, en hora de Argentina; los reingresos del mismo día no descuentan. Por ejemplo, si Ana tiene el plan de 3 días, entra el martes a la mañana y vuelve el martes a la tarde, usó 1 día y no 2. El límite aplicable se consulta en `plans.weekly_limit` a través del `plan_code` de la suscripción vigente. La restricción CHECK requiere un valor no negativo cuando el límite está informado.
 Guardar un contador en `subscriptions` implicaba repetir un dato que ya existe en `access_logs`, con el riesgo de que ambos dejen de coincidir si falla la actualización de uno de ellos. También exigía una columna con la fecha del último reinicio, nula hasta el primer lunes, y un proceso que reiniciara el contador cada semana. Con el conteo, `access_logs` es la única fuente del dato y no queda ningún campo que mantener.
-El conteo se hace por socio y no por suscripción: si un socio renueva a mitad de semana, los accesos que ya usó esa semana siguen contando.
+El conteo se hace por socio y no por suscripción: si un socio renueva a mitad de semana, los días que ya usó esa semana siguen contando.
 
 **8. Fechas con Zona Horaria (`TIMESTAMPTZ`)**
 

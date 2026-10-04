@@ -47,7 +47,7 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 
 **2. Control de Accesos (Terminal Frontend):**
 - Validación de ingreso mediante número de socio (preservando el DNI como dato administrativo por privacidad) en tiempo real.
-- Aplicación automática de reglas de negocio (verificación de cuota al día y topes de accesos semanales permitidos).
+- Aplicación automática de reglas de negocio (verificación de cuota al día y topes de días por semana permitidos).
 - Feedback visual claro e inmediato del estado de acceso (Aprobado/Denegado).
 
 **3. Reportes y Estadísticas Avanzadas:**

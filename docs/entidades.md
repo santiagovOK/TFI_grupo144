@@ -159,6 +159,7 @@ erDiagram
         INTEGER access_id PK "Secuencial de auditoría temporal (SERIAL)"
         VARCHAR(20) entered_member_number "Número tipeado en la terminal (CHECK no vacío)"
         VARCHAR(20) member_number FK "Referencia a members; nulo si el número no existe"
+        INTEGER subscription_number FK "Suscripción que habilitó el ingreso; obligatoria si es concedido"
         TIMESTAMPTZ access_time "Momento exacto del intento"
         VARCHAR(20) status "Enum AccessStatus: GRANTED, DENIED"
         VARCHAR(30) denied_reason "Enum DeniedReason; obligatorio si es denegado (CHECK)"
@@ -170,6 +171,7 @@ erDiagram
     members |o..o{ access_logs : "registra intentos (1:N)"
     subscriptions ||..o{ payment : "tiene pagos (1:N)"
     employees |o..o{ payment : "cobra (1:N)"
+    subscriptions |o..o{ access_logs : "habilita ingresos (1:N)"
 ```
 
 **Notación del diagrama:** la línea punteada representa una relación no identificadora (el hijo tiene su propia clave primaria y solo referencia al padre).
@@ -202,6 +204,7 @@ El número correlativo lo genera la base y puede tener saltos (por ejemplo, si u
 | `members` ↔ `subscriptions` | `1:N` (Uno a Muchos), no identificadora | Un socio puede tener múltiples suscripciones a lo largo del tiempo (historial por período). |
 | `members` ↔ `access_logs` | `1:N` (Uno a Muchos), no identificadora | Un socio puede registrar múltiples intentos de acceso (historial de accesos). La referencia es opcional: un intento con un número que no existe se guarda sin socio. |
 | `subscriptions` ↔ `payment` | `1:N` (Uno a Muchos), no identificadora | Una suscripción puede registrar múltiples pagos o intentos de cobro vinculados por `subscription_number`. |
+| `subscriptions` ↔ `access_logs` | `1:N` (Uno a Muchos), no identificadora | Cada ingreso concedido guarda la suscripción que lo habilitó (`subscription_number`, obligatoria si es `GRANTED`). En un rechazo es opcional: se carga si ayuda a explicarlo, por ejemplo con cuota impaga. |
 | `employees` ↔ `payment` | `1:N` (Uno a Muchos), no identificadora | Un empleado puede cobrar muchos pagos en caja. El pago guarda quién lo cobró en `employee_code` (opcional). Todo cobro en el mostrador lo guarda, también si se paga con el QR de Mercado Pago; solo queda vacío en un pago de Mercado Pago que el socio hace por su cuenta, sin pasar por caja. |
 
 ---
@@ -319,6 +322,7 @@ Registra cada intento de ingreso validado en la terminal de acceso.
 | `access_id` | SERIAL / INTEGER | No (generado) | Sí (PK) | Clave primaria secuencial de auditoría temporal |
 | `entered_member_number` | VARCHAR(20) | No | — | Número que se tipeó en la terminal, exista o no. No puede quedar vacío (`chk_access_entered`) |
 | `member_number` | VARCHAR(20) | Sí | — | FK a `members.member_number` (`ON DELETE RESTRICT`). Vacío si el número tipeado no corresponde a ningún socio |
+| `subscription_number` | INTEGER | Sí | — | FK a `subscriptions.subscription_number` (`ON DELETE RESTRICT`). Suscripción que habilitó el ingreso: obligatoria si el acceso es `GRANTED` (`chk_access_logic`), opcional si es `DENIED` |
 | `access_time` | TIMESTAMPTZ | No | — | Momento exacto del intento. Por defecto `CURRENT_TIMESTAMP` |
 | `status` | VARCHAR(20) | No | — | Valor del Enum `AccessStatus` (Sin valor por defecto, restricción CHECK) |
 | `denied_reason` | VARCHAR(30) | Sí | — | Valor del Enum `DeniedReason` (`chk_access_denied_reason`). Obligatorio si el acceso es `DENIED` y vacío si es `GRANTED`; un `GRANTED` exige además `member_number` (`chk_access_logic`). `MEMBER_NOT_FOUND` va si y solo si `member_number` está vacío (`chk_access_not_found`) |
@@ -401,6 +405,7 @@ PostgreSQL crea automáticamente un índice por cada clave primaria y por cada r
 | `ix_subscriptions_plan_code` | `subscriptions` (`plan_code`) | Consultas de suscripciones por plan y control de integridad referencial `ON DELETE RESTRICT` al intentar borrar un plan. |
 | `ix_payment_subscription_number` | `payment` (`subscription_number`) | Pagos de una suscripción al cobrar en caja y al controlar la cuota. También el control de `RESTRICT` al intentar borrar una suscripción. |
 | `ix_payment_employee_code` | `payment` (`employee_code`) | Cierre de caja: los pagos que cobró cada empleado en su turno. También el control de `RESTRICT` al intentar borrar un empleado. |
+| `ix_access_logs_subscription_number` | `access_logs` (`subscription_number`) | Ingresos que habilitó una suscripción (auditoría). También el control de `RESTRICT` al intentar borrar una suscripción. |
 | `ix_access_logs_access_time` | `access_logs` (`access_time`) | Consultas por fecha sobre todos los socios: accesos del día, horarios pico del dashboard y filtros `from` / `to` de RF-17. |
 
 ## Fundamentos de Diseño Relacional
@@ -432,7 +437,7 @@ Un intento de acceso en la terminal es un evento. Se identifica con un número c
 **6. Conservación del Historial (`ON DELETE RESTRICT`)**
 
 Todas las claves foráneas del esquema se declaran con `ON DELETE RESTRICT`: el motor rechaza la eliminación de una persona, un socio, un empleado, un plan o una suscripción mientras existan registros dependientes que los referencien. De este modo, un borrado accidental no puede arrastrar comprobantes de pago ni eventos de acceso, que las reglas de negocio definen como registros de auditoría. Por ejemplo, no se puede borrar a un empleado que ya cobró pagos, porque se perdería quién los cobró. Las bajas se resuelven de forma lógica (`members.status = 'INACTIVE'`, `employees.active = FALSE`, `plans.active = FALSE`), sin eliminación física.
-No se utiliza `ON DELETE SET NULL` en `access_logs`: un `member_number` vacío significa que el número tipeado no existe (motivo `MEMBER_NOT_FOUND`). Si al borrar un socio sus ingresos quedaran sin socio, se confundirían con intentos de números inexistentes y se perdería su historial. Los ingresos no guardan la suscripción: la que habilitó un ingreso concedido es la que estaba vigente para ese socio en ese momento, y nunca hay dos superpuestas (`no_overlap_subscriptions`).
+No se utiliza `ON DELETE SET NULL` en `access_logs`: un `member_number` vacío significa que el número tipeado no existe (motivo `MEMBER_NOT_FOUND`). Si al borrar un socio sus ingresos quedaran sin socio, se confundirían con intentos de números inexistentes y se perdería su historial. Cada ingreso concedido guarda la suscripción que lo habilitó (`subscription_number`), en lugar de deducirla después por la fecha. La deducción puede fallar: `no_overlap_subscriptions` no compara contra las canceladas, así que si a Ana se le cancela la suscripción del 5/10 al 5/11 y se le carga otra que también empieza el 5/10, para un ingreso del 12/10 habría dos candidatas. Guardarla en el momento deja asentado qué contrato respaldó cada ingreso, igual que el precio congelado de la suscripción o el cajero fijado al crear el cobro.
 El alcance de esta restricción es proteger a los registros padre: no impide eliminar directamente una fila de `payment` o de `access_logs`. La aplicación deberá impedir el borrado de pagos y la modificación o eliminación de accesos (Módulo Payment, regla 2; Módulo Access, regla 2). Los pagos acreditados conservarán sus datos financieros y solo podrán pasar a `CANCELLED` ante un error de carga en caja (Módulo Payment, regla 2); cancelar o vencer la suscripción no los modifica.
 
 **7. Cupo Semanal Calculado, no Almacenado**

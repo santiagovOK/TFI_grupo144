@@ -115,6 +115,7 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 - `Member` ↔ `Subscription`: relación uno a muchos (1:N).
 - `Member` ↔ `Access`: relación uno a muchos (1:N).
 - `Subscription` ↔ `Payment`: relación uno a muchos (1:N).
+- `Subscription` ↔ `Access`: relación uno a muchos (1:N); cada ingreso concedido guarda la suscripción que lo habilitó.
 - `Employee` ↔ `Payment`: relación uno a muchos (1:N); `payment.employee_code` guarda quién cobró (vacío solo en Mercado Pago).
 - `Plan` ↔ `Subscription`: relación uno a muchos (1:N); `subscriptions.plan_code` referencia `plans.plan_code`.
 

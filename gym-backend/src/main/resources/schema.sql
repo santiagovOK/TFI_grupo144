@@ -93,10 +93,11 @@ CREATE TABLE IF NOT EXISTS access_logs (
     access_id SERIAL PRIMARY KEY,
     entered_member_number VARCHAR(20) NOT NULL, -- Lo que se tipeó en la terminal, exista o no
     member_number VARCHAR(20) REFERENCES members(member_number) ON DELETE RESTRICT, -- Vacío si el número no existe
+    subscription_number INTEGER REFERENCES subscriptions(subscription_number) ON DELETE RESTRICT, -- Suscripción que habilitó el ingreso
     access_time TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) NOT NULL CHECK (status IN ('GRANTED', 'DENIED')),
     denied_reason VARCHAR(30),
-    CONSTRAINT chk_access_logic CHECK ((status = 'GRANTED' AND member_number IS NOT NULL AND denied_reason IS NULL) OR (status = 'DENIED' AND denied_reason IS NOT NULL)),
+    CONSTRAINT chk_access_logic CHECK ((status = 'GRANTED' AND member_number IS NOT NULL AND subscription_number IS NOT NULL AND denied_reason IS NULL) OR (status = 'DENIED' AND denied_reason IS NOT NULL)),
     CONSTRAINT chk_access_entered CHECK (TRIM(entered_member_number) <> ''),
     CONSTRAINT chk_access_denied_reason CHECK (denied_reason IN ('MEMBER_NOT_FOUND', 'MEMBER_INACTIVE', 'NO_ACTIVE_SUBSCRIPTION', 'PAYMENT_OVERDUE', 'WEEKLY_LIMIT_REACHED')),
     CONSTRAINT chk_access_not_found CHECK ((member_number IS NULL AND denied_reason = 'MEMBER_NOT_FOUND') OR (member_number IS NOT NULL AND (denied_reason IS NULL OR denied_reason <> 'MEMBER_NOT_FOUND')))
@@ -107,5 +108,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_employees_work_email ON employees (LOWER(wo
 CREATE INDEX IF NOT EXISTS ix_subscriptions_member_number ON subscriptions (member_number);
 CREATE INDEX IF NOT EXISTS ix_payment_subscription_number ON payment (subscription_number);
 CREATE INDEX IF NOT EXISTS ix_payment_employee_code ON payment (employee_code);
+CREATE INDEX IF NOT EXISTS ix_access_logs_subscription_number ON access_logs (subscription_number);
 CREATE INDEX IF NOT EXISTS ix_access_logs_access_time ON access_logs (access_time);
 CREATE INDEX IF NOT EXISTS ix_subscriptions_plan_code ON subscriptions (plan_code);

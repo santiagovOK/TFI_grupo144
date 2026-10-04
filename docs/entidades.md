@@ -117,10 +117,8 @@ classDiagram
 
     %% 4. Relaciones (Top-Down para minimizar cruces)
     Person "1" *-- "0..1" Employee : empleado
-    Employee ..> Role : utiliza
 
     Person "1" *-- "0..1" Member : socio
-    Member ..> MemberStatus : utiliza
 
     Plan "1" --> "0..*" Subscription : rige
     Member "1" --> "0..*" Subscription : contrata
@@ -132,11 +130,12 @@ classDiagram
     Subscription "0..1" --> "0..*" Access : habilita
 ```
 
-### Justificación del Diseño Conceptual de Actores
+### Justificación del Diseño Conceptual
 * **Socio y empleado como roles de una persona:** `Person` guarda los datos de cualquier persona y `Member` y `Employee` son roles que puede tener o no. Una persona puede tener uno, el otro o los dos, por ejemplo la profe que también entrena en el gimnasio, y puede sumar o dejar un rol con el tiempo sin dejar de ser la misma persona. Por eso no se usa herencia: la herencia es fija y un cambio de rol obligaría a cambiar de clase. Se dibuja como composición porque el rol se crea para una persona y no existe sin ella.
 * **Seguridad y Privacidad:** Las credenciales de autenticación quedan estrictamente contenidas en `Employee`. `Member` solo expone atributos de membresía deportiva (`memberNumber`, `joinDate`, `status`).
 * **Relaciones como líneas, no como atributos:** `Subscription` no lleva `memberNumber` ni `planCode` porque a qué socio y a qué plan pertenece ya lo muestran las líneas `tiene` y `rige`. Las claves foráneas y las fechas de registro (`created_at`, `updated_at`) son detalles de las tablas y aparecen en el DER.
 * **Tipado:** Los atributos siguen las convenciones y tipos estándar de Java (`String`, `LocalDate`, `LocalDateTime`, tipos de enums), prescindiendo de tipos físicos de almacenamiento como `VARCHAR` o `TIMESTAMPTZ`.
+* **Modelado de Enumeraciones (Tipos de Datos vs. Relaciones):** Las enumeraciones (`Role`, `MemberStatus`, `SubscriptionStatus`, `PaymentStatus`, `PaymentMethod`, `AccessStatus`, `DeniedReason`) se modelan formalmente como clasificadores con el estereotipo `<<enumeration>>`, pero sus relaciones con las clases se expresan exclusivamente como atributos tipados (ej. `- role: Role`, `- status: MemberStatus`), sin flechas de dependencia (`..>`). Una enumeración es una especialización de `DataType` (tipo por valor); trazar líneas de dependencia hacia tipos de datos es redundante (el tipo ya está declarado en la firma del atributo) y genera "ruido visual" innecesario con cruce de aristas. Se reserva el trazado de conectores para las asociaciones semánticas directas entre entidades del dominio, manteniendo el diagrama limpio, legible y sin ambigüedades.
 
 ---
 

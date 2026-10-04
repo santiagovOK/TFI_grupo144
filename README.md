@@ -47,7 +47,7 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 
 **2. Control de Accesos (Terminal Frontend):**
 - Validación de ingreso mediante número de socio (preservando el DNI como dato administrativo por privacidad) en tiempo real.
-- Aplicación automática de reglas de negocio (verificación de cuota al día y topes de accesos semanales permitidos).
+- Aplicación automática de reglas de negocio (verificación de cuota al día y topes de días por semana permitidos).
 - Feedback visual claro e inmediato del estado de acceso (Aprobado/Denegado).
 
 **3. Reportes y Estadísticas Avanzadas:**
@@ -104,7 +104,7 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 | `Member` | `members` | Socio del gimnasio (identificado por `member_number`) |
 | `Employee` | `employees` | Personal operativo o administrativo con credenciales de login (`work_email`) |
 | `Subscription` | `subscriptions` | Suscripción con referencia `plan_code`, vigencia y snapshot histórico de precio |
-| `Access` | `access` | Registro de cada intento de ingreso validado |
+| `Access` | `access_logs` | Registro de cada intento de ingreso validado |
 | `Payment` | `payment` | Pago asociado a una suscripción |
 | `Plan` | `plans` | Catálogo dinámico identificado por `plan_code`, con límite semanal, precio actual y estado |
 
@@ -115,8 +115,8 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 - `Member` ↔ `Subscription`: relación uno a muchos (1:N).
 - `Member` ↔ `Access`: relación uno a muchos (1:N).
 - `Subscription` ↔ `Payment`: relación uno a muchos (1:N).
+- `Subscription` ↔ `Access`: relación uno a muchos (1:N); cada ingreso concedido guarda la suscripción que lo habilitó.
 - `Employee` ↔ `Payment`: relación uno a muchos (1:N); `payment.employee_code` guarda quién cobró (vacío solo en Mercado Pago).
-- `Subscription` ↔ `Access`: relación uno a muchos (1:N).
 - `Plan` ↔ `Subscription`: relación uno a muchos (1:N); `subscriptions.plan_code` referencia `plans.plan_code`.
 
 ### Enums
@@ -127,6 +127,7 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 | `MemberStatus` | `ACTIVE`, `INACTIVE` |
 | `SubscriptionStatus` | `ACTIVE`, `CANCELLED` |
 | `AccessStatus` | `GRANTED`, `DENIED` |
+| `DeniedReason` | `MEMBER_NOT_FOUND`, `MEMBER_INACTIVE`, `NO_ACTIVE_SUBSCRIPTION`, `PAYMENT_OVERDUE`, `WEEKLY_LIMIT_REACHED` |
 | `PaymentStatus` | `PENDING`, `PAID`, `FAILED`, `CANCELLED` |
 | `PaymentMethod` | `CASH`, `MERCADO_PAGO` |
 
@@ -171,7 +172,7 @@ dropdb gym_prueba                # borra la base de prueba
 - [ ] Configurar `build.gradle` con dependencias (Spring Boot 4.x, JPA, Lombok, JWT, Validation, OpenAPI 3.x).
 - [ ] Configurar `settings.gradle` con grupo y nombre del proyecto.
 - [ ] Configurar `application.yml` (DB connection, server port, security settings).
-- [ ] Crear entidades JPA (7 entidades + 6 enums).
+- [ ] Crear entidades JPA (7 entidades + 7 enums).
 - [ ] Crear DTOs para request/response.
 - [ ] Configurar Spring Security: habilitar JWT, deshabilitar HTTP basic auth.
 - [ ] Crear `JwtTokenProvider` (generar/validar tokens).
@@ -336,7 +337,8 @@ gym-manager/
 │   │   │   ├── SubscriptionStatus.java
 │   │   │   ├── PaymentStatus.java
 │   │   │   ├── PaymentMethod.java
-│   │   │   └── AccessStatus.java
+│   │   │   ├── AccessStatus.java
+│   │   │   └── DeniedReason.java
 │   │   └── dto/                          # Objetos de request/response
 │   │       ├── LoginRequest.java
 │   │       ├── MemberDTO.java

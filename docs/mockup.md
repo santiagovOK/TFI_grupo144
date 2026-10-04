@@ -62,14 +62,14 @@ Diseñada para pantalla táctil en tótem o tablet junto a la terminal de acceso
 #### Estado de Feedback: Acceso Concedido (Granted)
 - Círculo de confirmación con tilde (`✓`) sobre fondo verde claro.
 - Mensaje de bienvenida personalizado con nombre del socio.
-- Resumen de Plan activo y cupo semanal restante según `plan_code` y `plans.weekly_limit`.
+- Resumen de Plan activo y días que le quedan en la semana según `plans.weekly_limit` (un reingreso en el mismo día no descuenta otro).
 - Mensaje de ingreso habilitado en pantalla (ej. *"Pase habilitado por 10 segundos"*) para supervisión visual del recepcionista (preparado para integración con relé/apertura física a futuro).
 
 ![Terminal de Acceso - Concedido](./mockups/img/terminal_acceso_concedido.png)
 
 #### Estado de Feedback: Acceso Denegado (Denied)
 - Círculo de advertencia con cruz (`✕`) sobre fondo rojo claro.
-- Motivo claro del bloqueo (ej. *"Cuota impaga o período vencido"* o *"Cupo semanal alcanzado según el Plan vigente"*).
+- Motivo claro del bloqueo, uno por cada motivo de rechazo (`DeniedReason`): *"Número de socio no encontrado"*, *"Socio dado de baja"*, *"Sin suscripción vigente"*, *"Cuota impaga"* o *"Ya usaste los días de esta semana"*. Los intentos con un número que no existe también se registran.
 - Instrucción clara de derivación a recepción para regularizar la situación.
 
 ![Terminal de Acceso - Denegado](./mockups/img/terminal_acceso_denegado.png)
@@ -152,7 +152,7 @@ La Pantalla 5 ilustra una configuración tarifaria para usuarios con rol `ADMIN`
 - **Catálogo de Planes y Aranceles:**
   - La ilustración muestra tres ejemplos (`Pase Libre`, `3 Días / Semana`, `2 Días / Semana`), no un límite sobre los planes configurables.
   - Código natural `plan_code` y datos de catálogo como `name`, `weekly_limit`, `current_price` y `active`.
-  - Límite semanal de accesos definido por `weekly_limit`.
+  - Límite de días por semana definido por `weekly_limit` (vacío para pase libre).
 - **Panel de Ajuste de Arancel de Referencia:**
   - Selección del registro de Plan a configurar.
   - Actualización del precio actual (`current_price`) como referencia para nuevas suscripciones.

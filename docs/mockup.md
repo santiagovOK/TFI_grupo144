@@ -62,14 +62,14 @@ Diseñada para pantalla táctil en tótem o tablet junto a la terminal de acceso
 #### Estado de Feedback: Acceso Concedido (Granted)
 - Círculo de confirmación con tilde (`✓`) sobre fondo verde claro.
 - Mensaje de bienvenida personalizado con nombre del socio.
-- Resumen de Plan activo y cupo semanal restante según `plan_code` y `plans.weekly_limit`.
+- Resumen de Plan activo y días que le quedan en la semana según `plans.weekly_limit` (un reingreso en el mismo día no descuenta otro).
 - Mensaje de ingreso habilitado en pantalla (ej. *"Pase habilitado por 10 segundos"*) para supervisión visual del recepcionista (preparado para integración con relé/apertura física a futuro).
 
 ![Terminal de Acceso - Concedido](./mockups/img/terminal_acceso_concedido.png)
 
 #### Estado de Feedback: Acceso Denegado (Denied)
 - Círculo de advertencia con cruz (`✕`) sobre fondo rojo claro.
-- Motivo claro del bloqueo (ej. *"Cuota impaga o período vencido"* o *"Cupo semanal alcanzado según el Plan vigente"*).
+- Motivo claro del bloqueo, uno por cada motivo de rechazo (`DeniedReason`): *"Número de socio no encontrado"*, *"Socio dado de baja"*, *"Sin suscripción vigente"*, *"Cuota impaga"* o *"Ya usaste los días de esta semana"*. Los intentos con un número que no existe también se registran.
 - Instrucción clara de derivación a recepción para regularizar la situación.
 
 ![Terminal de Acceso - Denegado](./mockups/img/terminal_acceso_denegado.png)

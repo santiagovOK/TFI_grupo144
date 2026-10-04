@@ -161,7 +161,7 @@ erDiagram
         VARCHAR(20) member_number FK "Referencia a members; nulo si el número no existe"
         TIMESTAMPTZ access_time "Momento exacto del intento"
         VARCHAR(20) status "Enum AccessStatus: GRANTED, DENIED"
-        VARCHAR(500) denied_reason "Obligatorio si es denegado (CHECK)"
+        VARCHAR(30) denied_reason "Enum DeniedReason; obligatorio si es denegado (CHECK)"
     }
     persons ||--|o members : "rol de socio (0..1)"
     persons ||--|o employees : "rol de empleado (0..1)"
@@ -321,7 +321,7 @@ Registra cada intento de ingreso validado en la terminal de acceso.
 | `member_number` | VARCHAR(20) | Sí | — | FK a `members.member_number` (`ON DELETE RESTRICT`). Vacío si el número tipeado no corresponde a ningún socio |
 | `access_time` | TIMESTAMPTZ | No | — | Momento exacto del intento. Por defecto `CURRENT_TIMESTAMP` |
 | `status` | VARCHAR(20) | No | — | Valor del Enum `AccessStatus` (Sin valor por defecto, restricción CHECK) |
-| `denied_reason` | VARCHAR(500) | Sí | — | Motivo del rechazo. Obligatorio si el acceso es `DENIED` y vacío si es `GRANTED`; un `GRANTED` exige además `member_number` (`chk_access_logic`) |
+| `denied_reason` | VARCHAR(30) | Sí | — | Valor del Enum `DeniedReason` (`chk_access_denied_reason`). Obligatorio si el acceso es `DENIED` y vacío si es `GRANTED`; un `GRANTED` exige además `member_number` (`chk_access_logic`). `MEMBER_NOT_FOUND` va si y solo si `member_number` está vacío (`chk_access_not_found`) |
 
 ---
 
@@ -380,6 +380,14 @@ Si se suma otro medio de cobro, se agrega a la lista de `chk_payment_method`.
 ### `AccessStatus` (Tabla `access_logs`)
 - `GRANTED`: Acceso permitido.
 - `DENIED`: Acceso denegado.
+
+### `DeniedReason` (Tabla `access_logs`)
+Motivo de un acceso `DENIED`, en el orden en que la terminal lo evalúa:
+- `MEMBER_NOT_FOUND`: el número tipeado no corresponde a ningún socio. Es el único caso sin `member_number`.
+- `MEMBER_INACTIVE`: el socio está dado de baja (`members.status = 'INACTIVE'`).
+- `NO_ACTIVE_SUBSCRIPTION`: no tiene una suscripción `ACTIVE` vigente en ese momento.
+- `PAYMENT_OVERDUE`: tiene suscripción vigente pero no está al día con los pagos.
+- `WEEKLY_LIMIT_REACHED`: ya usó los días de la semana que permite su plan.
 
 ## Índices
 

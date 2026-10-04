@@ -95,9 +95,11 @@ CREATE TABLE IF NOT EXISTS access_logs (
     member_number VARCHAR(20) REFERENCES members(member_number) ON DELETE RESTRICT, -- Vacío si el número no existe
     access_time TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) NOT NULL CHECK (status IN ('GRANTED', 'DENIED')),
-    denied_reason VARCHAR(500),
+    denied_reason VARCHAR(30),
     CONSTRAINT chk_access_logic CHECK ((status = 'GRANTED' AND member_number IS NOT NULL AND denied_reason IS NULL) OR (status = 'DENIED' AND denied_reason IS NOT NULL)),
-    CONSTRAINT chk_access_entered CHECK (TRIM(entered_member_number) <> '')
+    CONSTRAINT chk_access_entered CHECK (TRIM(entered_member_number) <> ''),
+    CONSTRAINT chk_access_denied_reason CHECK (denied_reason IN ('MEMBER_NOT_FOUND', 'MEMBER_INACTIVE', 'NO_ACTIVE_SUBSCRIPTION', 'PAYMENT_OVERDUE', 'WEEKLY_LIMIT_REACHED')),
+    CONSTRAINT chk_access_not_found CHECK ((member_number IS NULL AND denied_reason = 'MEMBER_NOT_FOUND') OR (member_number IS NOT NULL AND (denied_reason IS NULL OR denied_reason <> 'MEMBER_NOT_FOUND')))
     );
 
 CREATE INDEX IF NOT EXISTS ix_persons_email ON persons (LOWER(email)) WHERE email IS NOT NULL;

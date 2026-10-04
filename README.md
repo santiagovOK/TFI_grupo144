@@ -126,6 +126,7 @@ Base de datos **PostgreSQL** con esquema manual. El detalle completo de cada ent
 | `MemberStatus` | `ACTIVE`, `INACTIVE` |
 | `SubscriptionStatus` | `ACTIVE`, `CANCELLED` |
 | `AccessStatus` | `GRANTED`, `DENIED` |
+| `DeniedReason` | `MEMBER_NOT_FOUND`, `MEMBER_INACTIVE`, `NO_ACTIVE_SUBSCRIPTION`, `PAYMENT_OVERDUE`, `WEEKLY_LIMIT_REACHED` |
 | `PaymentStatus` | `PENDING`, `PAID`, `FAILED`, `CANCELLED` |
 | `PaymentMethod` | `CASH`, `MERCADO_PAGO` |
 
@@ -170,7 +171,7 @@ dropdb gym_prueba                # borra la base de prueba
 - [ ] Configurar `build.gradle` con dependencias (Spring Boot 4.x, JPA, Lombok, JWT, Validation, OpenAPI 3.x).
 - [ ] Configurar `settings.gradle` con grupo y nombre del proyecto.
 - [ ] Configurar `application.yml` (DB connection, server port, security settings).
-- [ ] Crear entidades JPA (7 entidades + 6 enums).
+- [ ] Crear entidades JPA (7 entidades + 7 enums).
 - [ ] Crear DTOs para request/response.
 - [ ] Configurar Spring Security: habilitar JWT, deshabilitar HTTP basic auth.
 - [ ] Crear `JwtTokenProvider` (generar/validar tokens).
@@ -335,7 +336,8 @@ gym-manager/
 │   │   │   ├── SubscriptionStatus.java
 │   │   │   ├── PaymentStatus.java
 │   │   │   ├── PaymentMethod.java
-│   │   │   └── AccessStatus.java
+│   │   │   ├── AccessStatus.java
+│   │   │   └── DeniedReason.java
 │   │   └── dto/                          # Objetos de request/response
 │   │       ├── LoginRequest.java
 │   │       ├── MemberDTO.java

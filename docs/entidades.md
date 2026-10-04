@@ -407,6 +407,8 @@ PostgreSQL crea automáticamente un índice por cada clave primaria y por cada r
 | `ix_payment_employee_code` | `payment` (`employee_code`) | Cierre de caja: los pagos que cobró cada empleado en su turno. También el control de `RESTRICT` al intentar borrar un empleado. |
 | `ix_access_logs_subscription_number` | `access_logs` (`subscription_number`) | Ingresos que habilitó una suscripción (auditoría). También el control de `RESTRICT` al intentar borrar una suscripción. |
 | `ix_access_logs_access_time` | `access_logs` (`access_time`) | Consultas por fecha sobre todos los socios: accesos del día, horarios pico del dashboard y filtros `from` / `to` de RF-17. |
+| `ix_access_logs_member_number` | `access_logs` (`member_number`), WHERE member_number IS NOT NULL | Historial de ingresos y rechazos de un socio en su ficha y filtro `member_number` de RF-17. Deja afuera los intentos con números inexistentes, que no tienen socio. También el control de `RESTRICT` al intentar borrar un socio. |
+| `ix_access_logs_weekly_counter` | `access_logs` (`member_number`, `access_time`), WHERE status = 'GRANTED' | Cupo semanal en cada validación: los días con ingreso concedido de un socio desde el lunes (RF-16). Solo guarda los concedidos, que son los únicos que cuentan. |
 
 ## Fundamentos de Diseño Relacional
 

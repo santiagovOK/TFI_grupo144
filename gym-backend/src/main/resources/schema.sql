@@ -110,4 +110,6 @@ CREATE INDEX IF NOT EXISTS ix_payment_subscription_number ON payment (subscripti
 CREATE INDEX IF NOT EXISTS ix_payment_employee_code ON payment (employee_code);
 CREATE INDEX IF NOT EXISTS ix_access_logs_subscription_number ON access_logs (subscription_number);
 CREATE INDEX IF NOT EXISTS ix_access_logs_access_time ON access_logs (access_time);
+CREATE INDEX IF NOT EXISTS ix_access_logs_member_number ON access_logs (member_number) WHERE member_number IS NOT NULL;
+CREATE INDEX IF NOT EXISTS ix_access_logs_weekly_counter ON access_logs (member_number, access_time) WHERE status = 'GRANTED';
 CREATE INDEX IF NOT EXISTS ix_subscriptions_plan_code ON subscriptions (plan_code);

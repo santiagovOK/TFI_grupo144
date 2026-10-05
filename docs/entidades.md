@@ -214,8 +214,8 @@ erDiagram
         VARCHAR(20) status "Enum AccessStatus: GRANTED, DENIED"
         VARCHAR(30) denied_reason "Enum DeniedReason; obligatorio si es denegado (CHECK)"
     }
-    persons ||--|o members : "rol de socio (0..1)"
-    persons ||--|o employees : "rol de empleado (0..1)"
+    persons ||..|o members : "rol de socio (0..1)"
+    persons ||..|o employees : "rol de empleado (0..1)"
     plans ||..o{ subscriptions : "rige (1:N)"
     members ||..o{ subscriptions : "tiene historial (1:N)"
     members |o..o{ access_logs : "registra intentos (1:N)"
@@ -248,8 +248,8 @@ El número correlativo lo genera la base y puede tener saltos (por ejemplo, si u
 
 | Relación | Tipo | Descripción |
 |----------|------|-------------|
-| `persons` ↔ `members` | `1:1` opcional | Una persona puede tener el rol de socio del gimnasio. |
-| `persons` ↔ `employees` | `1:1` opcional | Una persona puede tener el rol de empleado (cajero/administrador), incluso si también es socia. |
+| `persons` ↔ `members` | `1:1` opcional, no identificadora | Una persona puede tener el rol de socio del gimnasio. |
+| `persons` ↔ `employees` | `1:1` opcional, no identificadora | Una persona puede tener el rol de empleado (cajero/administrador), incluso si también es socia. |
 | `plans` ↔ `subscriptions` | `1:N` (Uno a Muchos), no identificadora | Un plan o modalidad de arancel rige múltiples contrataciones de socios a lo largo del tiempo. |
 | `members` ↔ `subscriptions` | `1:N` (Uno a Muchos), no identificadora | Un socio puede tener múltiples suscripciones a lo largo del tiempo (historial por período). |
 | `members` ↔ `access_logs` | `1:N` (Uno a Muchos), no identificadora | Un socio puede registrar múltiples intentos de acceso (historial de accesos). La referencia es opcional: un intento con un número que no existe se guarda sin socio. |

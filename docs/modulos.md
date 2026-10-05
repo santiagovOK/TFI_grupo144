@@ -6,7 +6,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 
 **Estado de implementación:** este documento especifica contratos y comportamientos objetivo; su inclusión aquí no afirma que los endpoints, controladores o pantallas estén implementados.
 
-**Roles:** `ADMIN` es el encargado o dueño del gimnasio y `STAFF` es recepción. Cada contrato indica qué roles pueden usarlo; si lo llama un usuario con otro rol, la respuesta es `403 Forbidden`. El login, la confirmación de Mercado Pago y la tarea diaria de avisos no los llama un empleado con rol.
+**Roles:** `ADMIN` es el encargado o dueño del gimnasio y `STAFF` es el personal operativo, como recepción y caja. Cada contrato indica qué roles pueden usarlo; si lo llama un usuario con otro rol, la respuesta es `403 Forbidden`. El login, la confirmación de Mercado Pago y la tarea diaria de avisos no los llama un empleado con rol.
 
 ## 1. Módulos de Backend (Spring Boot)
 

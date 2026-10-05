@@ -182,6 +182,25 @@ El backend manda el motivo y la terminal muestra el texto (ver Módulo Validaci�
 3. **Recaudación:** Solo cuentan los pagos `PAID`, por su fecha de registro (`created_at`), como en el cierre de caja (RF-16). Un socio está al día con el mismo criterio de la regla 3 del Módulo Access.
 4. **Montos solo para `ADMIN`:** `STAFF` ve la parte operativa del dashboard (socios, accesos y vencimientos) pero no la recaudación ni los montos pendientes.
 
+---
+
+### 1.8. Módulo Communications (`CommunicationController`, `CommunicationService`)
+
+- **Objetivos:** Enviar por email los comunicados del gimnasio a los socios y el aviso automático antes de que venza una suscripción.
+- **Entidades involucradas:** `Member` (`members`), `Person` (`persons`), `Subscription` (`subscriptions`), `Payment` (`payments`).
+- **Contratos de Interfaz REST:**
+
+| RF | Método | Endpoint | Roles | Descripción | Request Body / Parámetros | Códigos de Respuesta |
+|---|---|---|---|---|---|---|
+| **RF-31** | `POST` | `/api/communications/broadcast` | `ADMIN` | Envía un comunicado por email a todos los socios, solo a los activos o solo a los que tienen la cuota vencida. Por ejemplo, "El lunes feriado el gimnasio abre de 9 a 13". | `{"audience": "ACTIVE", "subject": "...", "body": "..."}` (`audience`: `ALL`, `ACTIVE` u `OVERDUE`) | `200 OK` (cantidad de emails enviados), `400 Bad Request` (destinatarios inválidos, asunto o cuerpo vacío). |
+| **RF-32** | — | *Tarea programada diaria* | Sistema | Avisa por email al socio 3 días antes de que venza su suscripción, para que renueve. No tiene endpoint: el backend la ejecuta una vez por día. | — | — |
+
+**Reglas de Negocio Formales:**
+1. **Solo email en V1:** Los mensajes se envían al email de contacto de la persona (`persons.email`). Un socio que solo dejó teléfono no los recibe. WhatsApp queda fuera de alcance (ver README).
+2. **Un email por familia:** Si varios socios comparten el mismo email (por ejemplo, dos hermanos menores con el email de su madre), el comunicado se envía una sola vez a esa dirección.
+3. **Destinatarios:** `ACTIVE` son los socios con `members.status = 'ACTIVE'`. `OVERDUE` son los que tienen una suscripción vigente sin cubrir el saldo, con el mismo criterio de la regla 3 del Módulo Access.
+4. **Aviso de vencimiento:** Se avisa por cada suscripción no cancelada cuyo `end_date` cae dentro de 3 días, en hora de Argentina. Si el socio ya tiene cargada la suscripción siguiente, no se le avisa. Como la tarea corre una vez por día y elige un solo día de vencimiento, cada suscripción recibe un único aviso.
+
 ## 2. Módulos de Frontend Panel Administrativo (`gym-frontend-admin`)
 
 ### 2.1. Módulo Dashboard (RF-33)
@@ -191,6 +210,7 @@ El backend manda el motivo y la terminal muestra el texto (ver Módulo Validaci�
   - Horarios pico y distribución de visitas según el Plan contratado, mediante `subscriptions.plan_code` y datos de `plans`.
   - Resumen financiero de ingresos mensuales y cobros pendientes del módulo Payment.
   - Total de socios activos y alertas de suscripciones próximas a vencer.
+  - Modal de comunicaciones (solo `ADMIN`): comunicado masivo con RF-31 y la plantilla del aviso automático de RF-32.
 - Estas funcionalidades son requisitos de diseño, no evidencia de que la pantalla o sus endpoints estén implementados.
 
 ### 2.2. Módulo ABM (Gestión Administrativa) (RF-34)

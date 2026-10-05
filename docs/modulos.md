@@ -249,6 +249,10 @@ Esta matriz vincula de forma directa los Requerimientos Funcionales (RF) detalla
 | **RF-04** | Registro de nuevos socios | `POST /api/members` | DNI protegido operativamente. Email o teléfono obligatorios. |
 | **RF-05** | Modificación de datos de socios | `PUT /api/members/{member_number}` | Clave natural `member_number` inmutable. |
 | **RF-06** | Baja/Alta lógica de socios | `POST /api/members/{member_number}/status` | Actualiza estado (`ACTIVE` / `INACTIVE`) sin borrar historial inmutable. |
+| **RF-07** | Listado de empleados | `GET /api/employees` | Exclusivo `ADMIN`. Paginación y filtro por rol. |
+| **RF-08** | Alta de empleados | `POST /api/employees` | Exclusivo `ADMIN`. `employee_code` y `work_email` únicos; si el DNI ya existe, se suma el rol a esa persona. |
+| **RF-09** | Modificación de datos de empleados | `PUT /api/employees/{employee_code}` | Exclusivo `ADMIN`. `employee_code` inmutable; `work_email` sigue siendo único. |
+| **RF-10** | Activación/desactivación de empleados | `POST /api/employees/{employee_code}/status` | Exclusivo `ADMIN`. Baja lógica (`active = false`): no puede iniciar sesión y sus cobros siguen a su nombre. |
 | **RF-11** | Listado histórico de suscripciones | `GET /api/subscriptions` | Soporta filtros de vigencia. |
 | **RF-12** | Consulta de detalle de suscripción | `GET /api/subscriptions/{id}` | - |
 | **RF-13** | Alta de suscripción | `POST /api/subscriptions` | Prohibido solapar fechas de vigencia para un mismo socio. El backend calcula `end_date` sumando un mes a `start_date`. El precio base se toma obligatoriamente de `plans.current_price` y se congela junto con el descuento aplicado. |
@@ -264,6 +268,13 @@ Esta matriz vincula de forma directa los Requerimientos Funcionales (RF) detalla
 | **RF-23** | Consulta de plan por código | `GET /api/plans/{plan_code}` | Consulta por clave natural `plan_code`. |
 | **RF-24** | Creación de nuevos planes | `POST /api/plans` | Exclusivo `ADMIN`. Valida código único y restricciones documentadas de datos. |
 | **RF-25** | Modificación de datos de planes | `PUT /api/plans/{plan_code}` | Actualiza datos del catálogo; los cambios de precio no alteran los snapshots históricos en `subscriptions.price`. |
+| **RF-26** | Resumen del dashboard | `GET /api/reports/summary` | Calculado, sin totales guardados. `STAFF` lo recibe sin montos. |
+| **RF-27** | Accesos por hora | `GET /api/reports/access-by-hour` | Cuenta accesos `GRANTED` por hora, en hora de Argentina. |
+| **RF-28** | Socios por plan | `GET /api/reports/members-by-plan` | Cuenta socios con suscripción vigente en cada plan. |
+| **RF-29** | Recaudación por plan y período | `GET /api/reports/income` | Exclusivo `ADMIN`. Solo pagos `PAID`, por fecha de registro. |
+| **RF-30** | Asistencia mensual por socio | `GET /api/reports/attendance` | Días distintos con acceso `GRANTED` en el mes. |
+| **RF-31** | Comunicado masivo por email | `POST /api/communications/broadcast` | Exclusivo `ADMIN`. Destinatarios: todos, activos o con cuota vencida; un solo envío por email compartido. |
+| **RF-32** | Aviso automático de vencimiento | *Tarea programada diaria* | Un aviso por suscripción, 3 días antes de `end_date`, salvo que ya esté cargada la siguiente. |
 | **RF-33** | Visualización métricas financieras | *Frontend / Dashboard* | Consolida cálculos cruzados de Accesos y Pagos. |
 | **RF-34** | Interfaces de Gestión Administrativa | *Frontend / Panel ABM* | Consumo de toda la API protegido vía Bearer Token JWT. |
 | **RF-35** | Control de puerta y validación visual | *Frontend / Terminal* | Proporciona feedback semántico en tiempo real (Verde/Rojo). |

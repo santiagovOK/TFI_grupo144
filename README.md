@@ -191,6 +191,8 @@ dropdb gym_prueba                # borra la base de prueba
 - [ ] Implementar `SubscriptionService` + `SubscriptionController` (CRUD, control de historial 1:N y validación de vigencia).
 - [ ] Implementar `PaymentService` + `PaymentController` (registro de pagos, métodos de cobro y estados transaccionales).
 - [ ] Implementar `AccessService` + `AccessController` (reglas de negocio, conteo semanal).
+- [ ] Implementar `ReportService` + `ReportController` (dashboard y reportes).
+- [ ] Implementar `CommunicationService` + `CommunicationController` (comunicados y aviso de vencimiento por email).
 
 </details>
 
@@ -307,7 +309,9 @@ gym-manager/
 │   │   │   ├── SubscriptionController.java
 │   │   │   ├── PaymentController.java
 │   │   │   ├── AccessController.java
-│   │   │   └── PlanController.java
+│   │   │   ├── PlanController.java
+│   │   │   ├── ReportController.java
+│   │   │   └── CommunicationController.java
 │   │   ├── services/                     # Lógica de negocio (uno por módulo)
 │   │   │   ├── AuthService.java
 │   │   │   ├── MemberService.java
@@ -315,7 +319,9 @@ gym-manager/
 │   │   │   ├── SubscriptionService.java
 │   │   │   ├── PaymentService.java
 │   │   │   ├── AccessService.java
-│   │   │   └── PlanService.java
+│   │   │   ├── PlanService.java
+│   │   │   ├── ReportService.java
+│   │   │   └── CommunicationService.java
 │   │   ├── repositories/                 # Repositorios JPA (uno por entidad)
 │   │   │   ├── MemberRepository.java
 │   │   │   ├── EmployeeRepository.java

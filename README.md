@@ -149,7 +149,7 @@ dropdb gym_prueba                # borra la base de prueba
 ### Entregas
 
 - **1.ª Entrega (30/08):** Propuesta de proyecto, plan de trabajo (stack tecnológico y plataformas) y repositorio GitHub. *Entregada.*
-- **2.ª Entrega (27/09):** Diseño de arquitectura, esquema de la base de datos y lista de módulos a desarrollar. *Entregada. Las observaciones del tutor del 29/09 están en corrección ([issue #19](https://github.com/santiagovOK/TFI_grupo144/issues/19)).*
+- **2.ª Entrega (27/09):** Diseño de arquitectura, esquema de la base de datos y lista de módulos a desarrollar. *Entregada. Las observaciones del tutor del 29/09 se corrigieron en el [issue #19](https://github.com/santiagovOK/TFI_grupo144/issues/19).*
 - **Entrega Final (14/11):** Repositorio completo (código, BD), despliegue online funcionando, documentación escrita y video explicativo.
 - **Defensa Oral:** Presentación ante el comité.
 
@@ -158,9 +158,9 @@ dropdb gym_prueba                # borra la base de prueba
 - [x] Propuesta del proyecto, stack y plan de trabajo.
 - [x] Mockups de las pantallas.
 - [x] Primera versión del esquema (`schema.sql`), las entidades y los módulos.
-- [ ] Corrección del modelo según las observaciones del tutor del 29/09 ([issue #19](https://github.com/santiagovOK/TFI_grupo144/issues/19)).
-- [ ] Diagrama de clases UML y DER finales.
-- [ ] Especificación completa de los módulos: requerimientos, permisos y reglas de negocio.
+- [x] Corrección del modelo según las observaciones del tutor del 29/09 ([issue #19](https://github.com/santiagovOK/TFI_grupo144/issues/19)).
+- [x] Diagrama de clases UML y DER finales.
+- [x] Especificación completa de los módulos: requerimientos, permisos y reglas de negocio.
 - [ ] Aprobación del modelo por el tutor antes de empezar a programar.
 
 ### Fase 1: Backend Spring Boot — Base

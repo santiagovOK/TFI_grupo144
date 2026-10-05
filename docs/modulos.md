@@ -102,8 +102,30 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 
 | RF | Método | Endpoint | Roles | Descripción | Request Body / Parámetros | Códigos de Respuesta |
 |---|---|---|---|---|---|---|
-| **RF-20** | `POST` | `/api/access/validate` | `STAFF` (sesión abierta en la terminal) | **Operación central de negocio.** Recibe la identificación del socio (`member_number`), evalúa en tiempo real la existencia y activación del socio, la cuota al día, la vigencia temporal de la suscripción (momento actual dentro de `[start_date, end_date)`) y el cupo semanal del Plan; persiste el intento en `access_logs`. La vigencia y la deuda se calculan en cada validación, sin mutar estados por vencimiento o mora. El uso semanal se obtiene contando los días distintos con ingreso concedido desde el lunes (hora de Argentina) y el límite proviene de `plans.weekly_limit`. | `{"member_number": "1001"}` | `200 OK` (`GRANTED` o `DENIED`), `400 Bad Request`. |
+| **RF-20** | `POST` | `/api/access/validate` | `STAFF` (sesión abierta en la terminal) | **Operación central de negocio.** Recibe la identificación del socio (`member_number`), evalúa en tiempo real la existencia y activación del socio, la cuota al día, la vigencia temporal de la suscripción (momento actual dentro de `[start_date, end_date)`) y el cupo semanal del Plan; persiste el intento en `access_logs`. La vigencia y la deuda se calculan en cada validación, sin mutar estados por vencimiento o mora. El uso semanal se obtiene contando los días distintos con ingreso concedido desde el lunes (hora de Argentina) y el límite proviene de `plans.weekly_limit`. | `{"member_number": "1001"}` | `200 OK` (`GRANTED` o `DENIED`, ver Respuesta de la terminal), `400 Bad Request` (número vacío). |
 | **RF-21** | `GET` | `/api/access` | `ADMIN`, `STAFF` | Consulta el registro histórico de accesos para reportes, auditoría y análisis de afluencia. Permite filtrar por rango de fechas, socio (`member_number`) y resultado (`GRANTED` / `DENIED`). | Query params: `page`, `size`, `member_number`, `status`, `from`, `to` | `200 OK` (listado paginado). |
+
+**Respuesta de la terminal (RF-20):** siempre `200 OK`, con estos campos:
+
+- `status`: `GRANTED` o `DENIED`.
+- `denied_reason`: el motivo del rechazo (enum `DeniedReason`); vacío si se concede.
+- `member_name`: nombre y apellido del socio; vacío con `MEMBER_NOT_FOUND`, porque no hay socio.
+- `plan_name`: el plan de la suscripción vigente; solo si se concede.
+- `remaining_days`: días que le quedan en la semana, contando el de hoy; solo si se concede y vacío si el plan es pase libre (`weekly_limit` vacío).
+
+Ana tiene 3 días por semana y entra el martes por segunda vez en la semana:
+
+```json
+{"status": "GRANTED", "denied_reason": null, "member_name": "Ana Pérez", "plan_name": "3 días por semana", "remaining_days": 1}
+```
+
+Si vuelve el martes a la tarde, la respuesta es la misma, porque ese día ya estaba contado. Si debe la cuota:
+
+```json
+{"status": "DENIED", "denied_reason": "PAYMENT_OVERDUE", "member_name": "Ana Pérez", "plan_name": null, "remaining_days": null}
+```
+
+El backend manda el motivo y la terminal muestra el texto (ver Módulo Validación Visual).
 
 **Reglas de Negocio Formales:**
 1. **Motor de Decisión:** la terminal evalúa al socio en este orden y se detiene en la primera condición que falla. Cada intento, concedido o rechazado, se guarda en `access_logs` con el número tipeado (`entered_member_number`) y la hora:
@@ -168,8 +190,8 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 - **Funcionalidades:**
   - Interfaz de entrada para ingresar el número de socio (`member_number`) mediante teclado numérico o lector de credenciales (preservando el DNI como dato administrativo por privacidad).
   - Consumo del endpoint de negocio `POST /api/access/validate`.
-  - **GRANTED (Aprobado):** Nombre del socio, Plan vigente, accesos que le quedan en la semana y mensaje de bienvenida.
-  - **DENIED (Rechazado):** Mensaje explicativo claro (ej. "Suscripción vencida", "Límite semanal alcanzado", "Socio inactivo") solicitando acercarse al mostrador administrativo.
+  - **GRANTED (Aprobado):** mensaje de bienvenida con el nombre del socio (`member_name`), plan vigente (`plan_name`) y días que le quedan en la semana (`remaining_days`; en pase libre no se muestra).
+  - **DENIED (Rechazado):** un mensaje por cada `denied_reason`: "Número de socio no encontrado" (`MEMBER_NOT_FOUND`), "Socio dado de baja" (`MEMBER_INACTIVE`), "Sin suscripción vigente" (`NO_ACTIVE_SUBSCRIPTION`), "Cuota impaga" (`PAYMENT_OVERDUE`) o "Ya usaste los días de esta semana" (`WEEKLY_LIMIT_REACHED`), pidiendo que se acerque a recepción.
 
 ---
 

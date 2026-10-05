@@ -6,6 +6,8 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 
 **Estado de implementación:** este documento especifica contratos y comportamientos objetivo; su inclusión aquí no afirma que los endpoints, controladores o pantallas estén implementados.
 
+**Roles:** `ADMIN` es el encargado o dueño del gimnasio y `STAFF` es recepción. Cada contrato indica qué roles pueden usarlo; si lo llama un usuario con otro rol, la respuesta es `403 Forbidden`.
+
 ## 1. Módulos de Backend (Spring Boot)
 
 ### 1.1. Módulo Auth (`AuthController`, `AuthService`)
@@ -14,9 +16,9 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 - **Entidades involucradas:** `Employee` (`employees`), `Person` (`persons`).
 - **Contratos de Interfaz REST:**
 
-| RF | Método | Endpoint | Descripción | Request Body | Códigos de Respuesta |
-|---|---|---|---|---|---|
-| **RF-01** | `POST` | `/api/auth/login` | Autentica credenciales de usuario (email de trabajo `work_email` y contraseña) y devuelve un token Bearer JWT con los roles asignados. | `{"work_email": "admin@gym.com", "password": "..."}` | `200 OK` (token JWT y datos de sesión), `401 Unauthorized` (credenciales inválidas), `403 Forbidden` (usuario inactivo). |
+| RF | Método | Endpoint | Roles | Descripción | Request Body | Códigos de Respuesta |
+|---|---|---|---|---|---|---|
+| **RF-01** | `POST` | `/api/auth/login` | Sin token | Autentica credenciales de usuario (email de trabajo `work_email` y contraseña) y devuelve un token Bearer JWT con los roles asignados. | `{"work_email": "admin@gym.com", "password": "..."}` | `200 OK` (token JWT y datos de sesión), `401 Unauthorized` (credenciales inválidas), `403 Forbidden` (usuario inactivo). |
 
 **Reglas de Negocio Formales:**
 1. Solo los usuarios con rol `ADMIN` o `STAFF` y con estado `active = true` están autorizados para autenticarse y recibir un token JWT.
@@ -29,17 +31,17 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 - **Entidades involucradas:** `Person` (`persons`), `Member` (`members`), `Employee` (`employees`).
 - **Contratos de Interfaz REST:**
 
-| RF | Método | Endpoint | Descripción | Request Body / Parámetros | Códigos de Respuesta |
-|---|---|---|---|---|---|
-| **RF-02** | `GET` | `/api/members` | Listado paginado de socios con soporte de filtros por estado (`status`: `ACTIVE`, `INACTIVE`). | Query params: `page`, `size`, `status` | `200 OK` (lista paginada). |
-| **RF-03** | `GET` | `/api/members/{member_number}` | Obtiene la ficha de un socio a partir de su clave primaria natural de negocio (`member_number`). | Path param: `member_number` | `200 OK` (objeto MemberDTO), `404 Not Found`. |
-| **RF-04** | `POST` | `/api/members` | Da de alta el rol de socio con su `member_number` único. Si el DNI no está registrado, primero se crea la `Person` (contacto obligatorio) y después el `Member`; si ya está registrado, se usa esa persona y solo se crea el `Member`. | `{"member_number": "1001", "dni": "...", "name": "...", "lastName": "...", "email": "...", "phone": "..."}` | `201 Created` (MemberDTO creado), `400 Bad Request` (validación fallida), `409 Conflict` (número de socio ya existente o la persona ya es socia). |
-| **RF-05** | `PUT` | `/api/members/{member_number}` | Actualiza datos de contacto o personales de un socio existente. | Path param: `member_number`. Body con campos actualizables. | `200 OK`, `400 Bad Request`, `404 Not Found`. |
-| **RF-06** | `POST` | `/api/members/{member_number}/status` | Cambia el estado de membresía del socio (`ACTIVE`, `INACTIVE`). | Path param: `member_number`. Body: `{"status": "INACTIVE"}` | `200 OK`, `404 Not Found`. |
-| **RF-07** | `GET` | `/api/employees` | Listado de empleados del gimnasio para administración de personal. | Query params: `page`, `size`, `role` | `200 OK`. |
-| **RF-08** | `POST` | `/api/employees` | Da de alta el rol de empleado con credenciales de login (`work_email`, `password`) y rol operativo (`ADMIN`, `STAFF`). Si el DNI no está registrado, primero se crea la `Person` y después el `Employee`; si ya está registrado, se usa esa persona y solo se crea el `Employee`. | `{"employee_code": "EMP01", "dni": "...", "name": "...", "lastName": "...", "work_email": "admin@gym.com", "email": "...", "phone": "...", "password": "...", "role": "STAFF"}` | `201 Created`, `400 Bad Request`, `409 Conflict` (código de empleado o work_email ya existente, o la persona ya es empleada). |
-| **RF-09** | `PUT` | `/api/employees/{employee_code}` | Actualiza datos personales o de contacto, `work_email`, rol o contraseña de un empleado existente. El `employee_code` no se cambia. | Path param: `employee_code`. Body con campos actualizables. | `200 OK`, `400 Bad Request`, `404 Not Found`, `409 Conflict` (work_email ya usado por otro empleado). |
-| **RF-10** | `POST` | `/api/employees/{employee_code}/status` | Activa o desactiva la cuenta de un empleado (`active`). Un empleado desactivado no puede iniciar sesión (regla 1 de Auth), y los cobros que hizo siguen a su nombre. | Path param: `employee_code`. Body: `{"active": false}` | `200 OK`, `404 Not Found`. |
+| RF | Método | Endpoint | Roles | Descripción | Request Body / Parámetros | Códigos de Respuesta |
+|---|---|---|---|---|---|---|
+| **RF-02** | `GET` | `/api/members` | `ADMIN`, `STAFF` | Listado paginado de socios con soporte de filtros por estado (`status`: `ACTIVE`, `INACTIVE`). | Query params: `page`, `size`, `status` | `200 OK` (lista paginada). |
+| **RF-03** | `GET` | `/api/members/{member_number}` | `ADMIN`, `STAFF` | Obtiene la ficha de un socio a partir de su clave primaria natural de negocio (`member_number`). | Path param: `member_number` | `200 OK` (objeto MemberDTO), `404 Not Found`. |
+| **RF-04** | `POST` | `/api/members` | `ADMIN`, `STAFF` | Da de alta el rol de socio con su `member_number` único. Si el DNI no está registrado, primero se crea la `Person` (contacto obligatorio) y después el `Member`; si ya está registrado, se usa esa persona y solo se crea el `Member`. | `{"member_number": "1001", "dni": "...", "name": "...", "lastName": "...", "email": "...", "phone": "..."}` | `201 Created` (MemberDTO creado), `400 Bad Request` (validación fallida), `409 Conflict` (número de socio ya existente o la persona ya es socia). |
+| **RF-05** | `PUT` | `/api/members/{member_number}` | `ADMIN`, `STAFF` | Actualiza datos de contacto o personales de un socio existente. | Path param: `member_number`. Body con campos actualizables. | `200 OK`, `400 Bad Request`, `404 Not Found`. |
+| **RF-06** | `POST` | `/api/members/{member_number}/status` | `ADMIN`, `STAFF` | Cambia el estado de membresía del socio (`ACTIVE`, `INACTIVE`). | Path param: `member_number`. Body: `{"status": "INACTIVE"}` | `200 OK`, `404 Not Found`. |
+| **RF-07** | `GET` | `/api/employees` | `ADMIN` | Listado de empleados del gimnasio para administración de personal. | Query params: `page`, `size`, `role` | `200 OK`. |
+| **RF-08** | `POST` | `/api/employees` | `ADMIN` | Da de alta el rol de empleado con credenciales de login (`work_email`, `password`) y rol operativo (`ADMIN`, `STAFF`). Si el DNI no está registrado, primero se crea la `Person` y después el `Employee`; si ya está registrado, se usa esa persona y solo se crea el `Employee`. | `{"employee_code": "EMP01", "dni": "...", "name": "...", "lastName": "...", "work_email": "admin@gym.com", "email": "...", "phone": "...", "password": "...", "role": "STAFF"}` | `201 Created`, `400 Bad Request`, `409 Conflict` (código de empleado o work_email ya existente, o la persona ya es empleada). |
+| **RF-09** | `PUT` | `/api/employees/{employee_code}` | `ADMIN` | Actualiza datos personales o de contacto, `work_email`, rol o contraseña de un empleado existente. El `employee_code` no se cambia. | Path param: `employee_code`. Body con campos actualizables. | `200 OK`, `400 Bad Request`, `404 Not Found`, `409 Conflict` (work_email ya usado por otro empleado). |
+| **RF-10** | `POST` | `/api/employees/{employee_code}/status` | `ADMIN` | Activa o desactiva la cuenta de un empleado (`active`). Un empleado desactivado no puede iniciar sesión (regla 1 de Auth), y los cobros que hizo siguen a su nombre. | Path param: `employee_code`. Body: `{"active": false}` | `200 OK`, `404 Not Found`. |
 
 **Reglas de Negocio Formales:**
 1. **Canal de contacto mínimo (Privacy & Contact):** Es estrictamente obligatorio registrar al menos un canal de contacto válido (email o teléfono) en la persona base, garantizando la viabilidad de notificaciones.
@@ -54,13 +56,13 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 - **Entidades involucradas:** `Subscription` (`subscriptions`), `Member` (`members`), `Plan` (`plans`).
 - **Contratos de Interfaz REST:**
 
-| RF | Método | Endpoint | Descripción | Request Body / Parámetros | Códigos de Respuesta |
-|---|---|---|---|---|---|
-| **RF-11** | `GET` | `/api/subscriptions` | Lista suscripciones paginadas, permitiendo filtrar por socio (`member_number`) o estado de vigencia. | Query params: `page`, `size`, `member_number`, `active` | `200 OK`. |
-| **RF-12** | `GET` | `/api/subscriptions/{id}` | Recupera la información detallada de una suscripción específica por su identificador (`subscription_number`). | Path param: `id` (Integer) | `200 OK`, `404 Not Found`. |
-| **RF-13** | `POST` | `/api/subscriptions` | Da de alta una nueva suscripción para un socio activo, vinculando el plan elegido (`plan_code`) y fecha de inicio (`start_date`). La fecha de fin (`end_date`) se calcula determinísticamente en el backend sumando exactamente un mes calendario (`plusMonths(1)`), por lo que el cliente no la envía. El precio base se toma obligatoriamente de `plans.current_price`; el cliente no puede enviar ni establecer el precio. Se congelan el precio y descuento aplicados. | `{"member_number": "1001", "plan_code": "THREE_DAYS", "discount": 0.00, "start_date": "2026-10-05T18:00:00-03:00"}` | `201 Created`, `400 Bad Request` (fecha de inicio inválida, descuento inválido, plan o socio inexistente/inactivo), `409 Conflict` (se superpone con otra suscripción del socio). |
-| **RF-14** | `PUT` | `/api/subscriptions/{id}` | Modifica exclusivamente los comentarios (`comments`) de la suscripción. Ningún otro campo puede modificarse. | Path param: `id`. Body: `{"comments": "..."}` | `200 OK`, `400 Bad Request` (campo distinto de `comments`), `404 Not Found`. |
-| **RF-15** | `DELETE` | `/api/subscriptions/{id}` | Realiza la baja lógica de la suscripción (actualiza `status = 'CANCELLED'`), denegando inmediatamente el acceso en terminal de acceso. Preserva inmutables los pagos acreditados (`PAID`) sin reintegros automáticos y mantiene el historial de accesos. | Path param: `id` | `204 No Content`, `404 Not Found`. |
+| RF | Método | Endpoint | Roles | Descripción | Request Body / Parámetros | Códigos de Respuesta |
+|---|---|---|---|---|---|---|
+| **RF-11** | `GET` | `/api/subscriptions` | `ADMIN`, `STAFF` | Lista suscripciones paginadas, permitiendo filtrar por socio (`member_number`) o estado de vigencia. | Query params: `page`, `size`, `member_number`, `active` | `200 OK`. |
+| **RF-12** | `GET` | `/api/subscriptions/{id}` | `ADMIN`, `STAFF` | Recupera la información detallada de una suscripción específica por su identificador (`subscription_number`). | Path param: `id` (Integer) | `200 OK`, `404 Not Found`. |
+| **RF-13** | `POST` | `/api/subscriptions` | `ADMIN`, `STAFF` | Da de alta una nueva suscripción para un socio activo, vinculando el plan elegido (`plan_code`) y fecha de inicio (`start_date`). La fecha de fin (`end_date`) se calcula determinísticamente en el backend sumando exactamente un mes calendario (`plusMonths(1)`), por lo que el cliente no la envía. El precio base se toma obligatoriamente de `plans.current_price`; el cliente no puede enviar ni establecer el precio. Se congelan el precio y descuento aplicados. | `{"member_number": "1001", "plan_code": "THREE_DAYS", "discount": 0.00, "start_date": "2026-10-05T18:00:00-03:00"}` | `201 Created`, `400 Bad Request` (fecha de inicio inválida, descuento inválido, plan o socio inexistente/inactivo), `409 Conflict` (se superpone con otra suscripción del socio). |
+| **RF-14** | `PUT` | `/api/subscriptions/{id}` | `ADMIN`, `STAFF` | Modifica exclusivamente los comentarios (`comments`) de la suscripción. Ningún otro campo puede modificarse. | Path param: `id`. Body: `{"comments": "..."}` | `200 OK`, `400 Bad Request` (campo distinto de `comments`), `404 Not Found`. |
+| **RF-15** | `DELETE` | `/api/subscriptions/{id}` | `ADMIN` | Realiza la baja lógica de la suscripción (actualiza `status = 'CANCELLED'`), denegando inmediatamente el acceso en terminal de acceso. Preserva inmutables los pagos acreditados (`PAID`) sin reintegros automáticos y mantiene el historial de accesos. | Path param: `id` | `204 No Content`, `404 Not Found`. |
 
 **Reglas de Negocio Formales:**
 1. **Historial, Vigencia y No Solapamiento:** Un socio puede poseer múltiples registros de suscripción (1:N) a modo de historial. El período mensual de cada suscripción se calcula estrictamente en el backend sumando un mes calendario a `start_date` con fin exclusivo (`[)`), impidiendo que el cliente fije una duración arbitraria (`end_date` no es modificable ni enviado en el alta). El motor de base de datos prohíbe que existan dos suscripciones activas con fechas superpuestas mediante una restricción de exclusión (`no_overlap_subscriptions` con `EXCLUDE USING gist`), evaluada exclusivamente sobre registros con `status != 'CANCELLED'`.
@@ -76,12 +78,12 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 - **Entidades involucradas:** `Payment` (`payments`), `Subscription` (`subscriptions`), `Employee` (`employees`).
 - **Contratos de Interfaz REST:**
 
-| RF | Método | Endpoint | Descripción | Request Body / Parámetros | Códigos de Respuesta |
-|---|---|---|---|---|---|
-| **RF-16** | `GET` | `/api/payments` | Consulta listado de pagos registrados con paginación y filtros por suscripción (`subscription_number`), cajero (`employee_code`), estado o rango de fechas de registro (`created_at`). Con `employee_code`, `from` y `to` se arma el cierre de caja de un turno. | Query params: `page`, `size`, `subscription_number`, `employee_code`, `status`, `from`, `to` | `200 OK`. |
-| **RF-17** | `GET` | `/api/payments/{id}` | Obtiene los datos detallados de un comprobante de pago por su número de recibo (`receipt_number`). | Path param: `id` (Integer) | `200 OK`, `404 Not Found`. |
-| **RF-18** | `POST` | `/api/payments` | Registra un nuevo cobro en caja asociado a una suscripción. El empleado que cobra (`employee_code`) se toma del usuario logueado al crear el cobro; no se envía en el body. El estado no lo manda el cliente: un cobro en efectivo (`CASH`) nace `PAID` y uno con el QR de Mercado Pago nace `PENDING` hasta que llega la confirmación (RF-19). | `{"subscription_number": 1520, "amount": 25000.00, "payment_method": "CASH"}` | `201 Created`, `400 Bad Request` (monto inválido `<= 0` o método de pago que no sea `CASH` ni `MERCADO_PAGO`), `404 Not Found` (suscripción inexistente), `409 Conflict` (el monto supera el saldo pendiente). |
-| **RF-19** | `PUT` | `/api/payments/{id}` | Actualiza el estado de una transacción o referencia externa (ej. confirmación de webhook de pago): pasa un pago `PENDING` a `PAID` o `FAILED` y guarda el `gateway_payment_id`. No lee ni modifica el `employee_code`, que quedó fijado al crear el cobro. | Path param: `id`. Body con nuevo estado o datos de conciliación. | `200 OK`, `404 Not Found`. |
+| RF | Método | Endpoint | Roles | Descripción | Request Body / Parámetros | Códigos de Respuesta |
+|---|---|---|---|---|---|---|
+| **RF-16** | `GET` | `/api/payments` | `ADMIN`, `STAFF` | Consulta listado de pagos registrados con paginación y filtros por suscripción (`subscription_number`), cajero (`employee_code`), estado o rango de fechas de registro (`created_at`). Con `employee_code`, `from` y `to` se arma el cierre de caja de un turno. | Query params: `page`, `size`, `subscription_number`, `employee_code`, `status`, `from`, `to` | `200 OK`. |
+| **RF-17** | `GET` | `/api/payments/{id}` | `ADMIN`, `STAFF` | Obtiene los datos detallados de un comprobante de pago por su número de recibo (`receipt_number`). | Path param: `id` (Integer) | `200 OK`, `404 Not Found`. |
+| **RF-18** | `POST` | `/api/payments` | `ADMIN`, `STAFF` | Registra un nuevo cobro en caja asociado a una suscripción. El empleado que cobra (`employee_code`) se toma del usuario logueado al crear el cobro; no se envía en el body. El estado no lo manda el cliente: un cobro en efectivo (`CASH`) nace `PAID` y uno con el QR de Mercado Pago nace `PENDING` hasta que llega la confirmación (RF-19). | `{"subscription_number": 1520, "amount": 25000.00, "payment_method": "CASH"}` | `201 Created`, `400 Bad Request` (monto inválido `<= 0` o método de pago que no sea `CASH` ni `MERCADO_PAGO`), `404 Not Found` (suscripción inexistente), `409 Conflict` (el monto supera el saldo pendiente). |
+| **RF-19** | `PUT` | `/api/payments/{id}` | Mercado Pago (sin usuario) | Actualiza el estado de una transacción o referencia externa (ej. confirmación de webhook de pago): pasa un pago `PENDING` a `PAID` o `FAILED` y guarda el `gateway_payment_id`. No lee ni modifica el `employee_code`, que quedó fijado al crear el cobro. | Path param: `id`. Body con nuevo estado o datos de conciliación. | `200 OK`, `404 Not Found`. |
 
 **Reglas de Negocio Formales:**
 1. **Integridad Transaccional:** Todo registro de cobro debe referenciar de forma obligatoria a una suscripción existente (`subscription_number`); no se admiten pagos "huérfanos".
@@ -98,10 +100,10 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 - **Entidades involucradas:** `Access` (`access_logs`), `Member` (`members`), `Subscription` (`subscriptions`), `Plan` (`plans`).
 - **Contratos de Interfaz REST:**
 
-| RF | Método | Endpoint | Descripción | Request Body / Parámetros | Códigos de Respuesta |
-|---|---|---|---|---|---|
-| **RF-20** | `POST` | `/api/access/validate` | **Operación central de negocio.** Recibe la identificación del socio (`member_number`), evalúa en tiempo real la existencia y activación del socio, la cuota al día, la vigencia temporal de la suscripción (momento actual dentro de `[start_date, end_date)`) y el cupo semanal del Plan; persiste el intento en `access_logs`. La vigencia y la deuda se calculan en cada validación, sin mutar estados por vencimiento o mora. El uso semanal se obtiene contando los días distintos con ingreso concedido desde el lunes (hora de Argentina) y el límite proviene de `plans.weekly_limit`. | `{"member_number": "1001"}` | `200 OK` (`GRANTED` o `DENIED`), `400 Bad Request`. |
-| **RF-21** | `GET` | `/api/access` | Consulta el registro histórico de accesos para reportes, auditoría y análisis de afluencia. Permite filtrar por rango de fechas, socio (`member_number`) y resultado (`GRANTED` / `DENIED`). | Query params: `page`, `size`, `member_number`, `status`, `from`, `to` | `200 OK` (listado paginado). |
+| RF | Método | Endpoint | Roles | Descripción | Request Body / Parámetros | Códigos de Respuesta |
+|---|---|---|---|---|---|---|
+| **RF-20** | `POST` | `/api/access/validate` | `STAFF` (sesión abierta en la terminal) | **Operación central de negocio.** Recibe la identificación del socio (`member_number`), evalúa en tiempo real la existencia y activación del socio, la cuota al día, la vigencia temporal de la suscripción (momento actual dentro de `[start_date, end_date)`) y el cupo semanal del Plan; persiste el intento en `access_logs`. La vigencia y la deuda se calculan en cada validación, sin mutar estados por vencimiento o mora. El uso semanal se obtiene contando los días distintos con ingreso concedido desde el lunes (hora de Argentina) y el límite proviene de `plans.weekly_limit`. | `{"member_number": "1001"}` | `200 OK` (`GRANTED` o `DENIED`), `400 Bad Request`. |
+| **RF-21** | `GET` | `/api/access` | `ADMIN`, `STAFF` | Consulta el registro histórico de accesos para reportes, auditoría y análisis de afluencia. Permite filtrar por rango de fechas, socio (`member_number`) y resultado (`GRANTED` / `DENIED`). | Query params: `page`, `size`, `member_number`, `status`, `from`, `to` | `200 OK` (listado paginado). |
 
 **Reglas de Negocio Formales:**
 1. **Motor de Decisión:** la terminal evalúa al socio en este orden y se detiene en la primera condición que falla. Cada intento, concedido o rechazado, se guarda en `access_logs` con el número tipeado (`entered_member_number`) y la hora:
@@ -125,12 +127,12 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 - **Entidades involucradas:** `Plan` (`plans`).
 - **Contratos de Interfaz REST:**
 
-| RF | Método | Endpoint | Descripción | Request Body / Parámetros | Códigos de Respuesta |
-|---|---|---|---|---|---|
-| **RF-22** | `GET` | `/api/plans` | Recupera los registros activos del catálogo `plans`, con sus datos vigentes. | Ninguno | `200 OK`. |
-| **RF-23** | `GET` | `/api/plans/{plan_code}` | Obtiene los detalles de un plan por su código natural (`plan_code`). | Path param: `plan_code` | `200 OK`, `404 Not Found`. |
-| **RF-24** | `POST` | `/api/plans` | Crea un registro Plan en el catálogo. | `{"plan_code": "WEEKEND", "name": "Pase Fines de Semana", "weekly_limit": 2, "current_price": 12000.00}` | `201 Created`, `400 Bad Request` (código vacío o duplicado, arancel negativo). |
-| **RF-25** | `PUT` | `/api/plans/{plan_code}` | Actualiza arancel vigente (`current_price`), cupo semanal o estado de activación de un plan. | Path param: `plan_code`. Body con nuevos valores. | `200 OK`, `400 Bad Request`, `404 Not Found`. |
+| RF | Método | Endpoint | Roles | Descripción | Request Body / Parámetros | Códigos de Respuesta |
+|---|---|---|---|---|---|---|
+| **RF-22** | `GET` | `/api/plans` | `ADMIN`, `STAFF` | Recupera los registros activos del catálogo `plans`, con sus datos vigentes. | Ninguno | `200 OK`. |
+| **RF-23** | `GET` | `/api/plans/{plan_code}` | `ADMIN`, `STAFF` | Obtiene los detalles de un plan por su código natural (`plan_code`). | Path param: `plan_code` | `200 OK`, `404 Not Found`. |
+| **RF-24** | `POST` | `/api/plans` | `ADMIN` | Crea un registro Plan en el catálogo. | `{"plan_code": "WEEKEND", "name": "Pase Fines de Semana", "weekly_limit": 2, "current_price": 12000.00}` | `201 Created`, `400 Bad Request` (código vacío o duplicado, arancel negativo). |
+| **RF-25** | `PUT` | `/api/plans/{plan_code}` | `ADMIN` | Actualiza arancel vigente (`current_price`), cupo semanal o estado de activación de un plan. | Path param: `plan_code`. Body con nuevos valores. | `200 OK`, `400 Bad Request`, `404 Not Found`. |
 
 **Reglas de Negocio Formales:**
 1. **Inmutabilidad de Contratos Previos:** Modificar el precio de lista (`current_price`) de un plan no altera bajo ningún concepto las suscripciones ya emitidas (`subscriptions.price` congelado al momento del alta).

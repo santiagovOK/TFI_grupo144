@@ -160,11 +160,33 @@ El backend manda el motivo y la terminal muestra el texto (ver Módulo Validaci�
 1. **Inmutabilidad de Contratos Previos:** Modificar el precio de lista (`current_price`) de un plan no altera bajo ningún concepto las suscripciones ya emitidas (`subscriptions.price` congelado al momento del alta).
 2. **Conservación Referencial:** Un plan con suscripciones históricas no puede ser borrado físicamente de la base de datos (`ON DELETE RESTRICT`). Las bajas se gestionan de forma lógica mediante el atributo `active = false`.
 
+---
+
+### 1.7. Módulo Reports (`ReportController`, `ReportService`)
+
+- **Objetivos:** Dar al dashboard y a los reportes los datos que calculan a partir de socios, suscripciones, pagos y accesos: afluencia, horarios pico, recaudación por plan y asistencia de cada socio.
+- **Entidades involucradas:** `Member` (`members`), `Subscription` (`subscriptions`), `Plan` (`plans`), `Payment` (`payments`), `Access` (`access_logs`).
+- **Contratos de Interfaz REST:**
+
+| RF | Método | Endpoint | Roles | Descripción | Request Body / Parámetros | Códigos de Respuesta |
+|---|---|---|---|---|---|---|
+| **RF-26** | `GET` | `/api/reports/summary` | `ADMIN`, `STAFF` | Resumen del dashboard: socios activos al día, accesos concedidos hoy, socios con la cuota vencida, suscripciones que vencen en los próximos 7 días, recaudación del mes y monto pendiente de cobro. `STAFF` lo recibe sin los dos montos. | Ninguno | `200 OK`. |
+| **RF-27** | `GET` | `/api/reports/access-by-hour` | `ADMIN`, `STAFF` | Cantidad de accesos concedidos por hora del día en un rango de fechas, para ver los horarios pico. | Query params: `from`, `to` | `200 OK`, `400 Bad Request` (rango inválido). |
+| **RF-28** | `GET` | `/api/reports/members-by-plan` | `ADMIN`, `STAFF` | Cantidad de socios con suscripción vigente en cada plan. | Ninguno | `200 OK`. |
+| **RF-29** | `GET` | `/api/reports/income` | `ADMIN` | Recaudación por plan en un período: suma de los pagos `PAID` de las suscripciones de cada plan. | Query params: `from`, `to` | `200 OK`, `400 Bad Request` (rango inválido). |
+| **RF-30** | `GET` | `/api/reports/attendance` | `ADMIN`, `STAFF` | Asistencia mensual de un socio: los días del mes en que tuvo un acceso concedido. | Query params: `member_number`, `month` (ej. `2026-10`) | `200 OK`, `400 Bad Request`, `404 Not Found` (socio inexistente). |
+
+**Reglas de Negocio Formales:**
+1. **Solo lectura y calculado:** Los reportes se calculan con consultas sobre los datos guardados. No se guardan totales ni contadores, para que no queden distintos de los datos de origen.
+2. **Hora de Argentina:** Los días, las horas y los meses se cuentan en hora de Argentina, igual que el cupo semanal.
+3. **Recaudación:** Solo cuentan los pagos `PAID`, por su fecha de registro (`created_at`), como en el cierre de caja (RF-16). Un socio está al día con el mismo criterio de la regla 3 del Módulo Access.
+4. **Montos solo para `ADMIN`:** `STAFF` ve la parte operativa del dashboard (socios, accesos y vencimientos) pero no la recaudación ni los montos pendientes.
+
 ## 2. Módulos de Frontend Panel Administrativo (`gym-frontend-admin`)
 
 ### 2.1. Módulo Dashboard (RF-33)
 - **Objetivos:** Proveer al administrador y personal autorizado una vista integral y ejecutiva del estado operativo del gimnasio.
-- **Funcionalidades documentadas:**
+- **Funcionalidades documentadas:** consume RF-26 a RF-28 del Módulo Reports y, para el feed de accesos en tiempo real, RF-21.
   - Métricas de afluencia diaria y semanal en base al módulo Access.
   - Horarios pico y distribución de visitas según el Plan contratado, mediante `subscriptions.plan_code` y datos de `plans`.
   - Resumen financiero de ingresos mensuales y cobros pendientes del módulo Payment.

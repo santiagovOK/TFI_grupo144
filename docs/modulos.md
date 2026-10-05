@@ -6,7 +6,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 
 **Estado de implementación:** este documento especifica contratos y comportamientos objetivo; su inclusión aquí no afirma que los endpoints, controladores o pantallas estén implementados.
 
-**Roles:** `ADMIN` es el encargado o dueño del gimnasio y `STAFF` es recepción. Cada contrato indica qué roles pueden usarlo; si lo llama un usuario con otro rol, la respuesta es `403 Forbidden`.
+**Roles:** `ADMIN` es el encargado o dueño del gimnasio y `STAFF` es recepción. Cada contrato indica qué roles pueden usarlo; si lo llama un usuario con otro rol, la respuesta es `403 Forbidden`. El login, la confirmación de Mercado Pago y la tarea diaria de avisos no los llama un empleado con rol.
 
 ## 1. Módulos de Backend (Spring Boot)
 
@@ -83,7 +83,7 @@ Este documento define la arquitectura modular del sistema **Gym Manager**, detal
 | **RF-16** | `GET` | `/api/payments` | `ADMIN`, `STAFF` | Consulta listado de pagos registrados con paginación y filtros por suscripción (`subscription_number`), cajero (`employee_code`), estado o rango de fechas de registro (`created_at`). Con `employee_code`, `from` y `to` se arma el cierre de caja de un turno. | Query params: `page`, `size`, `subscription_number`, `employee_code`, `status`, `from`, `to` | `200 OK`. |
 | **RF-17** | `GET` | `/api/payments/{id}` | `ADMIN`, `STAFF` | Obtiene los datos detallados de un comprobante de pago por su número de recibo (`receipt_number`). | Path param: `id` (Integer) | `200 OK`, `404 Not Found`. |
 | **RF-18** | `POST` | `/api/payments` | `ADMIN`, `STAFF` | Registra un nuevo cobro en caja asociado a una suscripción. El empleado que cobra (`employee_code`) se toma del usuario logueado al crear el cobro; no se envía en el body. El estado no lo manda el cliente: un cobro en efectivo (`CASH`) nace `PAID` y uno con el QR de Mercado Pago nace `PENDING` hasta que llega la confirmación (RF-19). | `{"subscription_number": 1520, "amount": 25000.00, "payment_method": "CASH"}` | `201 Created`, `400 Bad Request` (monto inválido `<= 0` o método de pago que no sea `CASH` ni `MERCADO_PAGO`), `404 Not Found` (suscripción inexistente), `409 Conflict` (el monto supera el saldo pendiente). |
-| **RF-19** | `PUT` | `/api/payments/{id}` | Mercado Pago (sin usuario) | Actualiza el estado de una transacción o referencia externa (ej. confirmación de webhook de pago): pasa un pago `PENDING` a `PAID` o `FAILED` y guarda el `gateway_payment_id`. No lee ni modifica el `employee_code`, que quedó fijado al crear el cobro. | Path param: `id`. Body con nuevo estado o datos de conciliación. | `200 OK`, `404 Not Found`. |
+| **RF-19** | `PUT` | `/api/payments/{id}` | Mercado Pago (confirmación), `ADMIN` (anulación) | Actualiza el estado de una transacción o referencia externa (ej. confirmación de webhook de pago): pasa un pago `PENDING` a `PAID` o `FAILED` y guarda el `gateway_payment_id`. `ADMIN` también lo usa para pasar un pago a `CANCELLED` ante un error de carga (regla 2). No lee ni modifica el `employee_code`, que quedó fijado al crear el cobro. | Path param: `id`. Body con nuevo estado o datos de conciliación. | `200 OK`, `404 Not Found`. |
 
 **Reglas de Negocio Formales:**
 1. **Integridad Transaccional:** Todo registro de cobro debe referenciar de forma obligatoria a una suscripción existente (`subscription_number`); no se admiten pagos "huérfanos".
@@ -199,7 +199,7 @@ El backend manda el motivo y la terminal muestra el texto (ver Módulo Validaci�
 1. **Solo email en V1:** Los mensajes se envían al email de contacto de la persona (`persons.email`). Un socio que solo dejó teléfono no los recibe. WhatsApp queda fuera de alcance (ver README).
 2. **Un email por familia:** Si varios socios comparten el mismo email (por ejemplo, dos hermanos menores con el email de su madre), el comunicado se envía una sola vez a esa dirección.
 3. **Destinatarios:** `ACTIVE` son los socios con `members.status = 'ACTIVE'`. `OVERDUE` son los que tienen una suscripción vigente sin cubrir el saldo, con el mismo criterio de la regla 3 del Módulo Access.
-4. **Aviso de vencimiento:** Se avisa por cada suscripción no cancelada cuyo `end_date` cae dentro de 3 días, en hora de Argentina. Si el socio ya tiene cargada la suscripción siguiente, no se le avisa. Como la tarea corre una vez por día y elige un solo día de vencimiento, cada suscripción recibe un único aviso.
+4. **Aviso de vencimiento:** Se avisa por cada suscripción no cancelada que vence justo dentro de 3 días, en hora de Argentina (por ejemplo, la tarea del lunes avisa a las suscripciones que vencen el jueves). Si el socio ya tiene cargada la suscripción siguiente, no se le avisa. Como la tarea corre una vez por día y elige un solo día de vencimiento, cada suscripción recibe un único aviso.
 
 ## 2. Módulos de Frontend Panel Administrativo (`gym-frontend-admin`)
 
@@ -244,7 +244,7 @@ Esta matriz vincula de forma directa los Requerimientos Funcionales (RF) detalla
 | Código | Requerimiento Funcional | Endpoint / Módulo de Resolución | Regla de Negocio / Criterio de Aceptación Restrictivo |
 |---|---|---|---|
 | **RF-01** | Autenticación y generación de sesión | `POST /api/auth/login` | Solo para `ADMIN` o `STAFF` con cuenta activa. Valida `work_email` y `password`. Genera JWT inmutable. |
-| **RF-02** | Consulta general de socios | `GET /api/members` | Exclusivo para roles administrativos. Soporta paginación y filtros de estado. |
+| **RF-02** | Consulta general de socios | `GET /api/members` | `ADMIN` y `STAFF`. Soporta paginación y filtros de estado. |
 | **RF-03** | Consulta individual de perfil de socio | `GET /api/members/{member_number}` | Búsqueda por número de socio (clave natural de negocio). |
 | **RF-04** | Registro de nuevos socios | `POST /api/members` | DNI protegido operativamente. Email o teléfono obligatorios. |
 | **RF-05** | Modificación de datos de socios | `PUT /api/members/{member_number}` | Clave natural `member_number` inmutable. |
@@ -262,7 +262,7 @@ Esta matriz vincula de forma directa los Requerimientos Funcionales (RF) detalla
 | **RF-17** | Consulta de comprobante específico | `GET /api/payments/{id}` | - |
 | **RF-18** | Registro de abonos y comprobantes | `POST /api/payments` | No admite transacciones huérfanas sin referenciar a `subscription_number`. Valida `amount > 0` y rechaza con `409` el monto que supere el saldo pendiente. Guarda el cajero logueado. |
 | **RF-19** | Conciliación transaccional (Webhooks) | `PUT /api/payments/{id}` | Registros `PAID` son financieramente inmutables (se marcan `CANCELLED` ante error). |
-| **RF-20** | Validación de ingreso en terminal | `POST /api/access/validate` | Rechazo automático por inactividad, suscripción vencida, tope semanal alcanzado o cuota impaga ($\sum \text{amount}_{\text{PAID}} < \text{price} - \text{discount}$). |
+| **RF-20** | Validación de ingreso en terminal | `POST /api/access/validate` | Evalúa en orden: número inexistente, socio de baja, sin suscripción vigente, cuota impaga ($\sum \text{amount}_{\text{PAID}} < \text{price} - \text{discount}$) y cupo semanal. Responde `200 OK` con el motivo. |
 | **RF-21** | Historial de auditoría de ingresos | `GET /api/access` | Estrictamente lectura. Operaciones CRUD (`PUT`/`DELETE`) inhabilitadas. |
 | **RF-22** | Catálogo general de planes | `GET /api/plans` | Lista registros del catálogo `plans` con sus datos. |
 | **RF-23** | Consulta de plan por código | `GET /api/plans/{plan_code}` | Consulta por clave natural `plan_code`. |

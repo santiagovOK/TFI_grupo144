@@ -97,7 +97,7 @@ Diseñada para el personal administrativo y operativo en puesto de recepción (r
   - Datos personales: Nombre, Apellido, DNI, Fecha de Nacimiento.
   - Datos de contacto: Email y Teléfono (con validación visual: al menos un canal es estrictamente obligatorio por RF-04).
   - Selector de plan/modalidad inicial.
-- **Modal de Ficha e Historial de Asistencias (RF-17):**
+- **Modal de Ficha e Historial de Asistencias (RF-21):**
   - Encabezado con datos consolidados del socio y resumen de cupo semanal consumido vs disponible.
   - Tabla cronológica de auditoría de ingresos: Fecha y hora exacta, resultado (`GRANTED` en verde / `DENIED` en rojo) y motivo registrado en caso de rechazo.
 
@@ -108,7 +108,7 @@ Diseñada para el personal administrativo y operativo en puesto de recepción (r
 ### Pantalla 3: Módulo de Suscripción y Cobro en Mostrador (Caja)
 
 - **Cabecera de Operación:** Indicador del socio seleccionado (N.º Socio, Nombre, DNI) y operador a cargo del cobro, que es el empleado logueado. Su `employee_code` queda guardado en el pago para el cierre de caja.
-- **Selección de Plan y Período:** Dropdown alimentado por los registros de Plan disponibles y fecha de inicio. La fecha de fin no se carga: se calcula sumando un mes al inicio (RF-09).
+- **Selección de Plan y Período:** Dropdown alimentado por los registros de Plan disponibles y fecha de inicio. La fecha de fin no se carga: se calcula sumando un mes al inicio (RF-13).
 - **Desglose de Liquidación:** Precio del plan, descuento de la suscripción si corresponde, lo ya pagado y saldo pendiente a cobrar. Se puede cobrar en partes, pero nunca más que el saldo pendiente; el botón de cobro se deshabilita mientras se procesa.
 - **Medios de Cobro:**
   - Registro de pago en efectivo con campo de monto recibido y cálculo automático de vuelto.

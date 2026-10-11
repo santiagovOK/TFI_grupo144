@@ -83,6 +83,7 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 
 * [docs/entidades.md](docs/entidades.md): diagrama de clases UML, DER, diccionario de datos y justificación de las claves.
 * [docs/modulos.md](docs/modulos.md): requerimientos funcionales, contratos REST y reglas de negocio de cada módulo.
+* [docs/adr/](docs/adr/README.md): registros de decisiones de arquitectura (Micro-ADRs) con justificaciones técnicas, patrones (GoF y empresariales) y compromisos de diseño.
 * [docs/mockup.md](docs/mockup.md): especificación de las pantallas.
 * [schema.sql](gym-backend/src/main/resources/schema.sql): script DDL de la base de datos PostgreSQL.
 * **Mockups interactivos (Pen.dev):** [Lienzo de pantallas en vivo](https://app.pen.dev/s/XTE4g4iJ2m6UI0SEn_EB-jrnqsraz2sCoa6JK_mOk_A)

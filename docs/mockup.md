@@ -17,7 +17,7 @@
    - Las pantallas representan selecciones de Plan a partir del catálogo dinámico `plans`, identificado por `plan_code`.
    - Los planes ilustrados (por ejemplo, `FREE`, `THREE_DAYS`, `TWO_DAYS`) son ejemplos iniciales/estáticos para representar registros de Plan, no un conjunto cerrado.
    - Los límites semanales se representan mediante `plans.weekly_limit`.
-4. **Diferenciación de Roles y Control de Acceso (RBAC):**
+4. **Diferenciación de roles y permisos:**
    - El panel administrativo distingue visualmente en su cabecera y barra lateral entre el personal operativo de recepción (`STAFF`) y la administración general (`ADMIN`).
    - Las opciones de configuración de tarifas/planes y la emisión de comunicados masivos se reservan visualmente para el rol `ADMIN`.
 
@@ -30,7 +30,7 @@
 
 ### Pantalla 0: Inicio de Sesión / Login (Staff y Administrador)
 
-Puerta de entrada al panel web administrativo (`gym-frontend-admin`), securizada mediante autenticación JWT (RF-01).
+Puerta de entrada al panel web administrativo (`gym-frontend-admin`), que permite el acceso del personal mediante correo laboral y contraseña, habilitando las funciones disponibles según el rol asignado (RF-01).
 
 - **Estructura y Disposición:** Tarjeta central centrada en pantalla sobre fondo neutro (resolución base 1440 × 900 px).
 - **Identidad:** Logo del gimnasio, título "Gym Manager" y subtítulo "Acceso de Personal".

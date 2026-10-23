@@ -65,10 +65,12 @@ flowchart TD
 
 * **Ganancias / Beneficios:**
   * **Invarianza de infraestructura:** El sistema opera idénticamente en entornos de desarrollo locales, contenedores Docker y servidores de base de datos en la nube sin importar la configuración de zona horaria del host anfitrión.
-  * **Trazabilidad y auditoría exacta:** Cada intento de acceso y cada cobro se registra con precisión de milisegundos respecto a la línea de tiempo global, garantizando que el orden cronológico absoluto de `access_logs` y `payments` sea irrefutable.
+  * **Trazabilidad temporal consistente:** Cada intento de acceso y cada cobro se registra referenciado a la línea de tiempo global mediante instantes absolutos, facilitando la correlación de eventos en `access_logs` y `payments`, reconociendo que las marcas de tiempo físicas no demuestran causalidad estricta entre operaciones concurrentes.
   * **Testabilidad determinista completa:** Capacidad de simular cualquier escenario temporal arbitrario (ej. transiciones de semana en planes de 3 días) inyectando `Clock.fixed(...)` en las pruebas de software.
   * **Eliminación de anomalías de cupo:** Se garantiza que un socio que accede tarde los días de fin de semana no sufra cobros de cupo en la semana siguiente ni se bloquee indebidamente su reingreso en el mismo día.
 
 * **Costos / Deuda Técnica:**
   * **Disciplina de desarrollo obligatoria:** Requiere velar en revisiones de código que ningún desarrollador invoque `now()` sin pasar la instancia inyectada de `Clock`.
   * **Conversión explícita de zonas:** Mayor verbosidad en los repositorios y servicios al tener que transformar rangos locales (ej. `LocalDate.atStartOfDay(zone)`) a `Instant` antes de despachar parámetros de consulta SQL.
+* **Condición de Revisión:**
+  * Este esquema debe revisarse si el sistema se expande a sedes en múltiples husos horarios o si se adoptan bases de datos distribuidas multi-región con requerimiento de relojes lógicos.

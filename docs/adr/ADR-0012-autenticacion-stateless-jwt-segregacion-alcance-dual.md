@@ -35,11 +35,12 @@ Se adopta un esquema de autenticación sin estado (*stateless*) basado en tokens
    - **Límite de autorización estricto:** El alcance `scope: TERMINAL` está habilitado **exclusivamente** para consumir `POST /api/access/validate` (RF-20). Cualquier intento de consumir endpoints administrativos, de gestión de socios, cobros, o reportes con un token `TERMINAL` es rechazado de forma tajante con código HTTP `403 Forbidden`.
    - Si se autentica el panel administrativo (sin campo `client` o con `client = PANEL`), se emite un token con claim `scope: PANEL`, el cual permite acceder a los módulos administrativos de acuerdo al rol del empleado (`ADMIN` o `STAFF`).
 
-3. **Verificación inmediata de revocación en `JwtAuthenticationFilter`:**
-   - Para resolver el problema de la revocación en arquitecturas JWT puras sin introducir infraestructura compleja (Redis), el filtro de seguridad de Spring (`JwtAuthenticationFilter`) ejecuta en cada petición autenticada una consulta ultra-liviana por clave primaria sobre la tabla `employees`: `SELECT active FROM employees WHERE employee_code = ?`.
-   - Gracias al índice de clave primaria sobre `employee_code`, la consulta se resuelve en fracciones de microsegundo en memoria de PostgreSQL sin afectar el rendimiento global.
-   - Si el empleado tiene `active = false`, la petición se rechaza de inmediato con código HTTP `401 Unauthorized`, revocando el acceso en el acto sin importar que la firma o el tiempo del JWT continúen formalmente vigentes.
-
+3. **Verificación de Estado Activo y Rol Vigentes en `JwtAuthenticationFilter`:**
+   - Para resolver la vigencia de autoridad sin recurrir a servidores dedicados de caché (Redis), el filtro de seguridad de Spring (`JwtAuthenticationFilter`) ejecuta en cada petición autenticada una consulta por clave primaria sobre la tabla `employees`: `SELECT active, role FROM employees WHERE employee_code = ?`.
+   - **Criterio de Autorización y Manejo de Errores:**
+     - Si `active = false` o el empleado no existe en la base, la petición se rechaza de inmediato con código HTTP `401 Unauthorized`.
+     - Si el empleado está activo, se puebla el `SecurityContextHolder` con el `role` vigente recuperado de la base de datos y el claim `scope` firmado extraído del token. El claim `role` dentro del JWT opera como una fotografía informativa al momento de la emisión, pero la autoridad efectiva para autorización reside en el rol vigente en la base: si un empleado con token emitido como `ADMIN` fue degradado a `STAFF`, cualquier intento posterior de invocar rutas exclusivas de `ADMIN` responderá `403 Forbidden` a pesar de lo que indique el claim del token previo.
+   - **Límite de Revocación ante Cambio de Contraseña:** Un cambio de contraseña no revoca automáticamente los tokens preexistentes (permanecen válidos hasta su vencimiento temporal o hasta la desactivación de la cuenta con `active = false`), ya que el esquema relacional no posee columna de versión de credenciales ni lista de revocación. Se asume como limitación explícita del diseño sin agregar columnas a la base.
 4. **Compensación de almacenamiento en frontend (SPAs):**
    - Se documenta la decisión consciente de almacenar el token en el almacenamiento local del navegador (`localStorage` o `sessionStorage`) de las aplicaciones frontend SPA.
    - El riesgo residual de filtración se mitiga mediante políticas estrictas de encabezados de seguridad (Content Security Policy - CSP), sanitización completa en el renderizado para evitar Cross-Site Scripting (XSS), y el confinamiento del alcance del token (`scope: TERMINAL`) en la máquina del kiosco físico.
@@ -49,7 +50,7 @@ Se adopta un esquema de autenticación sin estado (*stateless*) basado en tokens
 * **Token JWT compartido sin diferenciación de alcance (`scope`):** Descartado porque si un intruso extrae el token en el kiosco de recepción, obtiene credenciales completas de `STAFF`, pudiendo consultar el padrón de socios con DNIs, teléfonos, domicilios y saldos contables, violando gravemente la privacidad de los usuarios.
 * **JWT puramente sin estado sin verificación de estado en base de datos:** Descartado porque si se desvincula a un empleado con conflicto laboral, este conservaría acceso pleno al sistema administrativo hasta que su token expire, lo que representa un riesgo de seguridad y sabotaje inaceptable para la organización.
 * **Uso de lista negra (*blocklist*) en cluster Redis o almacenamiento en memoria:** Descartado para la fase actual por representar sobreingeniería y sumar costos de infraestructura y puntos únicos de falla; la consulta por clave primaria en PostgreSQL cubre con creces los requerimientos de latencia y volumen del sistema.
-* **Sesiones de servidor HTTP clásicas con cookies con estado:** Descartado porque rompe la arquitectura stateless de la API REST, dificulta el consumo homogéneo desde distintas plataformas clientes y requiere afinidad de sesiones o persistencia centralizada en balanceadores de carga.
+* **Sesiones de servidor basadas en cookies con estado:** Descartado para evitar la gestión de estado de sesión distribuido o la afinidad obligatoria en balanceadores de carga, y para mantener un modelo de consumo homogéneo basado en la cabecera `Authorization: Bearer` común a clientes web y terminal táctil (no porque las cookies violen REST en el plano teórico).
 * **Firma asimétrica (RS256/ES256) en lugar de secreto compartido:** Descartada para la fase actual. Existe un único emisor y un único verificador (el mismo backend), por lo que la clave pública/privada no aporta separación de responsabilidades y agrega gestión de pares de claves. Se adopta `HMAC-SHA256` con secreto compartido leído de variable de entorno; el alcance (`scope`) forma parte de la firma y no puede alterarse sin invalidarla.
 * **Vigencia corta del token como único mecanismo de revocación:** Descartada porque obliga a reautenticar con frecuencia al personal de recepción y, aun así, deja una ventana de acceso tras desactivar a un empleado. La lectura por clave primaria en cada request cierra esa ventana de inmediato.
 
@@ -76,24 +77,25 @@ sequenceDiagram
 
     Note over Terminal, ApiAccess: Flujo Válido de Terminal
     Terminal->>Filter: Request con Bearer JWT (scope: TERMINAL)
-    Filter->>DB: SELECT active WHERE employee_code = ?
-    DB-->>Filter: active = true
+    Filter->>DB: SELECT active, role WHERE employee_code = ?
+    DB-->>Filter: active = true, role = STAFF
     Filter->>ApiAccess: Autorizado (scope TERMINAL permitido)
     ApiAccess-->>Terminal: 200 OK (GRANTED/DENIED)
 
-    Note over Terminal, ApiMembers: Intento de Acceso Ilícito desde Terminal
+    Note over Terminal, ApiMembers: Intento de Acceso Ilícito desde Terminal (o Rol Degradado)
     Terminal->>Filter: GET /api/members con Bearer JWT (scope: TERMINAL)
     Filter-->>Terminal: 403 Forbidden (Requiere scope: PANEL)
+    Note over AdminPanel, Filter: Si un ADMIN fue degradado a STAFF en DB, sus requests con token previo a rutas ADMIN responden 403
 ```
-
 ## Compensaciones y Consecuencias
 
 * **Ganancias / Beneficios:**
   * **Aislamiento de superficie de ataque:** El kiosco de acceso físico queda estrictamente contenido. Aunque el token del navegador sea extraído, el atacante no puede leer ni modificar ningún dato de negocio ajeno a la validación de un socio en molinete.
-  * **Revocación en tiempo real:** Desactivar un empleado (`active = false`) surte efecto inmediato en la siguiente petición HTTP sin demoras de propagación.
+  * **Autorización con Estado y Rol Vigentes en Tiempo Real:** Desactivar un empleado (`active = false`) responde `401 Unauthorized` de inmediato, y degradar su rol en la base impacta en el acto respondiendo `403 Forbidden` en rutas administrativas no autorizadas.
   * **Infraestructura simplificada:** No se requiere provisionar ni mantener servicios externos como Redis o almacenes de sesiones en clúster.
-  * **Arquitectura REST pura:** Las peticiones HTTP son autocontenidas y transportan toda su información de contexto de seguridad.
 
 * **Costos / Deuda Técnica:**
-  * **Consulta a base de datos en cada petición:** Se introduce un `SELECT` por clave primaria en el filtro de seguridad para cada request autenticado. Dado el índice primario en `employee_code` y la escala del gimnasio, el impacto en latencia es menor a 1 milisegundo.
+  * **Sobrecarga de Consulta a Base de Datos en cada Petición:** Se introduce una consulta indexada por clave primaria (`SELECT active, role FROM employees WHERE employee_code = ?`) en el filtro de seguridad para cada request autenticado. Aunque el índice primario en `employee_code` garantiza una búsqueda directa, introduce un costo de red e I/O que debe ser monitoreado y medido formalmente bajo pruebas de carga.
   * **Almacenamiento del token en Web Storage del cliente:** El almacenamiento en `localStorage`/`sessionStorage` expone el token a ataques si existiese una vulnerabilidad de XSS en las vistas web, requiriendo defensas estrictas en la compilación y renderizado de componentes frontend.
+* **Condición de Revisión:**
+  * Esta arquitectura debe revisarse si el volumen de solicitudes por segundo satura el pool de conexiones JDBC o si se requiere revocación instantánea por cambio de contraseña mediante columnas de versión de token.

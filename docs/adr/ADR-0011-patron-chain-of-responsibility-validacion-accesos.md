@@ -28,11 +28,11 @@ Se adopta el patrón de diseño **GoF Chain of Responsibility** para estructurar
      5. **`WeeklyQuotaAndIntradayReentryValidator`:** Evalúa el cupo semanal según el plan contratado (`plans.weekly_limit`).
    - Si la solicitud supera exitosamente todos los eslabones sin corte, la cadena produce el resultado final `AccessResult.granted(subscription)`.
 
-2. **Mecanismo de Idempotencia Intradía:**
-   - Dentro del eslabón `WeeklyQuotaAndIntradayReentryValidator`, se ejecuta una consulta sobre `access_logs` verificando si el socio ya registra un acceso previo concedido (`status = 'GRANTED'`) en el día calendario en curso (desde las `00:00:00` en huso `America/Argentina/Buenos_Aires`).
-   - Si ya existe un ingreso exitoso hoy, el acceso se aprueba de inmediato (`GRANTED`) sin evaluar el cupo semanal restante, satisfaciendo formalmente "la prueba del auto" y garantizando que las reentradas intradía no consuman días de la cuota.
-   - Si es el primer ingreso del día y el plan tiene límite semanal (`weekly_limit IS NOT NULL`), se calcula la cantidad de días distintos ya asistidos en la semana mediante `COUNT(DISTINCT DATE(access_time AT TIME ZONE 'America/Argentina/Buenos_Aires'))`. Si dicha cuenta es menor a `weekly_limit`, se aprueba; de lo contrario, se corta la cadena con `WEEKLY_LIMIT_REACHED`.
-
+2. **Mecanismo de Idempotencia Intradía y Cupo Semanal:**
+   - El eslabón `WeeklyQuotaAndIntradayReentryValidator` se evalúa únicamente tras haber superado con éxito todos los eslabones anteriores (socio existente, activo, con contrato vigente y con saldo al día). La regla de reingreso jamás exime ni saltea dichas evaluaciones previas: si el socio fue desactivado o adeuda su cuota, el paso es denegado de inmediato aun si ya había ingresado más temprano.
+   - Si las condiciones previas se cumplen, se consulta en `access_logs` si el socio ya registra un acceso concedido (`status = 'GRANTED'`) en la fecha local en curso (desde las `00:00:00` en huso `America/Argentina/Buenos_Aires`).
+   - Si ya registra un ingreso exitoso hoy, el acceso se aprueba (`GRANTED`) sin consumir un día adicional del cupo semanal, permitiendo salidas transitorias ("la prueba del auto"). Cada intento genera su propio registro en `access_logs`, por lo que la auditoría forense admite múltiples filas por día y socio; la idempotencia aplica exclusivamente sobre el cómputo del cupo.
+   - Si es el primer acceso del día y el plan define cupo (`weekly_limit IS NOT NULL`), se computan los días calendario distintos ya asistidos en la semana en curso (iniciada el lunes a las 00:00 local) mediante `COUNT(DISTINCT DATE(access_time AT TIME ZONE 'America/Argentina/Buenos_Aires'))`. Si dicha cantidad es estrictamente menor a `weekly_limit`, el acceso es concedido; si alcanzó el cupo, se corta la cadena con `WEEKLY_LIMIT_REACHED`.
 3. **Transacciones cortas sin bloqueo pesimista:**
    - La validación y la inserción subsiguiente en `access_logs` se ejecutan dentro de una transacción corta de base de datos sin aplicar `SELECT ... FOR UPDATE` sobre la fila del socio.
    - En el caso improbable de un escaneo simultáneo en el mismo instante, la idempotencia intradía absorbe la condición de carrera: si dos solicitudes concurrentes del mismo socio resultan aprobadas en el mismo día, ambas generarán filas `GRANTED` para la misma fecha local, pero la consulta de cupo semanal utiliza `COUNT(DISTINCT ...)`, computando ambos ingresos como un único día utilizado.
@@ -43,7 +43,7 @@ Se adopta el patrón de diseño **GoF Chain of Responsibility** para estructurar
 
 ### Alternativas Descartadas
 
-* **Método monolítico con condicionales `if-else` anidados en `AccessService`:** Descartado porque acumula responsabilidades divergentes en un único método de gran tamaño, dificulta escribir pruebas unitarias aisladas para cada regla de negocio y viola el principio Abierto/Cerrado (Open/Closed Principle) al requerir modificar el método ante cualquier ajuste de políticas comerciales.
+* **Método procedural con sentencias condicionales en `AccessService`:** Descartado porque la validación de accesos integra múltiples reglas de negocio con precedencia secuencial estricta y cortocircuito; la cadena de responsabilidad formaliza el orden de evaluación y permite testear de manera unitaria y aislada cada regla con datos deterministas, simplificando la mantenibilidad frente a un método procedural extenso.
 * **Columna contadora decremental con descuento en cada ingreso:** Descartado porque fallaría de forma inmediata en la "prueba del auto" (descontando saldo de días ante cada salida transitoria) y requeriría una tarea programada (*cron job*) compleja y propensa a fallas para reiniciar contadores todos los lunes a las 00:00.
 * **Bloqueo pesimista (`SELECT ... FOR UPDATE`) sobre la fila de `members` durante la validación:** Descartado porque introduce contención innecesaria y serialización forzada de transacciones en la terminal física de acceso en horarios pico, degradando la latencia de respuesta en una operación que exige tiempos de respuesta sub-segundo en molinete.
 
@@ -93,3 +93,5 @@ flowchart TD
 * **Costos / Deuda Técnica:**
   * **Mayor número de clases de soporte:** La introducción de interfaces, contexto de validación y eslabones concretos eleva el conteo de archivos en la capa de servicios respecto a un enfoque procedural simple.
   * **Sensibilidad al orden de configuración:** La cadena depende de que los eslabones se ensamblen en el orden de precedencia exacto definido por el negocio; una inversión accidental en el orden (ej. validar pago antes de suscripción) causaría excepciones en tiempo de ejecución.
+* **Condición de Revisión:**
+  * Esta arquitectura debe revisarse si se incorporan torniquetes de acceso con hardware de lectura biométrica en streaming o control de aforo instantáneo con límites de concurrencia física simultánea.

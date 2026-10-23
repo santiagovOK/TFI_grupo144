@@ -21,9 +21,11 @@ El proyecto adopta el formato **Micro-ADR** redactado íntegramente en español 
 
 Los ADRs funcionan como una bitácora histórica inmutable de ingeniería:
 
-* **`Aceptado`:** Estado por defecto de toda decisión consensuada y vigente en la arquitectura del sistema.
-* **`Superado por ADR-XXXX`:** Cuando una decisión previa cambia o queda obsoleta por la evolución del diseño, **nunca se borra ni se sobreescribe el archivo original**. Se crea un nuevo ADR con un número secuencial superior y se actualiza únicamente el metadato `Estado` del ADR anterior indicando cuál lo reemplaza (ej. `* **Estado:** Superado por ADR-XXXX`).
-* **`Propuesto / Por redactar en tarea de origen`:** Decisiones identificadas en la planificación de épicas posteriores que se formalizan al ejecutar la tarea técnica correspondiente.
+* **`Propuesto`:** Estado inicial de toda plantilla y decisión técnica en formulación, evaluación o discusión.
+* **`Aceptado`:** Estado formal tras alcanzar acuerdo explícito del equipo. Una decisión aceptada formaliza la elección técnica de arquitectura, pero no acredita la implementación de código o servicios hasta su desarrollo y verificación efectiva.
+* **`Superado por ADR-XXXX`:** Cuando una decisión previamente aceptada evoluciona o se revierte tras su integración en la rama principal (`main`), **nunca se borra ni se sobreescribe el archivo original**. Se redacta un nuevo ADR sucesor con número secuencial superior y se actualiza el metadato `Estado` del ADR anterior indicando cuál lo reemplaza.
+* **Política de revisiones y erratas:** Mientras el Pull Request introductorio permanezca abierto, las revisiones, precisiones y correcciones de erratas conservan su ID e historia Git. Tras la integración en `main`, las erratas o precisiones no sustantivas se corrigen conservando el ID, mientras que los cambios arquitectónicos sustantivos requieren un nuevo ADR sucesor.
+* **`Propuesto / Por redactar en tarea de origen`:** Decisiones proyectadas en la planificación que se formalizan al abordar la tarea de ingeniería correspondiente.
 
 ---
 
@@ -50,14 +52,14 @@ Se debe incluir la sección `## Flujo Visual` con un bloque ```` ```mermaid ````
 | [ADR-0005](./ADR-0005-conservacion-historial-integridad-declarativa.md) | Conservación del Historial e Integridad Declarativa | Aceptado | 2026-10-11 | Tareas 0.3, 3.1 |
 | [ADR-0006](./ADR-0006-catalogo-tarifario-inmutabilidad-snapshot-precios.md) | Catálogo Tarifario Dinámico, Inmutabilidad Contractual y Snapshot de Precios | Aceptado | 2026-10-11 | Tareas 0.5, 1.8, 2.6 |
 | [ADR-0007](./ADR-0007-prevencion-solapamiento-suscripciones-restriccion-gist.md) | Prevención de Solapamiento Temporal de Suscripciones mediante Restricción GiST | Aceptado | 2026-10-11 | Tareas 0.5, 2.6, 3.1 |
-| [ADR-0008](./ADR-0008-modelo-pagos-ledger-inmutable-estrategia-metodo.md) | Modelo de Pagos: Patrón Ledger Inmutable y Patrón Strategy según Método | Aceptado | 2026-10-11 | Tareas 0.7, 1.9, 2.8 |
+| [ADR-0008](./ADR-0008-modelo-pagos-ledger-inmutable-estrategia-metodo.md) | Registro de cobros con conservación histórica y transiciones controladas; Strategy por método | Aceptado | 2026-10-11 | Tareas 0.7, 1.9, 2.8 |
 | [ADR-0009](./ADR-0009-auditoria-forense-terminal-acceso-estado-derivado.md) | Auditoría Forense en Terminal de Acceso y Estado Derivado sin Contadores | Aceptado | 2026-10-11 | Tareas 1.10, 2.10 |
 | [ADR-0010](./ADR-0010-tratamiento-temporal-universal-timestamptz-clock.md) | Tratamiento Temporal Universal con `TIMESTAMPTZ`, Huso Operativo (`UTC-3`) y Bean `Clock` | Aceptado | 2026-10-11 | Tareas 0.4, 1.2 |
 | [ADR-0011](./ADR-0011-patron-chain-of-responsibility-validacion-accesos.md) | Patrón Chain of Responsibility para Validación de Accesos con Idempotencia Intradía | Aceptado | 2026-10-11 | Tareas 2.10, 2.11\* |
 | [ADR-0012](./ADR-0012-autenticacion-stateless-jwt-segregacion-alcance-dual.md) | Autenticación Stateless con JWT y Segregación de Alcance Dual (`PANEL` vs. `TERMINAL`) | Aceptado | 2026-10-11 | Tareas 0.5, 0.7, 4.2, 4.3, 4.4\*, 4.5\*, 6.4 |
 | [ADR-0013](./ADR-0013-desacoplamiento-servicios-externos-patron-adapter.md) | Desacoplamiento de Servicios Externos mediante Patrón Adapter | Aceptado | 2026-10-11 | Tareas 2.13, 2.14, 2.15 |
 
-Las tareas sin marca citan explícitamente el ADR en `organization.md` (línea `ADR asociado`). Las marcadas con `*` implementan la decisión según su alcance, pero no citan el ADR.
+Las tareas sin marca corresponden a las tareas del proyecto que declaran explícitamente el ADR como su fundamento técnico; las marcadas con `*` aplican la decisión en su alcance operativo.
 
 ### 4.2. Registros Planificados para Épicas de Implementación y Despliegue
 
@@ -66,8 +68,8 @@ Las siguientes decisiones emergen durante la construcción de las capas de persi
 | ID | Título de la Decisión | Estado | Tarea de Origen |
 | :--- | :--- | :--- | :--- |
 | `ADR-0014` | Pruebas y CI contra PostgreSQL 16 real en lugar de una base embebida | Propuesto / Por redactar en tarea de origen | Tareas 1.14, 5.5 |
-| `ADR-0015` | Transacciones cortas con bloqueo pesimista para invariantes críticas: saldo de suscripción y último `ADMIN` | Propuesto / Por redactar en tarea de origen | Tareas 2.4, 2.8, 5.7 |
-| `ADR-0016` | Conciliación de Mercado Pago: firma, re-consulta a la pasarela, idempotencia y sobrepago registrado sin reintegro automático | Propuesto / Por redactar en tarea de origen | Tarea 2.9 |
-| `ADR-0017` | Avisos programados sin registro de envíos: ventana disjunta por día y guardia en memoria | Propuesto / Por redactar en tarea de origen | Tarea 2.13 |
+| `ADR-0015` | Transacciones cortas con bloqueo pesimista para invariantes críticas: separación de `ADMIN` y saldo por suscripción | Propuesto / Por redactar en tarea de origen | Tareas 2.4, 2.8, 5.7 |
+| `ADR-0016` | Conciliación de Mercado Pago: firma, re-consulta a la pasarela, idempotencia y sobrepago registrado sin reintegro automático | Propuesto / Por redactar en tarea de origen | Tareas 2.9, 2.14, 2.16 |
+| `ADR-0017` | Avisos programados de vencimiento bajo política de mejor esfuerzo sin registro de envíos en esquema | Propuesto / Por redactar en tarea de origen | Tareas 2.13, I8 |
 | `ADR-0018` | Frontend en dos aplicaciones separadas: panel administrativo y terminal de acceso | Propuesto / Por redactar en tarea de origen | Tareas 6.1, 8.1 |
-| `ADR-0019` | Plataforma de despliegue: Neon, Render y Vercel en plan gratuito | Propuesto / Por redactar en tarea de origen | Tareas 9.1, 9.2 |
+| `ADR-0019` | Plataforma de despliegue cloud: Neon, Render y Vercel en plan gratuito | Propuesto / Por redactar en tarea de origen | Tareas 9.1, 9.2 |

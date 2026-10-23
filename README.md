@@ -51,8 +51,8 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 - Feedback visual claro e inmediato del estado de acceso (Aprobado/Denegado).
 
 **3. Reportes y Estadísticas Avanzadas:**
-- Dashboard integral con métricas de asistencia y popularidad de horarios.
-- Estadísticas de ingresos monetarios por Plan y por período.
+- Dashboard integral con métricas operativas de asistencia y popularidad de horarios para ADMIN y STAFF, y estadísticas monetarias de recaudación y saldo pendiente reservadas para ADMIN.
+- Estadísticas de ingresos monetarios por Plan y por período (exclusivo para ADMIN).
 - Historial detallado de asistencias mensuales por socio.
 
 **4. Comunicaciones:** 

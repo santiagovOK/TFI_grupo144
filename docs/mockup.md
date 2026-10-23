@@ -108,8 +108,8 @@ Diseñada para el personal administrativo y operativo en puesto de recepción (r
 ### Pantalla 3: Módulo de Suscripción y Cobro en Mostrador (Caja)
 
 - **Cabecera de Operación:** Indicador del socio seleccionado (N.º Socio, Nombre, DNI) y operador a cargo del cobro, que es el empleado logueado. Su `employee_code` queda guardado en el pago para el cierre de caja.
-- **Selección de Plan y Período:** Dropdown alimentado por los registros de Plan disponibles y fecha de inicio. La fecha de fin no se carga: se calcula sumando un mes al inicio (RF-13).
-- **Desglose de Liquidación:** Precio del plan, descuento de la suscripción si corresponde, lo ya pagado y saldo pendiente a cobrar. Se puede cobrar en partes, pero nunca más que el saldo pendiente; el botón de cobro se deshabilita mientras se procesa.
+- **Selección de Plan y Período:** Dropdown alimentado por los registros de Plan disponibles y fecha de inicio (sujeta a validación y normalización en el servidor dentro de ±5 minutos del inicio canónico). La fecha de fin no se carga ni es editable: se calcula en el backend sumando un mes al inicio normalizado con fin exclusivo (RF-13).
+- **Desglose de Liquidación:** Precio del plan, descuento de la suscripción si corresponde, total pagado (`PAID`), cobros pendientes en proceso de acreditación que reservan saldo (`PENDING`) y saldo disponible para cobrar. Se puede cobrar en partes, pero nunca más que el saldo cobrable remanente; el botón de cobro se deshabilita mientras se procesa la solicitud.
 - **Medios de Cobro:**
   - Registro de pago en efectivo con campo de monto recibido y cálculo automático de vuelto.
   - Integración digital: Contenedor con código QR dinámico de Mercado Pago para escaneo y confirmación de cobro.
@@ -123,7 +123,7 @@ La imagen es un ejemplo visual estático de una versión anterior: muestra la fe
 
 ### Pantalla 4: Dashboard Administrativo y Métricas de Acceso
 
-Diseñada para la supervisión operativa y gerencial (acceso completo para `ADMIN`, vista operativa para `STAFF`).
+Diseñada para la supervisión operativa y gerencial: acceso completo con métricas financieras y operativas para `ADMIN`, y vista exclusivamente operativa para `STAFF` (el servidor omite los montos monetarios de recaudación y saldo pendiente para `STAFF`, preservando los importes operativos de caja necesarios para cobrar).
 
 - **Tarjetas KPI Principales:**
   - Socios activos totales (al día).

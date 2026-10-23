@@ -231,23 +231,23 @@ erDiagram
 **Notación del diagrama:** la línea punteada representa una relación no identificadora (el hijo tiene su propia clave primaria y solo referencia al padre).
 ## Justificación de Claves
 
-Cada clave primaria se eligió según cómo identifica el gimnasio a esa cosa en la práctica. No se usan UUID. Hay dos casos:
+Cada clave primaria se definió en función de cómo opera e identifica el gimnasio a cada entidad o evento en la práctica diaria. Los fundamentos técnicos y de privacidad que sustentan el descarte de identificadores universales opacos en favor de claves de negocio y correlativos se detallan en [ADR-0003](./adr/ADR-0003-estrategia-identificadores-negocio-privacidad.md).
 
-- **Clave natural:** el dato ya existe en el negocio y no se repite (DNI, número de socio, código de empleado, código de plan).
-- **Número correlativo (`SERIAL`):** para suscripciones, cobros e ingresos no hay un dato propio que los identifique, así que la base los numera 1, 2, 3... Es una clave sustituta (el equivalente del `AUTO_INCREMENT` de MySQL), pero tiene un uso en el negocio: es el número con el que se nombra esa suscripción, ese recibo o ese ingreso.
+Se distinguen dos categorías:
+- **Clave natural:** El dato surge de la realidad civil o de la nomenclatura comercial preexistente y no se repite dentro de su ámbito (DNI, número de socio, legajo de empleado, código comercial de plan).
+- **Clave correlativa sustituta:** Identificador numérico secuencial generado para contratos, comprobantes e intentos de acceso donde no existe un atributo natural único. Tienen significado directo para la operación cotidiana: constituyen la referencia de contrato, el recibo de cobro y el evento auditado.
 
 | Tabla | Clave primaria | Tipo de clave | Por qué |
 |-------|----------------|---------------|---------|
-| `persons` | `dni VARCHAR(15)` | Natural | Es el documento con el que se identifica a cualquier persona y no se repite. |
-| `members` | `member_number VARCHAR(20)` | Natural del negocio | Es el número que el socio da en recepción y escribe en la terminal. El DNI queda como clave foránea única hacia `persons`. |
-| `employees` | `employee_code VARCHAR(20)` | Natural del negocio | Es el código o legajo interno del empleado. El DNI queda como clave foránea única hacia `persons` y el login se hace con `work_email`. |
-| `plans` | `plan_code VARCHAR(20)` | Natural del negocio | Es el código corto de cada plan (por ejemplo `THREE_DAYS`); los valores citados son ejemplos, no una lista cerrada. |
-| `subscriptions` | `subscription_number SERIAL` | Correlativo (sustituta) | Un socio tiene muchas suscripciones a lo largo del tiempo. Socio + fecha de inicio no alcanza como clave, porque una suscripción cancelada y la que la reemplaza pueden empezar el mismo día. El número permite hablar de "la suscripción 1520" en caja. |
-| `payments` | `receipt_number SERIAL` | Correlativo (sustituta) | Funciona como el número de recibo del talonario de caja. |
-| `access_logs` | `access_id SERIAL` | Correlativo (sustituta) | Cada intento en la terminal es un evento. El socio y la hora no alcanzan como clave, porque dos intentos pueden registrarse con la misma hora. |
+| `persons` | `dni` | Natural | Acredita la identidad civil del individuo ante el Estado; dato preexistente y unívoco. |
+| `members` | `member_number` | Natural del negocio | Número de carnet y de acceso público que el socio utiliza en recepción y digita en la terminal de acceso. Permite resguardar el DNI en la interacción pública. |
+| `employees` | `employee_code` | Natural del negocio | Código de legajo interno del personal del gimnasio. |
+| `plans` | `plan_code` | Natural del negocio | Código comercial abierto del catálogo de modalidades tarifarias (por ejemplo `THREE_DAYS`, `FREE_PASS`), sujeto a la oferta del gimnasio. |
+| `subscriptions` | `subscription_number` | Correlativa (sustituta) | Referencia del contrato de suscripción para su gestión operativa en mostrador. Un socio tiene múltiples suscripciones en el tiempo; la combinación de socio y fecha de inicio no alcanza como identificador unívoco, pues una suscripción cancelada y la que la reemplaza pueden coincidir en su fecha de inicio. |
+| `payments` | `receipt_number` | Correlativa (sustituta) | Recibo interno correspondiente al comprobante emitido en la transacción de cobro, análogo a un talonario de caja. |
+| `access_logs` | `access_id` | Correlativa (sustituta) | Identificación individual de cada intento de acceso en la terminal. El socio y la hora no alcanzan como clave, pues dos intentos sucesivos (o intentos fallidos con número de socio inexistente) pueden registrarse dentro del mismo instante. |
 
-El número correlativo lo genera la base y puede tener saltos (por ejemplo, si una operación falla antes de guardarse). Sirve para identificar el registro, pero no es una numeración fiscal.
-
+Los identificadores correlativos pueden presentar discontinuidades o saltos (por ejemplo, ante operaciones no completadas) y no constituyen numeración fiscal, cumpliendo un propósito estrictamente operativo y de referencia interna.
 ## Relaciones
 
 | Relación | Tipo | Descripción |

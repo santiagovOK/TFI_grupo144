@@ -51,8 +51,8 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 - Feedback visual claro e inmediato del estado de acceso (Aprobado/Denegado).
 
 **3. Reportes y Estadísticas Avanzadas:**
-- Dashboard integral con métricas de asistencia y popularidad de horarios.
-- Estadísticas de ingresos monetarios por Plan y por período.
+- Dashboard integral con métricas operativas de asistencia y popularidad de horarios para ADMIN y STAFF, y estadísticas monetarias de recaudación y saldo pendiente reservadas para ADMIN.
+- Estadísticas de ingresos monetarios por Plan y por período (exclusivo para ADMIN).
 - Historial detallado de asistencias mensuales por socio.
 
 **4. Comunicaciones:** 
@@ -73,7 +73,7 @@ Desarrollar un sistema de gestión de gimnasio que automatice las operaciones di
 - **Perfil Social:** Perfiles extendidos con fotos, metas de fitness y nivel de experiencia.
 - **Hardware / IoT:** Control automatizado de puertas o cerraduras magnéticas *(la terminal aprueba en pantalla, el pase físico es supervisado)*.
 - **Comunicaciones Transaccionales/Marketing:** Mensajes de bienvenida, comprobantes de pago automáticos, alertas de inactividad para fidelización y recuperación de contraseñas *(no aplica en V1 ya que los socios no poseen credenciales)*.
-- **Integración con WhatsApp:** Envío de notificaciones a través de WhatsApp (se excluye en V1 por la mayor complejidad de su API, dejando solo Email en esta primera iteración).
+- **Integración con WhatsApp:** Envío de notificaciones a través de WhatsApp (el alcance de V1 limita las comunicaciones del sistema a correo electrónico).
 
 **Nota sobre escalabilidad:** Aunque estas funcionalidades no se implementan en la primera versión, la base arquitectónica está diseñada para soportarlas a futuro sin reestructuraciones mayores.
 
@@ -162,7 +162,7 @@ dropdb gym_prueba                # borra la base de prueba
 - [x] Corrección del modelo según las observaciones del tutor del 29/09 ([issue #19](https://github.com/santiagovOK/TFI_grupo144/issues/19)).
 - [x] Diagrama de clases UML y DER finales.
 - [x] Especificación completa de los módulos: requerimientos, permisos y reglas de negocio.
-- [ ] Aprobación del modelo por el tutor antes de empezar a programar.
+- [x] Aprobación del modelo por el tutor antes de empezar a programar.
 
 ### Fase 1: Backend Spring Boot — Base
 

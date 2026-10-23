@@ -8,7 +8,7 @@ Documentación técnica del modelo de datos del sistema, estructurada en dos niv
 
 ## 1. Modelo Conceptual de Dominio (UML)
 
-Diagrama de clases formal del dominio expresado en notación UML conceptual, con tipos de datos de negocio independientes de cualquier lenguaje de programación o motor de persistencia:
+Diagrama de clases formal del dominio siguiendo las convenciones de tipos y visibilidad de Java:
 
 ```mermaid
 classDiagram
@@ -16,20 +16,20 @@ classDiagram
 
     %% 1. Core / Actores
     class Person {
-        - Texto dni
-        - Texto name
-        - Texto lastName
-        - Texto email
-        - Texto phone
-        - Fecha birthDate
+        - String dni
+        - String name
+        - String lastName
+        - String email
+        - String phone
+        - LocalDate birthDate
     }
 
     class Employee {
-        - Texto employeeCode
-        - Texto workEmail
-        - Texto password
+        - String employeeCode
+        - String workEmail
+        - String password
         - Role role
-        - Booleano active
+        - Boolean active
     }
     class Role {
         <<enumeration>>
@@ -38,8 +38,8 @@ classDiagram
     }
 
     class Member {
-        - Texto memberNumber
-        - Instante joinDate
+        - String memberNumber
+        - LocalDateTime joinDate
         - MemberStatus status
     }
     class MemberStatus {
@@ -50,20 +50,20 @@ classDiagram
 
     %% 2. Catálogo y Contratos
     class Plan {
-        - Texto planCode
-        - Texto name
-        - Entero weeklyLimit
-        - Monto currentPrice
-        - Booleano active
+        - String planCode
+        - String name
+        - Integer weeklyLimit
+        - BigDecimal currentPrice
+        - Boolean active
     }
 
     class Subscription {
-        - Entero subscriptionNumber
-        - Monto price
-        - Monto discount
-        - Instante startDate
-        - Instante endDate
-        - Texto comments
+        - Integer subscriptionNumber
+        - BigDecimal price
+        - BigDecimal discount
+        - LocalDateTime startDate
+        - LocalDateTime endDate
+        - String comments
         - SubscriptionStatus status
     }
     class SubscriptionStatus {
@@ -74,10 +74,10 @@ classDiagram
 
     %% 3. Transacciones y Eventos
     class Payment {
-        - Entero receiptNumber
-        - Monto amount
-        - Texto gatewayPaymentId
-        - Texto comments
+        - Integer receiptNumber
+        - BigDecimal amount
+        - String gatewayPaymentId
+        - String comments
         - PaymentStatus status
         - PaymentMethod paymentMethod
     }
@@ -95,9 +95,9 @@ classDiagram
     }
 
     class Access {
-        - Entero accessId
-        - Texto enteredMemberNumber
-        - Instante accessTime
+        - Integer accessId
+        - String enteredMemberNumber
+        - LocalDateTime accessTime
         - AccessStatus status
         - DeniedReason deniedReason
     }
@@ -133,12 +133,8 @@ classDiagram
 ### Justificación del Diseño Conceptual
 * **Socio y empleado como roles de una persona:** `Person` guarda los datos de cualquier persona y `Member` y `Employee` son roles que puede tener o no. Una persona puede tener uno, el otro o los dos, por ejemplo la profe que también entrena en el gimnasio, y puede sumar o dejar un rol con el tiempo sin dejar de ser la misma persona. Por eso no se usa herencia: la herencia es fija y un cambio de rol obligaría a cambiar de clase. Se dibuja como composición porque el rol se crea para una persona y no existe sin ella.
 * **Seguridad y Privacidad:** Las credenciales de autenticación quedan estrictamente contenidas en `Employee`. `Member` solo expone atributos de membresía deportiva (`memberNumber`, `joinDate`, `status`).
-* **Asociaciones conceptuales frente a claves foráneas:** Las relaciones entre entidades se modelan mediante asociaciones directas de negocio y no como atributos de clave foránea (por ejemplo, `Subscription` no contiene identificadores de socio o de plan, pues su pertenencia queda explícita en las asociaciones `contrata` y `rige`). Las asociaciones expresan vínculos del negocio; los detalles de persistencia pertenecen al modelo relacional.
-* **Tipado Conceptual:** Los atributos emplean tipos semánticos de dominio independientes de lenguajes de programación o motores de persistencia:
-  - `Fecha`: Representa un día de calendario civil (como la fecha de nacimiento), sin componente de hora ni huso horario.
-  - `Instante`: Representa un evento con fecha y hora exactas en la línea de tiempo (como el momento de un intento de acceso, la afiliación o el inicio y fin de una vigencia).
-  - `Monto`: Cuantía monetaria de precisión decimal exacta para tarifas, descuentos y cobros.
-  - `Texto`, `Entero`, `Booleano`: Tipos escalares para secuencias de caracteres, cantidades y estados binarios.
+* **Relaciones como líneas, no como atributos:** `Subscription` no lleva `memberNumber` ni `planCode` porque a qué socio y a qué plan pertenece ya lo muestran las líneas `contrata` y `rige`. Las claves foráneas y las fechas de registro (`created_at`, `updated_at`) son detalles de las tablas y aparecen en el DER.
+* **Tipado:** Los atributos siguen las convenciones y tipos estándar de Java (`String`, `LocalDate`, `LocalDateTime`, tipos de enums), prescindiendo de tipos físicos de almacenamiento como `VARCHAR` o `TIMESTAMPTZ`.
 * **Modelado de Enumeraciones (Tipos de Datos vs. Relaciones):** Las enumeraciones (`Role`, `MemberStatus`, `SubscriptionStatus`, `PaymentStatus`, `PaymentMethod`, `AccessStatus`, `DeniedReason`) se modelan formalmente como clasificadores con el estereotipo `<<enumeration>>`, pero sus relaciones con las clases se expresan exclusivamente como atributos tipados (ej. `- role: Role`, `- status: MemberStatus`), sin flechas de dependencia (`..>`). Una enumeración es una especialización de `DataType` (tipo por valor); trazar líneas de dependencia hacia tipos de datos es redundante (el tipo ya está declarado en la firma del atributo) y genera "ruido visual" innecesario con cruce de aristas. Se reserva el trazado de conectores para las asociaciones semánticas directas entre entidades del dominio, manteniendo el diagrama limpio, legible y sin ambigüedades.
 
 ---

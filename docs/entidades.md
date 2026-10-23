@@ -267,8 +267,11 @@ Los identificadores correlativos pueden presentar discontinuidades o saltos (por
 
 Representa los datos físicos y de contacto de cualquier individuo registrado en el sistema (socio o empleado).
 
-**Nota de Integridad y Contacto:** Centraliza la identidad legal de la persona (`dni`) y garantiza que no haya registros "fantasma" exigiendo al menos un medio de comunicación (`chk_person_contact`: email o teléfono obligatorios). El campo `email` actúa como canal de contacto civil y familiar (no es único, permitiendo que menores de edad o grupos familiares compartan el correo electrónico sin bloqueos). La búsqueda eficiente se optimiza mediante el índice no único `ix_persons_email`.
+**Regla de Negocio:**
+Centraliza la identidad civil legal de las personas vinculadas al gimnasio. Exige registrar al menos un canal de comunicación para contacto operativo, avisos y emergencias (correo electrónico o teléfono). El correo electrónico actúa como canal de contacto civil y familiar; no es un identificador único por individuo, permitiendo que menores de edad, tutores o integrantes de un mismo grupo familiar compartan la dirección sin restricciones de registro.
 
+**Implementación Relacional:**
+La clave primaria natural legal es `dni`. La restricción `chk_person_contact` garantiza a nivel de motor la obligatoriedad de al menos un medio de contacto (`email IS NOT NULL OR phone IS NOT NULL`). Validaciones de integridad mediante restricciones `CHECK` impiden cadenas vacías o compuestas únicamente por espacios en blanco en campos obligatorios (`name`, `last_name`, `dni`, y en `email` o `phone` cuando se informan). La búsqueda y consulta sobre correos se optimiza mediante el índice no único `ix_persons_email`. La conservación histórica e integridad declarativa se respaldan en [ADR-0005](./adr/ADR-0005-conservacion-historial-integridad-declarativa.md) y la segregación de correos en [ADR-0004](./adr/ADR-0004-segregacion-semantica-correo-electronico.md).
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `dni` | VARCHAR(15) | No | Sí (PK) | Clave primaria natural legal. No puede quedar vacío (CHECK) |
@@ -286,10 +289,11 @@ Representa los datos físicos y de contacto de cualquier individuo registrado en
 
 Representa el rol de socio de una persona en el gimnasio.
 
-**Nota de Privacidad y Negocio:** El socio opera en terminales y mostrador mediante su `member_number`, protegiendo el `dni` civil. Esta tabla no posee contraseñas ni roles administrativos, desacoplando completamente la membresía deportiva de la seguridad del sistema.
+**Regla de Negocio:**
+El socio se identifica en recepción y terminales de acceso mediante su número de socio, resguardando la privacidad de su documento de identidad civil. La membresía deportiva no contiene credenciales de acceso al sistema ni roles administrativos. El vencimiento temporal de una suscripción o la existencia de deuda pendiente no modifican el estado de la membresía ni eliminan al socio; la habilitación de acceso y la condición financiera se evalúan dinámicamente en cada ingreso sin mutaciones automáticas sobre la entidad para preservar íntegro su historial.
 
-**Nota de Preservación del Socio ante Vencimiento:** El vencimiento de una suscripción no genera ninguna mutación automática ni eliminación sobre el registro de la entidad `Member` ni modifica su `status`. La vigencia de la suscripción y la deuda exigible se evalúan dinámicamente al validar el acceso (RF-20), según la suscripción y sus pagos, preservando intacto el historial de auditoría del socio.
-
+**Implementación Relacional:**
+Clave primaria natural de negocio `member_number`. Clave foránea `1:1` única hacia `persons(dni)` protegida con `ON DELETE RESTRICT`. Estados administrativos tipados mediante `status` (`ACTIVE`, `INACTIVE`) con restricción `CHECK`. Registro cronológico mediante marcas temporales de alta y modificación. Fundamentado en [ADR-0002](./adr/ADR-0002-modelado-actores-patron-party-role.md), [ADR-0003](./adr/ADR-0003-estrategia-identificadores-negocio-privacidad.md) y [ADR-0005](./adr/ADR-0005-conservacion-historial-integridad-declarativa.md).
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `member_number` | VARCHAR(20) | No | Sí (PK) | Clave natural de negocio utilizada en terminales de acceso. No puede quedar vacío (CHECK) |
@@ -305,8 +309,11 @@ Representa el rol de socio de una persona en el gimnasio.
 
 Representa el rol de empleado de una persona, como personal operativo o administrativo del gimnasio.
 
-**Nota de Autenticación y Roles:** Centraliza exclusivamente las credenciales de acceso al sistema informático (`work_email` como identificador de login con restricción física de unicidad insensible a mayúsculas asegurada por el índice funcional `ux_employees_work_email`, y `password` encriptado con BCrypt) y el rol de seguridad asignado (`ADMIN`, `STAFF`). No contiene número de socio.
+**Regla de Negocio:**
+Centraliza al personal con responsabilidades laborales en el gimnasio, diferenciando las funciones administrativas (`ADMIN`) de las operativas (`STAFF`). Gestiona las credenciales requeridas para autenticarse y operar el sistema informático mediante correo laboral y contraseña. Los permisos de uso están determinados por el rol asignado y la vigencia activa de la cuenta. No contiene atributos deportivos ni número de socio.
 
+**Implementación Relacional:**
+Clave primaria `employee_code` y clave foránea `1:1` única hacia `persons(dni)` con `ON DELETE RESTRICT`. Unicidad estricta del correo laboral insensible a mayúsculas garantizada por el índice funcional único `ux_employees_work_email` sobre `LOWER(work_email)`. Almacenamiento seguro de credenciales mediante hash BCrypt en `password` (función criptográfica unidireccional no reversible). Restricciones `CHECK` para campos obligatorios no vacíos, dominio de roles (`ADMIN`, `STAFF`) y bandera de cuenta activa (`active`). Fundamentado en [ADR-0002](./adr/ADR-0002-modelado-actores-patron-party-role.md), [ADR-0004](./adr/ADR-0004-segregacion-semantica-correo-electronico.md) y [ADR-0005](./adr/ADR-0005-conservacion-historial-integridad-declarativa.md).
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `employee_code` | VARCHAR(20) | No | Sí (PK) | Identificador unívoco o legajo del empleado en el gimnasio. No puede quedar vacío (CHECK) |
@@ -323,12 +330,11 @@ Representa el rol de empleado de una persona, como personal operativo o administ
 
 Representa el catálogo de modalidades de acceso y aranceles vigentes del gimnasio (soporte de configuración de aranceles según Pantalla 5 de mockups).
 
-**Nota de Aranceles Dinámicos e Inmutabilidad Histórica:** Centraliza los precios de lista y cupos semanales. Cuando un socio contrata una suscripción (`subscriptions`), esta toma el precio de lista (`current_price`) y lo congela en su campo `price`. Las futuras modificaciones de aranceles en `plans` aplican solo a nuevas contrataciones, preservando la inmutabilidad de los contratos vigentes y finalizados.
+**Regla de Negocio:**
+Catálogo comercial abierto que define las modalidades de concurrencia y las tarifas aplicables a nuevas contrataciones. El cupo semanal determina la cantidad de días distintos en que el socio puede asistir; la ausencia de límite semanal representa un pase libre comercial arancelado. Las membresías gratuitas, institucionales o de beca deportiva se modelan formalmente con arancel $0.00 o descuento total, sin requerir tipos especiales; un importe neto de $0.00 habilita el acceso sin generar pagos ficticios en caja. Los ajustes arancelarios aplican solo a contrataciones futuras, congelándose la tarifa pactada al momento de la suscripción.
 
-**Nota de Modalidades ("Pase Libre" vs. Becados / Cortesías):**
-- **Pase Libre (`'FREE'`):** El término *"Free Pass"* o *"Pase Libre"* en la industria de gimnasios representa acceso sin límite semanal de concurrencia (`weekly_limit = NULL`), pero constituye un servicio comercial arancelado (habitualmente el plan con el abono más alto).
-- **Becas y Cortesías ($0) y Bonificaciones al 100% (AC4):** Para otorgar membresías gratuitas o con descuento total (becas deportivas, convenios institucionales o pases de cortesía), no se crea un tipo especial ni se saltea la base de datos: puede configurarse un registro de `Plan` con `current_price = 0.00` (garantizado por la restricción `current_price >= 0`, ej. `plan_code = 'SCHOLARSHIP'`, `name = "Pase Becado / Institucional"`), o bien aplicarse una bonificación total sobre un plan arancelado mediante `discount = price` (permitido por `chk_subscription_discount`). En ambos casos, el saldo adeudado del socio resulta estrictamente $0.00 y la terminal de acceso concede el ingreso (`GRANTED`) comprobando que el monto a pagar es $0, **sin requerir ni registrar comprobantes en la tabla `payments`** (la cual exige estrictamente `amount > 0` mediante `chk_payment_amount`), evitando generar recibos ficticios en caja.
-
+**Implementación Relacional:**
+Clave primaria natural `plan_code`. Restricciones `CHECK` que imponen nombre no vacío, arancel de lista no negativo (`current_price >= 0`) y cupo semanal no negativo o nulo (`weekly_limit IS NULL OR weekly_limit >= 0`). La columna `active` permite retirar o habilitar modalidades comerciales sin eliminar registros existentes ni romper la integridad referencial (`ON DELETE RESTRICT`). Fundamentado en [ADR-0005](./adr/ADR-0005-conservacion-historial-integridad-declarativa.md) y [ADR-0006](./adr/ADR-0006-catalogo-tarifario-inmutabilidad-snapshot-precios.md).
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `plan_code` | VARCHAR(20) | No | Sí (PK) | Código natural de negocio del Plan; los ejemplos `FREE`, `THREE_DAYS`, `TWO_DAYS` no constituyen un conjunto cerrado. No puede quedar vacío (CHECK) |
@@ -344,13 +350,11 @@ Representa el catálogo de modalidades de acceso y aranceles vigentes del gimnas
 
 Representa el período de suscripción de un socio vinculado al plan seleccionado (`plan_code`) y a sus fechas de vigencia.
 
-**Nota de Vigencia:** cada suscripción es un período definido: siempre tiene fecha de inicio y de fin, y cada renovación genera una suscripción nueva. Para una suscripción mensual, el período va desde el día y la hora exactos de inicio hasta el mismo día y hora del mes siguiente, con fin exclusivo (`[)`). Por ejemplo, un alta el 5/10 a las 18:00 vence exactamente el 5/11 a las 18:00 (el acceso es válido mientras `momento < 18:00`). Una suscripción está vigente operativa y financieramente cuando `start_date <= momento < end_date` **y su `status = 'ACTIVE'`**: el inicio se incluye y el fin no. Así, una renovación puede empezar en el mismo instante en que termina la anterior sin que se superpongan. La restricción `chk_subscription_dates` exige que el fin sea posterior al inicio.
+**Regla de Negocio:**
+Contrato temporal que otorga derecho de acceso durante un intervalo definido con inicio incluido y fin excluido (`[)`). Cada renovación genera un contrato nuevo, permitiendo continuidad inmediata sin solapamiento temporal ni huecos. El cupo semanal asignado no se almacena como saldo o contador en la tabla, sino que se deduce de los días distintos asistidos en la semana local. El precio y el descuento se pactan al suscribirse y quedan congelados como snapshot histórico. La cancelación inactiva la suscripción para el ingreso pero preserva el historial contractual y los cobros pagados asociados.
 
-**Nota de Cupo Semanal:** la tabla no guarda un contador. El límite se define en el plan asociado mediante `plans.weekly_limit`; el uso se calcula en `access_logs` contando los días distintos con ingreso concedido (`GRANTED`) desde el lunes a las 00:00 de la semana en curso, en hora de Argentina; los reingresos del mismo día no descuentan (ver Fundamentos de Diseño Relacional, punto 7). La restricción CHECK requiere un valor no negativo cuando `weekly_limit` está informado.
-
-**Nota de Condiciones Financieras:** `subscriptions.price` conserva el precio pactado como snapshot histórico del `plans.current_price` aplicado al crear la suscripción; futuros cambios de tarifa no modifican ese valor. `discount` conserva el descuento concedido. Las restricciones `chk_subscription_price` y `chk_subscription_discount` exigen que el precio sea no negativo y que el descuento no supere dicho precio (`0 <= discount <= price`). Si `price = 0.00` o `discount = price` (bonificación total del 100%), el saldo exigible es $0.00 y no se crean registros en `payments`.
-
-**Nota de Baja Lógica, Cancelación y Solapamiento (AC5):** la tabla implementa baja lógica mediante la columna `status` (`ACTIVE`, `CANCELLED`). Cuando una suscripción es cancelada (`status = 'CANCELLED'`), el socio queda inmediatamente inhabilitado para ingresar al gimnasio en terminales de acceso. El vencimiento temporal se determina dinámicamente a partir de `start_date` y `end_date`; no requiere una transición persistida de estado. Los comprobantes vinculados en la tabla `payments` con estado `PAID` permanecen inmutables como `PAID` para auditoría y balance de caja, sin sufrir cancelaciones ni reintegros automáticos. Asimismo, el motor de base de datos prohíbe el solapamiento de períodos vigentes para un mismo socio mediante una restricción de exclusión `no_overlap_subscriptions` (`EXCLUDE USING gist`), evaluada únicamente sobre suscripciones no canceladas.
+**Implementación Relacional:**
+Clave primaria correlativa `subscription_number`. Claves foráneas hacia `members` y `plans` protegidas con `ON DELETE RESTRICT`. Restricciones `CHECK` de consistencia temporal (`start_date < end_date`), precio no negativo (`price >= 0`) y descuento acotado (`0 <= discount <= price`). Estados tipados mediante `status` (`ACTIVE`, `CANCELLED`). La prevención de solapamientos entre períodos vigentes de un mismo socio se garantiza mediante la restricción de exclusión GiST `no_overlap_subscriptions` sobre intervalos semiabiertos `tstzrange` (`[)`) para suscripciones no canceladas. Fundamentado en [ADR-0005](./adr/ADR-0005-conservacion-historial-integridad-declarativa.md), [ADR-0006](./adr/ADR-0006-catalogo-tarifario-inmutabilidad-snapshot-precios.md) y [ADR-0007](./adr/ADR-0007-prevencion-solapamiento-suscripciones-restriccion-gist.md).
 
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
@@ -365,12 +369,18 @@ Representa el período de suscripción de un socio vinculado al plan seleccionad
 | `status` | VARCHAR(20) | No | — | Valor del Enum `SubscriptionStatus` (por defecto `ACTIVE`; permite `ACTIVE`, `CANCELLED`) |
 | `created_at` | TIMESTAMPTZ | No | — | Por defecto `CURRENT_TIMESTAMP` |
 | `updated_at` | TIMESTAMPTZ | Sí | — | Sin actualización automática en la base. La aplicación deberá asignarlo al modificar el registro |
+
 ---
 
 ## Tabla: `access_logs`
 
 Registra cada intento de ingreso validado en la terminal de acceso.
 
+**Regla de Negocio:**
+Auditoría inmutable de cada intento de acceso en terminales o molinetes, tanto concedido como denegado. Registra de forma fidedigna todo intento, incluyendo aquellos donde se ingresó un número de socio inexistente. Cada registro documenta el número digitado, el momento exacto y, en caso de denegación, el motivo preciso evaluado en la terminal.
+
+**Implementación Relacional:**
+Clave primaria correlativa secuencial `access_id`. Registra `entered_member_number` obligatorio no vacío (`chk_access_entered`). Claves foráneas opcionales con `ON DELETE RESTRICT` hacia `members` (`member_number`, nulo si el socio no existe) y hacia `subscriptions` (`subscription_number`, obligatorio si `GRANTED` según `chk_access_logic`, opcional si `DENIED`). Restricciones `CHECK` que validan el dominio de estados (`AccessStatus`), motivos de denegación (`DeniedReason`), correspondencia obligatoria de `member_number` nulo con `MEMBER_NOT_FOUND` (`chk_access_not_found`) y marcas temporales auditadas. Fundamentado en [ADR-0005](./adr/ADR-0005-conservacion-historial-integridad-declarativa.md), [ADR-0009](./adr/ADR-0009-auditoria-forense-terminal-acceso-estado-derivado.md) y [ADR-0010](./adr/ADR-0010-tratamiento-temporal-universal-timestamptz-clock.md).
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `access_id` | SERIAL / INTEGER | No (generado) | Sí (PK) | Clave primaria secuencial de auditoría temporal |
@@ -387,8 +397,11 @@ Registra cada intento de ingreso validado en la terminal de acceso.
 
 Registra un pago asociado a una suscripción.
 
-**Nota de Inmutabilidad Financiera (AC5):** Los comprobantes con estado `PAID` son financieramente inmutables: la eventual cancelación de la suscripción asociada no transiciona los pagos `PAID` a `CANCELLED`, preservando el arqueo de caja y la auditoría contable. El estado `CANCELLED` en `payments` se reserva exclusivamente para la anulación de un comprobante ante un error operativo directo de carga en caja.
+**Regla de Negocio:**
+Comprobante correspondiente a una transacción de cobro vinculada a una suscripción. Registra el importe percibido, la modalidad de cobro y el empleado interviniente en caja. Los cobros acreditados (`PAID`) son financieramente inmutables ante cancelaciones de la suscripción asociada, resguardando la auditoría contable y el arqueo de caja. La anulación operativa mediante el estado `CANCELLED` es una acción exclusiva de administración para subsanar errores de carga en caja y no altera pagos legítimos previos.
 
+**Implementación Relacional:**
+Clave primaria correlativa `receipt_number`. Clave foránea obligatoria a `subscriptions` y opcional a `employees` (`employee_code`, obligatorio salvo en pagos de pasarela sin intervención de caja presencial según `chk_payment_employee`), ambas protegidas con `ON DELETE RESTRICT`. Restricción `CHECK` de importe positivo (`amount > 0`). Ciclo de estados controlados en `status` (`PENDING`, `PAID`, `FAILED`, `CANCELLED`). Identificador de pasarela `gateway_payment_id` con índice único para garantizar idempotencia en cobros digitales. Fundamentado en [ADR-0005](./adr/ADR-0005-conservacion-historial-integridad-declarativa.md) y [ADR-0008](./adr/ADR-0008-modelo-pagos-ledger-inmutable-estrategia-metodo.md).
 | Columna | Tipo | Nulos | Único | Observación |
 |---------|------|-------|-------|-------------|
 | `receipt_number` | SERIAL / INTEGER | No (generado) | Sí (PK) | Clave primaria. Número de recibo correlativo de caja |
